@@ -170,6 +170,10 @@
   .results button .gr { display: block; font: 700 19px var(--mono); }
   body.large .results button .gr { font-size: 23px; }
 
+  /* no visible scrollbars anywhere: lists still scroll with a finger */
+  .rows, .results, .list, .layers { scrollbar-width: none; }
+  .rows::-webkit-scrollbar, .results::-webkit-scrollbar, .list::-webkit-scrollbar, .layers::-webkit-scrollbar { display: none; }
+
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
 
