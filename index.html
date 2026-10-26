@@ -48,9 +48,10 @@
   .search { flex: 1; display: flex; background: var(--panel); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
   .search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 16px var(--sans); padding: 12px 14px; outline: none; }
   .search button { border: 0; background: none; color: var(--green); font: 600 15px var(--sans); padding: 0 14px; }
-  .results { position: fixed; z-index: 1001; left: 12px; right: 12px; top: calc(var(--safe-t) + 62px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); overflow: hidden; display: none; }
+  .results { max-height: 55vh; overflow-y: auto; position: fixed; z-index: 1001; left: 12px; right: 12px; top: calc(var(--safe-t) + 62px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); overflow: hidden; display: none; }
   .results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 13px 14px; }
   .results button small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .results button .tag { float: right; font: 600 11px var(--sans); color: var(--green); background: var(--green-soft); border-radius: 6px; padding: 2px 6px; margin-left: 8px; }
   .results .msg { padding: 13px 14px; color: var(--muted); font-size: 14px; }
 
   /* crosshair */
@@ -68,14 +69,27 @@
   /* bottom sheet */
   .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); }
   .label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
-  .ref { font: 700 clamp(28px, 9vw, 38px)/1.15 var(--mono); letter-spacing: .02em; margin: 6px 0 4px; user-select: all; -webkit-user-select: all; }
+  .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 0 2px; text-align: left; }
+  .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
-  .sub { font: 13px/1.5 var(--mono); color: var(--muted); }
+  .c { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font: 600 13px var(--sans); flex: none; border-radius: 10px; transition: background .15s; }
+  .c svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .big .c { background: var(--green-soft); padding: 8px 10px; }
+  .row .c { padding: 4px 8px; margin: -4px -8px -4px 0; }
+  .row .c b { display: none; }
+  .row.copied .c b, .row .c.open b { display: inline; }
+  .rows { margin-top: 6px; border-top: 1px solid var(--line); }
+  .row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); padding: 9px 0; text-align: left; }
+  .row .k { width: 80px; flex: none; font: 600 12px var(--sans); color: var(--muted); }
+  .row .v { flex: 1; min-width: 0; font: 14.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .v.dim { font-family: var(--sans); color: var(--muted); font-size: 14px; }
+  .copied .c { color: var(--panel); background: var(--green); }
+  .row:active, .big:active { opacity: .6; }
   .from-me { font: 14px var(--sans); color: var(--green); margin-top: 4px; min-height: 0; }
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
   .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
   .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .actions button { border: 0; border-radius: 12px; padding: 13px 6px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
   .actions button.primary { background: var(--green); color: var(--panel); }
 
@@ -139,13 +153,20 @@
       <button data-d="6">6</button><button data-d="8">8</button><button data-d="10">10</button>
     </span>
   </div>
-  <div class="ref" id="ref">—</div>
-  <div class="sub" id="sub"></div>
+  <button class="big" data-copy="ref" aria-label="Copy grid reference">
+    <span class="ref" id="ref">—</span>
+    <span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span>
+  </button>
   <div class="from-me" id="fromMe"></div>
+  <div class="rows">
+    <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+    <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+    <button class="row" data-copy="dms"><span class="k">Deg Min Sec</span><span class="v" id="vDMS"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+    <button class="row" data-copy="w3w"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></button>
+  </div>
   <div class="actions">
-    <button class="primary" id="copyBtn">Copy</button>
-    <button id="shareBtn">Share</button>
-    <button id="saveBtn">Save</button>
+    <button class="primary" id="shareBtn">Share all</button>
+    <button id="saveBtn">Save point</button>
   </div>
 </section>
 
@@ -163,7 +184,9 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="config.js"></script>
 <script src="osgb.js"></script>
+<script src="parse.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -277,7 +300,6 @@
   // ---------- readout ----------
   let digits = store.get("digits", 8);
   let here = null; // { lat, lon, acc }
-  let pinned = null; // latlng shown by GPS-follow instead of crosshair
   function setPrec(d) {
     digits = d;
     store.set("digits", d);
@@ -298,22 +320,29 @@
   }
   function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
 
+  function dms(v, pos, neg) {
+    const a = Math.abs(v);
+    let d = Math.floor(a), m = Math.floor((a - d) * 60), sec = ((a - d) * 3600 - m * 60).toFixed(1);
+    if (sec === "60.0") { sec = "0.0"; m++; }
+    if (m === 60) { m = 0; d++; }
+    return `${d}°${String(m).padStart(2, "0")}′${sec.padStart(4, "0")}″${v < 0 ? neg : pos}`;
+  }
+
   let last = null;
   function update() {
     const t = following && here ? L.latLng(here.lat, here.lon) : target();
     const p = info(t);
+    p.en = `${Math.round(p.e)}, ${Math.round(p.n)}`;
+    p.ll = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
+    p.dms = `${dms(p.lat, "N", "S")} ${dms(p.lon, "E", "W")}`;
     last = p;
     const ref = $("ref");
-    if (p.ref) {
-      ref.textContent = p.ref;
-      ref.classList.remove("off");
-    } else {
-      ref.textContent = "Outside the GB grid";
-      ref.classList.add("off");
-    }
-    $("sub").textContent = p.ref
-      ? `E ${Math.round(p.e)}  N ${Math.round(p.n)}  ·  ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
-      : `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
+    ref.textContent = p.ref || "Outside the GB grid";
+    ref.classList.toggle("off", !p.ref);
+    $("vEN").textContent = p.ref ? p.en : "—";
+    $("vLL").textContent = p.ll;
+    $("vDMS").textContent = p.dms;
+    w3wUpdate(p);
     $("what").textContent = following && here ? `You are here (±${Math.round(here.acc)} m)` : "Under the crosshair";
     if (here && !following) {
       const me = L.latLng(here.lat, here.lon);
@@ -324,6 +353,41 @@
     }
     layout();
   }
+
+  // ---------- what3words ----------
+  // With an API key (config.js) the 3 words show in the row; without one the row
+  // opens what3words at this spot, which shows the words there.
+  const W3W_KEY = (window.GRIDREF_CONFIG || {}).what3wordsKey || "";
+  const COPY_ICON = document.querySelector(".row .c").innerHTML;
+  const OPEN_ICON = $("w3wAct").innerHTML;
+  let w3w = { at: "", words: "" }, w3wTimer;
+  const spot = (p) => p.lat.toFixed(5) + "," + p.lon.toFixed(5);
+  function w3wShow(text, isWords) {
+    const v = $("vW3W");
+    v.textContent = text;
+    v.className = isWords ? "v" : "v dim";
+    if (!$("w3wAct").closest(".copied")) $("w3wAct").innerHTML = isWords ? COPY_ICON : OPEN_ICON;
+    $("w3wAct").classList.toggle("open", !isWords);
+  }
+  function w3wUpdate(p) {
+    if (!W3W_KEY) return w3wShow("Show the 3 words", false);
+    const at = spot(p);
+    if (w3w.at === at && w3w.words) return w3wShow("///" + w3w.words, true);
+    w3wShow("…", false);
+    clearTimeout(w3wTimer);
+    w3wTimer = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://api.what3words.com/v3/convert-to-3wa?coordinates=${at}&language=en&key=${W3W_KEY}`);
+        const j = await r.json();
+        if (!j.words) throw new Error(j.error && j.error.message);
+        w3w = { at, words: j.words };
+        if (last && spot(last) === at) w3wShow("///" + j.words, true);
+      } catch {
+        if (last && spot(last) === at) w3wShow(navigator.onLine ? "Show the 3 words" : "Needs signal", false);
+      }
+    }, 450);
+  }
+  function w3wOpen(p) { window.open(`https://what3words.com/${p.lat.toFixed(6)},${p.lon.toFixed(6)}`, "_blank"); }
 
   let saveView;
   map.on("move", update);
@@ -379,14 +443,44 @@
     clearTimeout(toast.t);
     toast.t = setTimeout(() => t.classList.remove("show"), 1800);
   }
-  async function copy(text) {
-    try { await navigator.clipboard.writeText(text); toast("Copied " + text); }
-    catch { toast("Couldn't copy — press and hold the grid ref instead"); }
+  async function copy(text, el) {
+    let ok = false;
+    try { await navigator.clipboard.writeText(text); ok = true; }
+    catch {
+      // Older iOS: copy through a temporary text box
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      try { ok = document.execCommand("copy"); } catch {}
+      ta.remove();
+    }
+    if (!ok) return toast("Couldn't copy on this phone");
+    if (!el) return toast("Copied");
+    const b = el.querySelector(".c b"), was = b.dataset.was || (b.dataset.was = b.textContent);
+    el.classList.add("copied");
+    b.textContent = "Copied";
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.classList.remove("copied"); b.textContent = was; }, 1300);
+  }
+  for (const el of document.querySelectorAll("[data-copy]")) {
+    el.onclick = () => {
+      if (!last) return;
+      const what = el.dataset.copy;
+      if (what === "w3w") return w3w.words && w3w.at === spot(last) ? copy("///" + w3w.words, el) : w3wOpen(last);
+      if ((what === "ref" || what === "en") && !last.ref) return;
+      copy(last[what], el);
+    };
   }
   function shareText(p) {
-    return `${p.ref}\n${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}\nhttps://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`;
+    const lines = [`Grid ref: ${p.ref}`, `E/N: ${p.en}`, `Lat/long: ${p.ll}`, p.dms];
+    if (w3w.words && w3w.at === spot(p)) lines.push(`what3words: ///${w3w.words}`);
+    lines.push(`https://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`);
+    return lines.join("\n");
   }
-  $("copyBtn").onclick = () => { if (last && last.ref) copy(last.ref); };
   $("shareBtn").onclick = async () => {
     if (!last || !last.ref) return;
     const text = shareText(last);
@@ -456,67 +550,113 @@
   const resultsEl = $("results");
   function showResults(items, msg) {
     resultsEl.innerHTML = "";
-    if (msg) resultsEl.innerHTML = `<div class="msg">${msg}</div>`;
+    if (msg) {
+      const m = document.createElement("div");
+      m.className = "msg";
+      m.textContent = msg;
+      resultsEl.appendChild(m);
+    }
     for (const it of items) {
       const b = document.createElement("button");
-      b.innerHTML = "<span></span><small></small>";
-      b.firstChild.textContent = it.title;
-      b.lastChild.textContent = it.sub || "";
+      b.innerHTML = "<span class='tag'></span><span class='t'></span><small></small>";
+      if (it.tag) b.querySelector(".tag").textContent = it.tag;
+      else b.querySelector(".tag").remove();
+      b.querySelector(".t").textContent = it.title;
+      b.querySelector("small").textContent = it.sub || "";
       b.onclick = () => go(it);
       resultsEl.appendChild(b);
     }
     resultsEl.style.display = items.length || msg ? "block" : "none";
   }
   function go(it) {
+    if (it.url) { window.open(it.url, "_blank"); return; }
     resultsEl.style.display = "none";
     $("q").blur();
     following = false;
     $("locBtn").classList.remove("on");
     panTo(L.latLng(it.lat, it.lon), it.zoom || 15);
   }
-  $("searchForm").onsubmit = async (ev) => {
-    ev.preventDefault();
-    const text = $("q").value.trim();
-    if (!text) return;
-    // 1. OS grid reference
-    const g = OSGB.parseGridRef(text);
-    if (g) {
-      const ll = OSGB.gridToWgs84(g.e, g.n);
-      const z = g.size >= 10000 ? 11 : g.size >= 1000 ? 14 : g.size >= 100 ? 16 : 18;
-      return go({ lat: ll.lat, lon: ll.lon, zoom: z });
+  const fmtRef = (lat, lon) => { const g = OSGB.wgs84ToGrid(lat, lon); return OSGB.gridRef(g.e, g.n, digits); };
+  async function getJSON(url) { const r = await fetch(url); return r.json(); }
+
+  // One parsed reading -> result rows (postcodes and what3words need a lookup)
+  async function resolve(r) {
+    if (r.lat != null) {
+      const ll = `${r.lat.toFixed(5)}, ${r.lon.toFixed(5)}`;
+      return [{ title: r.title || fmtRef(r.lat, r.lon) || ll, sub: ll, tag: r.label, lat: r.lat, lon: r.lon, zoom: r.zoom }];
     }
-    // 2. Easting, northing  (e.g. 334567 481234)
-    const en = text.match(/^(\d{5,6})(?:\.\d+)?[\s,]+(\d{5,7})(?:\.\d+)?$/);
-    if (en && OSGB.inGrid(+en[1], +en[2])) {
-      const ll = OSGB.gridToWgs84(+en[1], +en[2]);
-      return go({ lat: ll.lat, lon: ll.lon, zoom: 17 });
+    if (r.kind === "postcode") {
+      const j = await getJSON("https://api.postcodes.io/postcodes/" + r.code);
+      if (!j.result) return [];
+      const x = j.result;
+      return [{ title: x.postcode, sub: [x.admin_ward, x.admin_district].filter(Boolean).join(", "), tag: "Postcode", lat: x.latitude, lon: x.longitude, zoom: 16 }];
     }
-    // 3. Lat, long
-    const ll = text.match(/^(-?\d{1,2}\.\d+)[\s,]+(-?\d{1,3}\.\d+)$/);
-    if (ll) return go({ lat: +ll[1], lon: +ll[2], zoom: 16 });
-    // 4. Postcode
-    if (/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(text)) {
-      try {
-        const r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(text));
-        const j = await r.json();
-        if (j.result) return go({ lat: j.result.latitude, lon: j.result.longitude, zoom: 16 });
-      } catch {}
+    if (r.kind === "outcode") {
+      const j = await getJSON("https://api.postcodes.io/outcodes/" + r.code);
+      if (!j.result) return [];
+      const x = j.result;
+      return [{ title: x.outcode, sub: (x.admin_district || []).slice(0, 2).join(", "), tag: "Postcode area", lat: x.latitude, lon: x.longitude, zoom: 13 }];
     }
-    // 5. Place name
-    showResults([], "Searching…");
+    if (r.kind === "w3w") {
+      if (W3W_KEY) {
+        const j = await getJSON(`https://api.what3words.com/v3/convert-to-coordinates?words=${encodeURIComponent(r.words)}&key=${W3W_KEY}`);
+        if (j.coordinates) return [{ title: "///" + r.words, sub: j.nearestPlace || "", tag: "what3words", lat: j.coordinates.lat, lon: j.coordinates.lng, zoom: 18 }];
+      }
+      return [{ title: "///" + r.words, sub: "Opens in what3words", tag: "what3words", url: "https://what3words.com/" + r.words }];
+    }
+    return [];
+  }
+
+  // Place names, as you type (Photon allows type-ahead; Nominatim doesn't)
+  async function places(text) {
+    const c = map.getCenter();
+    const j = await getJSON(`https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&limit=7&lang=en&bbox=-8.8,49.8,2.0,60.95&lat=${c.lat.toFixed(3)}&lon=${c.lng.toFixed(3)}`);
+    const zoomFor = { city: 12, town: 13, village: 14, hamlet: 15, county: 10, state: 8, district: 13 };
+    return (j.features || []).map((f) => {
+      const p = f.properties, [lon, lat] = f.geometry.coordinates;
+      let kind = p.osm_value === "yes" ? p.osm_key : p.osm_value || p.type || "";
+      kind = kind.replace(/_/g, " ");
+      const where = [p.city || p.town || p.village, p.county || p.state].filter((x) => x && x !== p.name);
+      return {
+        title: p.name || p.street || "Unnamed",
+        sub: [kind && kind[0].toUpperCase() + kind.slice(1), ...where].join(" · "),
+        lat, lon, zoom: zoomFor[p.type] || zoomFor[p.osm_value] || 16,
+      };
+    });
+  }
+
+  let seq = 0, typing;
+  async function search(text, submit) {
+    const my = ++seq;
+    text = text.trim();
+    if (!text) return showResults([]);
+    const readings = GridSearch.parse(text);
+    if (readings.some((r) => r.kind === "link-unknown")) {
+      return showResults([], "Can't read a location from that link. Short links (maps.app.goo.gl) hide it: open the link, then copy the coordinates in.");
+    }
+    const items = [];
+    // Grid refs, E/N, lat/long and map links work offline and show at once
+    for (const r of readings) if (r.lat != null) items.push(...(await resolve(r)));
+    if (items.length && !submit) showResults(items);
     try {
-      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=gb&limit=6&q=" + encodeURIComponent(text));
-      const j = await r.json();
-      if (!j.length) return showResults([], "Nothing found. Try a grid ref like SD 345 812.");
-      showResults(j.map((x) => {
-        const parts = x.display_name.split(", ");
-        return { title: parts[0], sub: parts.slice(1, 4).join(", "), lat: +x.lat, lon: +x.lon, zoom: x.type === "city" || x.type === "administrative" ? 13 : 15 };
-      }));
+      for (const r of readings) if (r.lat == null) items.push(...(await resolve(r)));
+      const exact = readings.some((r) => r.lat != null || r.kind === "postcode" || r.kind === "w3w");
+      if (!exact && text.length >= 3) items.push(...(await places(text)));
     } catch {
-      showResults([], "No signal — grid refs and lat/long still work offline.");
+      if (my === seq && !items.length) return showResults([], "No signal. Grid refs, E/N and lat/long still work offline.");
     }
-  };
-  $("q").addEventListener("input", () => { if (!$("q").value) resultsEl.style.display = "none"; });
+    if (my !== seq) return;
+    if (submit && items.length) return go(items[0]);
+    showResults(items, items.length ? "" : text.length >= 3 ? "Nothing found. Try a grid ref (SD 339 836), postcode, lat/long or place." : "");
+  }
+  $("searchForm").onsubmit = (ev) => { ev.preventDefault(); clearTimeout(typing); search($("q").value, true); };
+  $("q").addEventListener("input", () => {
+    clearTimeout(typing);
+    const v = $("q").value;
+    if (!v.trim()) return showResults([]);
+    typing = setTimeout(() => search(v, false), 280);
+  });
+  $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); });
 
   // ---------- go ----------
   window.addEventListener("resize", () => { layout(); update(); });
