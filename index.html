@@ -416,7 +416,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "33"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "34"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -1312,25 +1312,35 @@
     pack.mb = Math.round(idx.bytes / 1e6);
     if (store.get("pack", "") === idx.version) { pack.state = "ready"; return; }
     const cache = await caches.open("gridref-maps");
-    const have = new Set((await cache.keys()).map((r) => new URL(r.url).pathname.split("/maps/")[1]));
-    const todo = idx.tiles.filter((t) => !have.has(t));
+    const missing = async () => {
+      const have = new Set((await cache.keys()).map((r) => new URL(r.url).pathname.split("/maps/")[1]));
+      return idx.tiles.filter((t) => !have.has(t));
+    };
+    let todo = await missing();
     pack.total = idx.tiles.length;
     pack.done = pack.total - todo.length;
     pack.state = "downloading";
     if (todo.length > 50) toast(`Downloading offline maps (${pack.mb} MB)`);
-    let failed = 0;
-    const worker = async () => {
-      while (todo.length) {
-        const t = todo.shift();
-        try {
-          const r = await fetch("maps/" + t);
-          if (r.ok) { await cache.put("maps/" + t, r); pack.done++; } else failed++;
-        } catch { failed++; }
-        if (failed > 20) return;
-      }
-    };
-    await Promise.all(Array.from({ length: 14 }, worker)); // GitHub serves over HTTP/2, so many at once is fine
-    if (failed > 20 || pack.done < pack.total) { pack.state = "failed"; return; }
+    // A few requests can fail in a rush or on patchy signal: go round again for the gaps,
+    // and only give up if a whole pass gets nothing (no signal)
+    for (let pass = 0; pass < 5 && todo.length; pass++) {
+      let got = 0;
+      const queue = todo.slice();
+      const worker = async () => {
+        while (queue.length) {
+          const t = queue.shift();
+          try {
+            const r = await fetch("maps/" + t);
+            if (r.ok) { await cache.put("maps/" + t, r); pack.done++; got++; }
+          } catch {}
+        }
+      };
+      await Promise.all(Array.from({ length: 14 }, worker)); // GitHub serves over HTTP/2, so many at once is fine
+      todo = await missing();
+      pack.done = pack.total - todo.length;
+      if (!got) break;
+    }
+    if (todo.length) { pack.state = "failed"; return; }
     store.set("pack", idx.version);
     pack.state = "ready";
     toast("✓ Offline maps ready");
