@@ -1,21 +1,36 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v8";
+const CACHE = "gridref-v10";
 const TILES = "gridref-tiles";
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
 const SHELL = ["./", "index.html", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png",
   "data/places.json", "data/postcodes.json",
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"];
+  "vendor/leaflet/leaflet.css", "vendor/leaflet/leaflet.js"];
 // Aerial imagery isn't cached: Esri's terms don't allow keeping it offline
 const TILE_HOSTS = /(^|\.)tile\.opentopomap\.org$|^tile\.openstreetmap\.org$/;
 const WEEK = 7 * 24 * 3600 * 1000;
 
+// One file failing (a blip on unpkg, say) must not block the update, or phones get
+// stuck on the old version: cache each file separately and carry on regardless.
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE)
+    .then((c) => Promise.allSettled(SHELL.map((u) => c.add(new Request(u, { cache: "no-cache" })))))
+    .then(() => self.skipWaiting()));
 });
+// On an upgrade, reload any open copy of the app. Old copies of the page have no
+// update code of their own, so without this they keep showing the previous version.
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE && k !== TILES).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil((async () => {
+    const old = (await caches.keys()).filter((k) => k !== CACHE && k !== TILES);
+    await Promise.all(old.map((k) => caches.delete(k)));
+    await self.clients.claim();
+    if (old.length) {
+      for (const c of await self.clients.matchAll({ type: "window" })) {
+        try { await c.navigate(c.url); } catch {}
+      }
+    }
+  })());
 });
 
 let puts = 0;
