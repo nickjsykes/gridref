@@ -1,10 +1,11 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v13";
+const CACHE = "gridref-v14";
 const TILES = "gridref-tiles";
+const MAPS = "gridref-maps"; // the offline OS map pack and boundary data: kept across updates
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
-const SHELL = ["./", "index.html", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html",
+const SHELL = ["./", "index.html", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html", "data/nnr.geojson",
   "data/places.json", "data/postcodes.json",
   "vendor/leaflet/leaflet.css", "vendor/leaflet/leaflet.js"];
 // Aerial imagery isn't cached: Esri's terms don't allow keeping it offline
@@ -22,7 +23,7 @@ self.addEventListener("install", (e) => {
 // update code of their own, so without this they keep showing the previous version.
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
-    const old = (await caches.keys()).filter((k) => k !== CACHE && k !== TILES);
+    const old = (await caches.keys()).filter((k) => k !== CACHE && k !== TILES && k !== MAPS);
     await Promise.all(old.map((k) => caches.delete(k)));
     await self.clients.claim();
     if (old.length) {
@@ -62,6 +63,14 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   const url = new URL(e.request.url);
   if (TILE_HOSTS.test(url.hostname)) return e.respondWith(tile(e.request));
+  // Offline OS map pack: from the phone first; the app downloads the whole pack
+  if (url.origin === location.origin && url.pathname.includes("/maps/")) {
+    return e.respondWith(caches.open(MAPS).then(async (c) => (await c.match(e.request, { ignoreSearch: true })) || fetch(e.request)));
+  }
+  // Reserve boundaries: live from Natural England when there's signal, last copy when not
+  if (url.hostname === "services.arcgis.com") {
+    return e.respondWith(caches.open(MAPS).then((c) => fetch(e.request).then((r) => { if (r.ok) c.put(e.request, r.clone()); return r; }).catch(() => c.match(e.request))));
+  }
   const href = e.request.url;
   if (!SHELL.some((s) => (s.startsWith("http") ? href === s : href.split("?")[0].endsWith(s.replace("./", "/"))))) return;
   // no-cache: always ask GitHub for the latest copy, or a 10-minute browser cache serves the old app

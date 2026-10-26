@@ -20,3 +20,10 @@ Accuracy: Helmert datum shift, good to ~3–5 m, and phone GPS is ~5 m in the op
 Static files only — no build step. `osgb.js` holds the conversions.
 
 **Releasing:** bump `VERSION` in index.html, `version.json` and `CACHE` in sw.js together. Open copies (any browser) see the new version.json and reload onto it.
+
+## Offline maps and reserve boundaries
+
+- **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the reserves in `PACK` in `build/build_tiles.py`, zoom 11-17. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
+  Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
+- **NNR boundaries**: live from Natural England's National Nature Reserves (England) feature service every time the app has signal; `data/nnr.geojson` is the copy shipped for first use offline (refresh it with the query URL in `index.html`, `NNR_LIVE`).
+- **Tools**: Measure (points at the crosshair or GPS; distance, perimeter, area on the OS grid) and Photo (stamps grid ref, time, GPS accuracy and reserve name; shares or saves the JPEG).

@@ -66,6 +66,12 @@
   .fab { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--panel); color: var(--ink); box-shadow: 0 2px 10px rgba(0,0,0,.22); display: grid; place-items: center; }
   .fab svg { width: 24px; height: 24px; }
   .fab.on { background: var(--green); color: var(--panel); }
+  .fab { position: relative; }
+  /* GPS accuracy, always in view once GPS is on: green good, amber so-so, red poor */
+  .acc { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); font: 700 11px var(--sans); color: #fff; background: #1f8a4c; padding: 1px 6px; border-radius: 9px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+  .acc.mid { background: #c98a00; }
+  .acc.poor { background: #c0392b; }
+  body.large .acc { font-size: 13px; }
 
   /* bottom sheet */
   .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px max(10px, calc(var(--safe-b) - 14px)); display: flex; flex-direction: column; max-height: 60vh; }
@@ -74,7 +80,10 @@
   .sheet.compact .more { display: none; }
   .more { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
   .meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
-  .meta:has(.from-me:empty) { display: none; }
+  .meta { flex-wrap: wrap; column-gap: 10px; row-gap: 0; }
+  .meta:has(.from-me:empty):has(.in-nnr:empty) { display: none; }
+  .in-nnr { font: 700 14px var(--sans); color: #0b7a3b; }
+  .in-nnr:empty { display: none; }
   .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 8px 2px; text-align: left; }
   .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
@@ -101,10 +110,10 @@
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
   .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
   .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .actions { display: grid; grid-template-columns: 34px repeat(4, 1fr); gap: 6px; margin-top: 10px; align-items: stretch; }
+  .actions { display: grid; grid-template-columns: 30px repeat(6, 1fr); gap: 4px; margin-top: 10px; align-items: stretch; }
   .tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 2px 6px !important; }
   .tool svg { width: 24px; height: 24px; }
-  .tool span { font: 600 11px var(--sans); white-space: nowrap; }
+  .tool span { font: 600 clamp(8.5px, 2.65vw, 11px) var(--sans); white-space: nowrap; letter-spacing: -.01em; }
   .tool.small { background: none !important; color: var(--muted) !important; padding: 0 !important; }
   .tool.small svg { width: 26px; height: 26px; }
   .tool.small.on { color: var(--green) !important; }
@@ -155,6 +164,18 @@
   /* navigate: the map shows you, the flag and the line; the panel is the compass */
   .nav { display: none; }
   body.navigating .sheet > :not(.nav) { display: none; }
+  .measure { display: none; }
+  body.measuring .sheet > :not(.measure) { display: none; }
+  body.measuring .measure { display: block; }
+  .m-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .m-nums small { display: block; font: 600 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .m-nums b { font: 700 clamp(24px, 8vw, 32px)/1.15 var(--mono); }
+  .m-hint { color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
+  .m-btns { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr; gap: 5px; }
+  .m-btns button { border: 0; border-radius: 12px; padding: 10px 4px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .m-btns button svg { width: 22px; height: 22px; }
+  .m-btns .primary { background: var(--green); color: var(--panel); }
+  body.large .m-btns button { font-size: 16px; }
   body.navigating .nav { display: block; }
   body.navigating .cross { display: none; }
   .nav-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -196,6 +217,11 @@
   .card { width: 100%; max-width: 420px; background: var(--panel); border-radius: 16px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 10px; }
   .card label { display: flex; flex-direction: column; gap: 4px; font: 600 14px var(--sans); color: var(--muted); }
   .card input, .card textarea { font: 16px var(--sans); color: var(--ink); background: var(--green-soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: none; }
+  .kind { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .kind[hidden] { display: none; }
+  .kind button { border: 2px solid var(--line); border-radius: 10px; padding: 9px; font: 600 15px var(--sans); background: var(--panel); color: var(--ink); }
+  .kind button.on { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+  .pick[hidden] { display: none; }
   .pick { display: flex; gap: 6px; }
   .pick button { flex: 1 1 0; min-width: 0; max-width: 44px; aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); display: grid; place-items: center; padding: 0; }
   .pick button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--panel) inset; }
@@ -235,7 +261,7 @@
   <button class="fab" id="layersBtn" aria-label="Map style">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
-  <button class="fab" id="locBtn" aria-label="Show my location">
+  <button class="fab" id="locBtn" aria-label="Show my location"><span class="acc" id="accBadge" hidden></span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
   </button>
 </div>
@@ -249,6 +275,7 @@
   </div>
   <div class="more">
     <div class="meta">
+      <span class="in-nnr" id="inNNR"></span>
       <span class="from-me" id="fromMe"></span>
     </div>
     <div class="rows">
@@ -262,6 +289,23 @@
       <button class="tool primary" id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg><span>Navigate</span></button>
       <button class="tool" id="saveBtn" aria-label="Save point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg><span>Save</span></button>
       <button class="tool" id="listBtn" aria-label="Saved points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg><span>Saved</span></button>
+      <button class="tool" id="measureBtn" aria-label="Measure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg><span>Measure</span></button>
+      <button class="tool" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Photo</span></button>
+      <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
+    </div>
+  </div>
+  <div class="measure" id="measure">
+    <div class="m-nums">
+      <div><small>Distance</small><b id="mDist">0 m</b></div>
+      <div><small>Area</small><b id="mArea">—</b></div>
+    </div>
+    <div class="m-hint" id="mHint">Line the crosshair up on the first corner or end, then tap Add point.</div>
+    <div class="m-btns">
+      <button class="primary" id="mAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add point</button>
+      <button id="mGps"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>Add GPS</button>
+      <button id="mUndo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
+      <button id="mSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5Z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>Save</button>
+      <button id="mDone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Done</button>
     </div>
   </div>
   <div class="nav" id="nav">
@@ -306,6 +350,7 @@
 
 <div class="modal" id="saveModal" hidden>
   <form class="card" id="saveForm" autocomplete="off">
+    <div class="kind" id="ptKind" hidden><button type="button" data-k="line">Line</button><button type="button" data-k="area">Area</button></div>
     <label>Name:<input id="ptName" enterkeyhint="next"></label>
     <label>Notes:<textarea id="ptNotes" rows="3"></textarea></label>
     <div class="pick" id="ptColour" aria-label="Colour"></div>
@@ -331,9 +376,11 @@
   };
 
   // ---------- map ----------
+  const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   const LAYERS = {
     topo: { name: "Topo (contours)", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
     street: { name: "Street map", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }) },
+    os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -341,6 +388,13 @@
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
   let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
   LAYERS[current].layer.addTo(map);
+  function setBase(k) {
+    if (k === current) return;
+    map.removeLayer(LAYERS[current].layer);
+    current = k;
+    LAYERS[k].layer.addTo(map);
+    if (offlineOverlay && map.hasLayer(offlineOverlay)) offlineOverlay.bringToFront();
+  }
 
   let large = store.get("large", false);
   function keepTarget(change) {
@@ -362,7 +416,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "31"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "32"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -371,17 +425,17 @@
       b.textContent = v.name;
       b.className = k === current ? "on" : "";
       b.onclick = () => {
-        map.removeLayer(LAYERS[current].layer);
-        current = k;
-        LAYERS[k].layer.addTo(map);
+        setBase(k);
         store.set("layer", k);
         layersEl.style.display = "none";
       };
       layersEl.appendChild(b);
     }
     const off = document.createElement("button");
-    off.textContent = "Save this area for offline";
-    off.onclick = () => { layersEl.style.display = "none"; saveArea(); };
+    off.className = "ver";
+    off.disabled = pack.state !== "failed";
+    off.textContent = pack.text();
+    off.onclick = () => { layersEl.style.display = "none"; downloadPack(); };
     layersEl.appendChild(off);
     const ver = document.createElement("button");
     ver.textContent = "Nick Sykes for Natural England · v" + VERSION;
@@ -509,6 +563,7 @@
     $("vEN").textContent = p.ref ? p.en : "—";
     $("vLL").textContent = p.ll;
     w3wUpdate(p);
+    $("inNNR").textContent = nnr.length ? reserveAt(t) : "";
     if (following && here) {
       $("fromMe").textContent = `You are here, GPS ±${Math.round(here.acc)} m`;
     } else if (here) {
@@ -607,6 +662,10 @@
         meRing.setLatLng(ll).setRadius(here.acc);
         meDot.setLatLng(ll);
       }
+      const a = Math.round(here.acc), badge = $("accBadge");
+      badge.hidden = false;
+      badge.textContent = `±${a} m`;
+      badge.className = "acc" + (a > 25 ? " poor" : a > 10 ? " mid" : "");
       if (following && !nav) panTo(ll, first ? Math.max(map.getZoom(), 15) : undefined);
       first = false;
       update();
@@ -705,9 +764,22 @@
     const fill = COLOURS[colour] || COLOURS.orange, stroke = colour === "white" ? "#2d3436" : "#fff";
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round">${SHAPES[shape] || SHAPES.circle}</svg>`;
   };
+  function shapeStats(pt) {
+    const ll = pt.pts.map(([a, b]) => L.latLng(a, b));
+    const st = mStats(pt.kind === "area" ? ll.concat([ll[0]]) : ll);
+    return { length: st.d, area: pt.kind === "area" ? mStats(ll).area : null };
+  }
   function drawPins() {
     pinLayer.clearLayers();
     for (const pt of points) {
+      if (pt.kind === "line" || pt.kind === "area") {
+        const c = COLOURS[pt.colour] || COLOURS.orange, st = shapeStats(pt);
+        const style = { color: c, weight: 4, opacity: 0.9, fillColor: c, fillOpacity: 0.18 };
+        (pt.kind === "area" ? L.polygon(pt.pts, style) : L.polyline(pt.pts, style))
+          .bindTooltip(`${pt.name} · ${pt.kind === "area" ? fmtArea(st.area) : fmtDist(st.length)}`, { sticky: true })
+          .addTo(pinLayer);
+        continue;
+      }
       L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) })
         .bindTooltip(pt.name, { direction: "top", offset: [0, -10] })
         .addTo(pinLayer);
@@ -726,17 +798,37 @@
   $("saveBtn").onclick = () => {
     if (!last || !last.ref) return;
     fresh();
-    saving = { lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null };
-    $("ptName").value = "";
-    $("ptName").placeholder = "Point " + (points.length + 1);
-    $("ptNotes").value = "";
-    drawPickers();
-    $("saveModal").hidden = false;
-    setTimeout(() => $("ptName").focus(), 50);
+    openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
   const closeSave = () => { $("saveModal").hidden = true; saving = null; $("ptName").blur(); $("ptNotes").blur(); };
   $("ptCancel").onclick = closeSave;
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
+  function openSave(geom) {
+    fresh();
+    saving = geom;
+    const isShape = geom.kind !== "point";
+    $("ptKind").hidden = !isShape;
+    $("ptShape").hidden = isShape;
+    if (isShape) {
+      for (const b of $("ptKind").children) {
+        b.disabled = b.dataset.k === "area" && geom.pts.length < 3;
+        b.classList.toggle("on", b.dataset.k === geom.kind);
+      }
+    }
+    $("ptName").value = "";
+    $("ptName").placeholder = (isShape ? (geom.kind === "line" ? "Line " : "Area ") : "Point ") + (points.length + 1);
+    $("ptNotes").value = "";
+    drawPickers();
+    $("saveModal").hidden = false;
+    setTimeout(() => $("ptName").focus(), 50);
+  }
+  $("ptKind").onclick = (e) => {
+    const b = e.target.closest("button");
+    if (!b || b.disabled || !saving) return;
+    saving.kind = b.dataset.k;
+    for (const x of $("ptKind").children) x.classList.toggle("on", x === b);
+    $("ptName").placeholder = (saving.kind === "line" ? "Line " : "Area ") + (points.length + 1);
+  };
   $("saveForm").onsubmit = (e) => {
     e.preventDefault();
     if (!saving) return;
@@ -765,11 +857,18 @@
       const row = document.createElement("div");
       row.className = "item";
       const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      row.innerHTML = `<span class="mk">${shapeSvg(pt.shape, pt.colour)}</span><div class="main"><div class="name"></div><div class="gr">${OSGB.gridRef(pt.e, pt.n, digits)}</div><div class="note"></div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div><button class="go">Go</button><button class="del">Delete</button>`;
+      const isShape = pt.kind === "line" || pt.kind === "area";
+      const st = isShape ? shapeStats(pt) : null;
+      const mk = !isShape ? shapeSvg(pt.shape, pt.colour)
+        : `<svg width="22" height="22" viewBox="0 0 24 24" fill="${pt.kind === "area" ? (COLOURS[pt.colour] || COLOURS.orange) + "44" : "none"}" stroke="${COLOURS[pt.colour] || COLOURS.orange}" stroke-width="3" stroke-linejoin="round">${pt.kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
+      const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits)
+        : pt.kind === "area" ? `Area ${fmtArea(st.area)} · edge ${fmtDist(st.length)}` : `Line ${fmtDist(st.length)} · from ${OSGB.gridRef(pt.e, pt.n, digits)}`;
+      row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="name"></div><div class="gr"></div><div class="note"></div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div>${isShape ? "" : '<button class="go">Go</button>'}<button class="del">Delete</button>`;
+      row.querySelector(".gr").textContent = what;
       row.querySelector(".name").textContent = pt.name;
       if (pt.notes) row.querySelector(".note").textContent = pt.notes;
       else row.querySelector(".note").remove();
-      row.querySelector(".go").onclick = () => {
+      if (!isShape) row.querySelector(".go").onclick = () => {
         closeDrawer();
         following = false;
         $("locBtn").classList.remove("on");
@@ -777,7 +876,13 @@
         update();
         $("navBtn").click();
       };
-      row.querySelector(".main").onclick = () => { closeDrawer(); following = false; $("locBtn").classList.remove("on"); panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15)); };
+      row.querySelector(".main").onclick = () => {
+        closeDrawer();
+        following = false;
+        $("locBtn").classList.remove("on");
+        if (isShape) map.fitBounds(L.latLngBounds(pt.pts), { paddingTopLeft: [30, 80], paddingBottomRight: [80, sheet.offsetHeight + 20], maxZoom: 17 });
+        else panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15));
+      };
       row.querySelector(".del").onclick = () => {
         if (!confirm(`Delete “${pt.name}”?`)) return;
         fresh();
@@ -790,7 +895,7 @@
     const exported = store.get("exported", "");
     const since = exported ? points.filter((p) => p.at > exported).length : 0;
     $("backup").textContent = points.length
-      ? `${points.length} point${points.length === 1 ? "" : "s"}, kept on this phone only. Last shared as CSV: ${ago(exported)}${since ? ` (${since} new since)` : ""}.`
+      ? `${points.length} saved, on this phone only. Share as CSV is your backup: send it to your email. Last done: ${ago(exported)}${since ? ` (${since} new since)` : ""}.`
       : "";
     $("drawer").classList.add("open");
   }
@@ -800,8 +905,17 @@
     fresh();
     if (!points.length) return;
     const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
-    const rows = [["Name", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape"]]
-      .concat(points.map((p) => [q(p.name), OSGB.gridRef(p.e, p.n, 8), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle"]));
+    const wkt = (p) => {
+      if (!p.pts) return "";
+      const c = p.pts.map(([a, b]) => `${b} ${a}`);
+      return p.kind === "area" ? `POLYGON((${c.concat([c[0]]).join(", ")}))` : `LINESTRING(${c.join(", ")})`;
+    };
+    const rows = [["Name", "Type", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)"]]
+      .concat(points.map((p) => {
+        const st = p.pts ? shapeStats(p) : null;
+        return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
+          p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p))];
+      }));
     const csv = rows.map((r) => r.join(",")).join("\n");
     const file = new File([csv], "grid-refs-" + new Date().toISOString().slice(0, 10) + ".csv", { type: "text/csv" });
     let done = false;
@@ -846,12 +960,28 @@
     const iName = col("name", "label", "box", "id", "title"), iRef = col("grid ref", "gridref", "grid reference", "osgr", "ngr", "ref");
     const iE = col("easting", "x"), iN = col("northing", "y"), iLat = col("lat"), iLon = col("lon", "lng", "long");
     const iAt = col("saved", "date", "time"), iAcc = col("gps accuracy", "accuracy");
-    const iNotes = col("notes", "note", "comment", "description"), iColour = col("colour", "color"), iShape = col("shape");
+    const iNotes = col("notes", "note", "comment", "description"), iColour = col("colour", "color"), iShape = col("shape"), iGeom = col("geometry", "wkt");
     fresh();
     const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
     let added = 0, skipped = 0;
     for (const r of rows.slice(1)) {
       const get = (i) => (i >= 0 ? (r[i] || "").trim() : "");
+      // Lines and areas come back from their WKT
+      const geom = get(iGeom).match(/^(LINESTRING|POLYGON)\s*\(+([^)]*)\)+/i);
+      if (geom) {
+        const pts = geom[2].split(",").map((xy) => xy.trim().split(/\s+/).map(Number)).map(([lon, lat]) => [lat, lon]);
+        if (/POLYGON/i.test(geom[1]) && pts.length > 1) pts.pop();
+        const g0 = OSGB.wgs84ToGrid(pts[0][0], pts[0][1]);
+        const shp = { name: get(iName) || "Imported " + (added + 1), kind: /POLYGON/i.test(geom[1]) ? "area" : "line", pts, lat: pts[0][0], lon: pts[0][1], e: Math.round(g0.e), n: Math.round(g0.n),
+          at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
+          colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange" };
+        const key = shp.name + "|" + shp.e + "|" + shp.n;
+        if (seen.has(key)) { skipped++; continue; }
+        seen.add(key);
+        points.push(shp);
+        added++;
+        continue;
+      }
       let ll = null;
       if (get(iLat) && get(iLon) && !isNaN(+get(iLat)) && !isNaN(+get(iLon))) ll = { lat: +get(iLat), lon: +get(iLon) };
       else if (get(iRef)) ll = GridSearch.parse(get(iRef)).find((x) => x.lat != null) || null;
@@ -1160,42 +1290,256 @@
     if (nav && document.visibilityState === "visible") { try { wakeLock = await navigator.wakeLock.request("screen"); } catch {} }
   });
 
-  // ---------- save an area for offline ----------
-  // Loads the map tiles for what's on screen, a couple of zoom levels deeper, so the
-  // service worker keeps them. Capped to a personal-use amount, as the free map
-  // servers ask: about one reserve at a time.
-  async function saveArea() {
-    if (current === "aerial") return toast("Aerial photos can't be saved. Switch to Topo or Street first");
-    if (!navigator.onLine) return toast("Needs signal to save an area");
-    const layer = LAYERS[current].layer, b = map.getBounds(), z0 = map.getZoom(), zMax = Math.min(z0 + 2, layer.options.maxZoom);
-    const urls = [];
-    for (let z = z0; z <= zMax; z++) {
-      const nw = map.project(b.getNorthWest(), z).divideBy(256).floor(), se = map.project(b.getSouthEast(), z).divideBy(256).floor();
-      for (let x = nw.x; x <= se.x; x++) for (let y = nw.y; y <= se.y; y++) {
-        urls.push(L.Util.template(layer._url, { s: "abc"[(x + y) % 3], z, x, y, r: "" }));
-      }
-    }
-    if (urls.length > 800) return toast(`That's ${urls.length} tiles. Zoom in to one reserve and try again`);
-    let done = 0, failed = 0;
-    toast(`Saving ${urls.length} map tiles…`);
-    const queue = urls.slice();
+  // ---------- offline OS maps: download themselves, take over with no signal ----------
+  // Tiles for the reserves are cut from OS OpenMap Local (build/build_tiles.py) and hosted
+  // here. The app quietly downloads them all when it has signal; the service worker then
+  // serves them with none. maps/index.json lists every tile.
+  const offlineOverlay = L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK, zIndex: 5 });
+  const pack = {
+    state: "idle", done: 0, total: 0, mb: 0, reserves: 0,
+    text() {
+      if (this.state === "ready") return `✓ Offline maps ready (${this.reserves} reserves)`;
+      if (this.state === "downloading") return `Offline maps downloading: ${Math.round((this.done / (this.total || 1)) * 100)}% of ${this.mb} MB`;
+      if (this.state === "failed") return "Offline maps paused. Tap to retry";
+      return "Offline maps: waiting for signal";
+    },
+  };
+  async function downloadPack() {
+    if (!("caches" in window) || pack.state === "downloading") return;
+    let idx;
+    try { idx = await (await fetch("maps/index.json", { cache: "no-cache" })).json(); } catch { pack.state = "failed"; return; }
+    pack.reserves = idx.reserves.length;
+    pack.mb = Math.round(idx.bytes / 1e6);
+    if (store.get("pack", "") === idx.version) { pack.state = "ready"; return; }
+    const cache = await caches.open("gridref-maps");
+    const have = new Set((await cache.keys()).map((r) => new URL(r.url).pathname.split("/maps/")[1]));
+    const todo = idx.tiles.filter((t) => !have.has(t));
+    pack.total = idx.tiles.length;
+    pack.done = pack.total - todo.length;
+    pack.state = "downloading";
+    if (todo.length > 50) toast(`Downloading offline maps (${pack.mb} MB)`);
+    let failed = 0;
     const worker = async () => {
-      while (queue.length) {
-        const u = queue.shift();
-        try { const r = await fetch(u, { mode: "cors" }); if (!r.ok) failed++; } catch { failed++; }
-        done++;
-        if (done % 40 === 0) toast(`Saving map… ${Math.round((done / urls.length) * 100)}%`);
+      while (todo.length) {
+        const t = todo.shift();
+        try {
+          const r = await fetch("maps/" + t);
+          if (r.ok) { await cache.put("maps/" + t, r); pack.done++; } else failed++;
+        } catch { failed++; }
+        if (failed > 20) return;
       }
     };
-    await Promise.all([worker(), worker(), worker()]);
-    toast(failed ? `Saved, but ${failed} tiles failed. Try again on better signal` : `Area saved for offline (zoom ${z0}–${zMax})`);
+    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    if (failed > 20 || pack.done < pack.total) { pack.state = "failed"; return; }
+    store.set("pack", idx.version);
+    pack.state = "ready";
+    toast("✓ Offline maps ready");
   }
+
+  // No signal: lay the OS map over whatever map is showing (aerial photos can't be kept,
+  // so that switches to the topo map underneath). Signal back: put it all back.
+  let offlineMode = false, swappedFrom = null, tileErrors = [], probe = null;
+  function goOffline() {
+    if (offlineMode) return;
+    offlineMode = true;
+    if (current === "aerial") { swappedFrom = "aerial"; setBase("topo"); }
+    if (current !== "os") offlineOverlay.addTo(map);
+    toast("Switching to offline maps");
+    clearInterval(probe);
+    probe = setInterval(async () => {
+      try { await fetch("version.json", { cache: "no-store" }); goOnline(); } catch {}
+    }, 20000);
+  }
+  function goOnline() {
+    if (!offlineMode) return;
+    offlineMode = false;
+    clearInterval(probe);
+    map.removeLayer(offlineOverlay);
+    if (swappedFrom) { setBase(swappedFrom); swappedFrom = null; }
+    toast("Back online: normal maps");
+    if (pack.state !== "ready") downloadPack();
+  }
+  // Phones often claim to be online with no usable signal, so also watch for map tiles
+  // failing to load: several in a few seconds means no signal.
+  for (const k of ["topo", "street", "aerial"]) {
+    LAYERS[k].layer.on("tileerror", () => {
+      const now = Date.now();
+      tileErrors = tileErrors.filter((t) => now - t < 6000).concat(now);
+      if (tileErrors.length >= 4) goOffline();
+    });
+  }
+  window.addEventListener("offline", goOffline);
+  window.addEventListener("online", goOnline);
+
+  // ---------- reserve boundaries (Natural England, live when there's signal) ----------
+  const NNR_LIVE = "https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/National_Nature_Reserves_England/FeatureServer/0/query?where=1%3D1&geometry=290000,440000,400000,600000&geometryType=esriGeometryEnvelope&inSR=27700&spatialRel=esriSpatialRelIntersects&outFields=NAME,LABEL,REF_CODE,MEASURE&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.00003&f=geojson";
+  const nnrLayer = L.geoJSON(null, { interactive: false, style: { color: "#0b7a3b", weight: 2.5, opacity: 0.85, dashArray: "8 5", fillColor: "#0b7a3b", fillOpacity: 0.05 } }).addTo(map);
+  let nnr = [];
+  function inRing(x, y, ring) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i], [xj, yj] = ring[j];
+      if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+  }
+  function reserveAt(ll) {
+    for (const f of nnr) {
+      const [w, s2, e, n] = f.bbox;
+      if (ll.lng < w || ll.lng > e || ll.lat < s2 || ll.lat > n) continue;
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) {
+        if (inRing(ll.lng, ll.lat, poly[0]) && !poly.slice(1).some((h) => inRing(ll.lng, ll.lat, h))) return f.properties.LABEL;
+      }
+    }
+    return "";
+  }
+  function useNNR(gj) {
+    if (!gj || !gj.features || !gj.features.length) return false;
+    nnr = gj.features.map((f) => {
+      const b = L.geoJSON(f).getBounds();
+      return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] };
+    });
+    nnrLayer.clearLayers().addData(gj);
+    update();
+    return true;
+  }
+  async function loadNNR() {
+    // Live from Natural England first (always current); the copy shipped with the app if not
+    try { if (useNNR(await (await fetch(NNR_LIVE)).json())) return; } catch {}
+    try { useNNR(await (await fetch("data/nnr.geojson")).json()); } catch {}
+  }
+  map.attributionControl.addAttribution("Reserve boundaries © Natural England");
+
+  // ---------- measure: points at the crosshair (or GPS), distance and area ----------
+  // Area is worked out on the OS grid (flat metres), which is what a ranger would measure on a map.
+  let measure = null, mLine = null, mLive = null, mDots = null;
+  function mStats(pts) {
+    let d = 0;
+    for (let i = 1; i < pts.length; i++) d += pts[i - 1].distanceTo(pts[i]);
+    let area = null;
+    if (pts.length >= 3) {
+      const g = pts.map((p) => OSGB.wgs84ToGrid(p.lat, p.lng));
+      let a = 0;
+      for (let i = 0; i < g.length; i++) { const j = (i + 1) % g.length; a += g[i].e * g[j].n - g[j].e * g[i].n; }
+      area = Math.abs(a) / 2;
+    }
+    return { d, area };
+  }
+  const fmtArea = (m2) => (m2 < 10000 ? `${Math.round(m2)} m²` : `${(m2 / 10000).toFixed(m2 < 100000 ? 2 : 1)} ha`);
+  function drawMeasure() {
+    if (!measure) return;
+    const pts = measure.pts, t = target();
+    const live = pts.length ? pts.concat([t]) : [];
+    mLine.setLatLngs(pts.length >= 3 ? pts.concat([pts[0]]) : pts);
+    mLive.setLatLngs(pts.length ? [pts[pts.length - 1], t] : []);
+    mDots.clearLayers();
+    pts.forEach((p) => L.circleMarker(p, { radius: 5, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
+    const withLive = mStats(live);
+    $("mDist").textContent = pts.length ? fmtDist(withLive.d) : "0 m";
+    // Area updates as you move the crosshair: it's the shape your points make with it
+    $("mArea").textContent = withLive.area != null ? fmtArea(withLive.area) : "—";
+    $("mHint").textContent = !pts.length ? "Line the crosshair up on the first corner or end, then tap Add point."
+      : pts.length < 3 ? `${pts.length} point${pts.length > 1 ? "s" : ""}. The distance includes the dotted line to the crosshair. 3+ points give an area.`
+      : `${pts.length} points · perimeter ${fmtDist(mStats(pts.concat([pts[0]])).d)}. Tap a number to copy it.`;
+  }
+  $("measureBtn").onclick = () => {
+    measure = { pts: [] };
+    mLine = L.polyline([], { color: "#c0392b", weight: 3, interactive: false }).addTo(map);
+    mLive = L.polyline([], { color: "#c0392b", weight: 2, dashArray: "4 6", interactive: false }).addTo(map);
+    mDots = L.layerGroup().addTo(map);
+    document.body.classList.add("measuring");
+    keepTarget(() => {});
+    drawMeasure();
+  };
+  $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); };
+  $("mGps").onclick = () => {
+    if (!here) { startGps(false); return toast("Finding you… tap Add GPS again once the blue dot appears"); }
+    measure.pts.push(L.latLng(here.lat, here.lon));
+    drawMeasure();
+    toast(`Added your position (±${Math.round(here.acc)} m)`);
+  };
+  $("mUndo").onclick = () => { measure.pts.pop(); drawMeasure(); };
+  $("mSave").onclick = () => {
+    const pts = measure.pts;
+    if (pts.length < 2) return toast("Add at least 2 points to save a line");
+    const st = mStats(pts), first = OSGB.wgs84ToGrid(pts[0].lat, pts[0].lng);
+    openSave({
+      kind: pts.length >= 3 ? "area" : "line",
+      pts: pts.map((q) => [+q.lat.toFixed(6), +q.lng.toFixed(6)]),
+      lat: pts[0].lat, lon: pts[0].lng, e: Math.round(first.e), n: Math.round(first.n),
+      length: Math.round(st.d), area: st.area != null ? Math.round(st.area) : null, acc: null,
+    });
+  };
+  $("mDone").onclick = () => {
+    measure = null;
+    for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
+    keepTarget(() => document.body.classList.remove("measuring"));
+  };
+  for (const id of ["mDist", "mArea"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v); };
+  map.on("move", () => { if (measure) drawMeasure(); });
+
+  // ---------- photo with the grid ref stamped on ----------
+  // Uses your GPS position if the blue dot is on, otherwise the crosshair.
+  $("photoBtn").onclick = () => $("photoIn").click();
+  $("photoIn").onchange = async (e) => {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    toast("Stamping the photo…");
+    const where = here ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` } : { lat: last.lat, lon: last.lon, src: "Crosshair" };
+    const g = OSGB.wgs84ToGrid(where.lat, where.lon);
+    const ref = OSGB.gridRef(g.e, g.n, digits) || `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`;
+    const when = new Date();
+    const reserve = nnr.length ? reserveAt(L.latLng(where.lat, where.lon)) : "";
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
+    try { await img.decode(); } catch { return toast("Couldn't read that photo"); }
+    // Big phone photos are scaled to 2400 px on the long side: plenty, and quick to share
+    const k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * k);
+    c.height = Math.round(img.naturalHeight * k);
+    const ctx = c.getContext("2d");
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(img.src);
+    const u = Math.round(c.width / 28); // text size scales with the photo
+    const lines = [
+      { t: ref, f: `700 ${Math.round(u * 1.5)}px ui-monospace, Menlo, monospace` },
+      { t: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${when.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${where.src}`, f: `600 ${u}px -apple-system, sans-serif` },
+    ];
+    if (reserve) lines.push({ t: reserve, f: `600 ${u}px -apple-system, sans-serif` });
+    const pad = Math.round(u * 0.7), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.3;
+    const boxH = lines.reduce((h, l) => h + lh(l), 0) + pad * 2;
+    ctx.fillStyle = "rgba(0,0,0,.55)";
+    ctx.fillRect(0, c.height - boxH, c.width, boxH);
+    ctx.fillStyle = "#fff";
+    ctx.textBaseline = "top";
+    let y = c.height - boxH + pad;
+    for (const l of lines) { ctx.font = l.f; ctx.fillText(l.t, pad, y); y += lh(l); }
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
+    const pad2 = (v) => String(v).padStart(2, "0");
+    const stamp = `${when.getFullYear()}${pad2(when.getMonth() + 1)}${pad2(when.getDate())}_${pad2(when.getHours())}${pad2(when.getMinutes())}`; // local time
+    const name = `${ref.replace(/\s+/g, "")}_${stamp}.jpg`;
+    const out = new File([blob], name, { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [out] })) {
+      try { await navigator.share({ files: [out] }); } catch {}
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(out);
+      a.download = name;
+      a.click();
+    }
+  };
 
   // ---------- go ----------
   window.addEventListener("resize", () => { layout(); fitRef(); update(); });
   setPrec(digits);
   drawPins();
   drawGrid();
+  loadNNR();
+  if (!navigator.onLine) goOffline();
+  setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
   layout();
   update();
   // Any browser (Edge and Chrome on iPhone have no service worker): ask GitHub which
