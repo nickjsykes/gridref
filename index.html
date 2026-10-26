@@ -72,7 +72,8 @@
   .grab span { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
   .sheet.compact .more { display: none; }
   .more { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
-  .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-top: 2px; }
+  .meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .meta:has(.from-me:empty) { display: none; }
   .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 0 2px; text-align: left; }
   .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
@@ -214,7 +215,6 @@
   <div class="more">
     <div class="meta">
       <span class="from-me" id="fromMe"></span>
-      <span class="prec" id="prec"><button data-d="6">6 fig</button><button data-d="8">8 fig</button></span>
     </div>
     <div class="rows">
       <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
@@ -326,6 +326,10 @@
       };
       layersEl.appendChild(b);
     }
+    const fig = document.createElement("button");
+    fig.textContent = `Grid ref: ${digits}-figure (tap for ${digits === 8 ? 6 : 8})`;
+    fig.onclick = () => { setPrec(digits === 8 ? 6 : 8); layersEl.style.display = "none"; };
+    layersEl.appendChild(fig);
     const big = document.createElement("button");
     big.textContent = (large ? "✓ " : "") + "Large text";
     big.onclick = () => { setLarge(!large); layersEl.style.display = "none"; };
@@ -411,10 +415,8 @@
   function setPrec(d) {
     digits = d;
     store.set("digits", d);
-    for (const b of $("prec").children) b.classList.toggle("on", +b.dataset.d === d);
     update();
   }
-  for (const b of $("prec").children) b.onclick = () => setPrec(+b.dataset.d);
 
   function info(latlng) {
     const g = OSGB.wgs84ToGrid(latlng.lat, latlng.lng);
@@ -1066,7 +1068,18 @@
   drawGrid();
   layout();
   update();
-  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+    });
+    navigator.serviceWorker.register("sw.js").then((r) => r.update()).catch(() => {});
+    // Check for a new version whenever the app comes back to the front
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
+    });
+  }
 })();
 </script>
 </body>

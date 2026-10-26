@@ -1,7 +1,7 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v6";
+const CACHE = "gridref-v7";
 const TILES = "gridref-tiles";
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
 const SHELL = ["./", "index.html", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png",
@@ -49,7 +49,8 @@ self.addEventListener("fetch", (e) => {
   if (TILE_HOSTS.test(url.hostname)) return e.respondWith(tile(e.request));
   const href = e.request.url;
   if (!SHELL.some((s) => (s.startsWith("http") ? href === s : href.split("?")[0].endsWith(s.replace("./", "/"))))) return;
-  e.respondWith(fetch(e.request).then((r) => {
+  // no-cache: always ask GitHub for the latest copy, or a 10-minute browser cache serves the old app
+  e.respondWith(fetch(e.request, { cache: "no-cache" }).then((r) => {
     const copy = r.clone();
     caches.open(CACHE).then((c) => c.put(e.request, copy));
     return r;
