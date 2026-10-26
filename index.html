@@ -40,6 +40,7 @@
     }
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body, button, a, input, .sheet, .drawer, .top, .fabs, .layers, .results { touch-action: manipulation; }
   html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel); color: var(--ink); font-family: var(--sans); }
   #map { position: fixed; inset: 0; background: #dfe6df; }
 
@@ -74,7 +75,7 @@
   .more { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
   .meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
   .meta:has(.from-me:empty) { display: none; }
-  .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 0 2px; text-align: left; }
+  .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 8px 2px; text-align: left; }
   .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
   .c { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font: 600 13px var(--sans); flex: none; border-radius: 10px; transition: background .15s; }
@@ -85,7 +86,7 @@
   .refline .prec button { padding: 6px 10px; }
   .row .c { padding: 4px 0; }
   .rows { margin-top: 6px; border-top: 1px solid var(--line); flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); padding: 9px 0; text-align: left; }
+  .row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); padding: 9px 8px; text-align: left; }
   .row .k { width: 80px; flex: none; font: 600 12px var(--sans); color: var(--muted); }
   .row .v { flex: 1; min-width: 0; font: 14.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .v.dim { font-family: var(--sans); color: var(--muted); font-size: 14px; }
@@ -93,9 +94,7 @@
   .big, .row { position: relative; border-radius: 10px; transition: background .15s, color .15s; }
   .copied { background: var(--green) !important; color: #fff !important; }
   .copied .k, .copied .v { color: #fff !important; }
-  .copied::after { content: "✓ Copied"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 700 15px var(--sans); color: #fff; background: rgba(0,0,0,.18); padding: 4px 10px; border-radius: 20px; }
   .big.copied .ref { color: #fff; }
-  .row.copied { padding-left: 8px; margin-left: -8px; padding-right: 8px; margin-right: -8px; width: calc(100% + 16px); }
   a.row { text-decoration: none; }
   .row:active, .big:active { opacity: .6; }
   .from-me { font: 14px var(--sans); color: var(--green); min-width: 0; }
@@ -121,6 +120,7 @@
   .item button { border: 0; background: none; color: var(--danger); font: 14px var(--sans); padding: 8px; }
   .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
   .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+  .credit { margin: 0; padding: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
   .backup { margin: 0; padding: 10px 16px 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
   .backup:empty { display: none; }
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
@@ -128,7 +128,6 @@
   /* Large text: for small phones and tired eyes in the field */
   /* the grid ref itself is the copy button here, so the digits get the full width */
   body.large .c svg { width: 22px; height: 22px; }
-  body.large .copied::after { font-size: 17px; }
   body.large .row { flex-wrap: wrap; row-gap: 2px; padding: 8px 0; }
   body.large .row .k { width: 100%; font-size: 13px; }
   body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
@@ -152,10 +151,10 @@
   body.navigating .cross { display: none; }
   .nav-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
   .nav-head small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-  .nav-head b { font: 700 24px var(--mono); }
-  .nav-head button { border: 0; border-radius: 12px; padding: 12px 18px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
-  .nav-body { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
-  .dial { width: min(42vw, 170px); height: min(42vw, 170px); flex: none; }
+  .nav-head b { font: 700 22px var(--mono); }
+  .nav-head button { border: 0; border-radius: 12px; padding: 10px 18px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
+  .nav-body { display: flex; align-items: center; gap: 14px; margin-top: 4px; }
+  .dial { width: min(30vw, 120px); height: min(30vw, 120px); flex: none; }
   .dial .ring { fill: var(--green-soft); stroke: var(--line); stroke-width: 2; }
   .dial .tick { stroke: var(--muted); stroke-width: 3; }
   .dial text { fill: var(--muted); font: 700 18px var(--sans); text-anchor: middle; }
@@ -166,8 +165,9 @@
   .nav-nums { flex: 1; min-width: 0; font-size: 16px; line-height: 1.5; }
   .nav-nums .dist { font: 700 clamp(30px, 10vw, 44px)/1.1 var(--mono); }
   .nav-nums .dim { color: var(--muted); font-size: 14px; }
-  .nav-hint { color: var(--muted); font-size: 13px; margin-top: 6px; min-height: 18px; }
-  body.large .nav-head b { font-size: 28px; }
+  .nav-hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  body.large .nav-head b { font-size: 26px; }
+  body.large .dial { width: min(34vw, 140px); height: min(34vw, 140px); }
   body.large .nav-nums { font-size: 19px; }
   body.large .nav-nums .dist { font-size: clamp(36px, 12vw, 54px); }
   .flag { font-size: 30px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
@@ -186,7 +186,7 @@
   .leaflet-control-attribution { font-size: 9px; }
   .leaflet-bottom { bottom: var(--sheet-h, 230px); }
   .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
-  .layers { position: fixed; z-index: 1001; right: 70px; bottom: calc(var(--sheet-h, 230px) + 12px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); overflow: hidden; display: none; }
+  .layers { position: fixed; z-index: 1001; right: 76px; top: calc(var(--safe-t) + 64px); max-height: calc(100% - var(--sheet-h, 230px) - var(--safe-t) - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
   .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 12px 18px; text-align: left; }
   .layers button.ver { color: var(--muted); font-size: 12px; padding: 8px 18px; }
   .layers button.on { color: var(--green); font-weight: 700; }
@@ -268,6 +268,7 @@
     <button id="closeDrawer">Done</button>
   </header>
   <div class="list" id="list"></div>
+  <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
   <footer>
     <button id="importBtn">Import CSV</button>
@@ -323,7 +324,7 @@
   }
   document.body.classList.toggle("large", large);
 
-  const VERSION = "29"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "30"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -349,7 +350,7 @@
     off.onclick = () => { layersEl.style.display = "none"; saveArea(); };
     layersEl.appendChild(off);
     const ver = document.createElement("button");
-    ver.textContent = "Version " + VERSION;
+    ver.textContent = "Nick Sykes for Natural England · v" + VERSION;
     ver.disabled = true;
     ver.className = "ver";
     layersEl.appendChild(ver);
@@ -445,13 +446,15 @@
     const y = Math.sin(Δλ) * Math.cos(φ2), x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
+  const POINTS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const fmtBrg = (b) => `${POINTS[Math.round(b / 45) % 8]} (${String(Math.round(b) % 360).padStart(3, "0")}°)`;
   function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
 
   // Monospace digits are ~0.6em wide: size the ref to the room beside the 6/8 switch
   function fitRef() {
     const ref = $("ref");
     if (ref.classList.contains("off")) { ref.style.fontSize = ""; return; }
-    const room = ref.parentElement.clientWidth - 4;
+    const room = ref.parentElement.clientWidth - 20; // less the 8 px padding each side
     ref.style.fontSize = Math.max(20, Math.min(large ? 54 : 38, room / (ref.textContent.length * 0.62))) + "px";
   }
 
@@ -476,7 +479,7 @@
     } else if (here) {
       const me = L.latLng(here.lat, here.lon);
       const d = me.distanceTo(t);
-      $("fromMe").textContent = d < 3 ? "" : `${fmtDist(d)} from you, bearing ${String(Math.round(bearing(me, t))).padStart(3, "0")}°`;
+      $("fromMe").textContent = d < 3 ? "" : `${fmtDist(d)} from you, ${fmtBrg(bearing(me, t))}`;
     } else {
       $("fromMe").textContent = "";
     }
@@ -497,13 +500,12 @@
     $("w3wAct").style.display = isWords ? "none" : ""; // words showing: tap the row to copy them
     $("w3wAct").classList.toggle("open", !isWords);
   }
-  // A real link the user taps (not a scripted click): that is what makes iPhones hand it
-  // to the what3words app cleanly. On Android an intent link opens only the app.
+  // Coordinates: the what3words app ignores them and shows your own location, so use
+  // map.what3words.com, which the app doesn't claim. It opens in the browser and forwards
+  // to their map at exactly these coordinates, showing the 3 words for that square.
+  // 3 words (from search): w3w.co opens the app at that square.
   function w3wHref(path) {
-    const web = "https://what3words.com/" + path;
-    return /Android/i.test(navigator.userAgent)
-      ? "intent://what3words.com/" + path + "#Intent;scheme=https;package=com.what3words.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end"
-      : web;
+    return /^-?\d/.test(path) ? "https://map.what3words.com/" + path : "https://w3w.co/" + path;
   }
   function w3wUpdate(p) {
     $("w3wRow").href = w3wHref(p.lat.toFixed(6) + "," + p.lon.toFixed(6));
@@ -1015,7 +1017,7 @@
     const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
     const arrived = d <= Math.max(8, here.acc);
     $("navDist").textContent = arrived ? "Here" : fmtDist(d);
-    $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Bearing ${String(Math.round(brg)).padStart(3, "0")}°`;
+    $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Head ${fmtBrg(brg)}`;
     $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
     navBrgDeg = brg;
     drawDial();
