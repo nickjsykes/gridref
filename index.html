@@ -68,11 +68,11 @@
 
   /* bottom sheet */
   .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); display: flex; flex-direction: column; max-height: 60vh; }
-  .what { white-space: nowrap; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 6px 0; display: inline-flex; align-items: center; gap: 4px; }
-  .what svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; transition: transform .2s; }
-  .sheet.compact .what svg { transform: rotate(-90deg); }
-  .sheet.compact .rows { display: none; }
-  .label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .grab { display: block; width: 100%; border: 0; background: none; padding: 0 0 8px; margin-top: -6px; touch-action: none; }
+  .grab span { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
+  .sheet.compact .more { display: none; }
+  .more { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+  .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-top: 2px; }
   .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 0 2px; text-align: left; }
   .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
@@ -90,11 +90,11 @@
   .copied .c { color: var(--panel); background: var(--green); }
   a.row { text-decoration: none; }
   .row:active, .big:active { opacity: .6; }
-  .from-me { font: 14px var(--sans); color: var(--green); margin-top: 4px; min-height: 0; }
+  .from-me { font: 14px var(--sans); color: var(--green); min-width: 0; }
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
   .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
   .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .actions { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 8px; margin-top: 12px; }
   .actions button { border: 0; border-radius: 12px; padding: 13px 6px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
   .actions button.primary { background: var(--green); color: var(--panel); }
 
@@ -118,7 +118,6 @@
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 
   /* Large text: for small phones and tired eyes in the field */
-  body.large .label { font-size: 14px; }
   /* the grid ref itself is the copy button here, so the digits get the full width */
   body.large .big .c { display: none; }
   body.large .big.copied .ref { color: var(--green); }
@@ -127,7 +126,7 @@
   body.large .row .k { width: 100%; font-size: 13px; }
   body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
   body.large .row .v.dim { font-size: 18px; }
-  body.large .prec button { font-size: 16px; padding: 7px 13px; }
+  body.large .prec button { font-size: 16px; padding: 7px 12px; }
   body.large .actions button { font-size: 18px; padding: 16px 6px; }
   body.large .from-me { font-size: 17px; }
   body.large .search input { font-size: 18px; }
@@ -138,6 +137,37 @@
   body.large .item .name { font-size: 19px; }
   body.large .item .gr { font-size: 18px; }
   body.large .layers button { font-size: 18px; padding: 15px 20px; }
+
+  /* navigate: the map shows you, the flag and the line; the panel is the compass */
+  .nav { display: none; }
+  body.navigating .sheet > :not(.nav) { display: none; }
+  body.navigating .nav { display: block; }
+  body.navigating .cross { display: none; }
+  .nav-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .nav-head small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  .nav-head b { font: 700 24px var(--mono); }
+  .nav-head button { border: 0; border-radius: 12px; padding: 12px 18px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
+  .nav-body { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
+  .dial { width: min(42vw, 170px); height: min(42vw, 170px); flex: none; }
+  .dial .ring { fill: var(--green-soft); stroke: var(--line); stroke-width: 2; }
+  .dial .tick { stroke: var(--muted); stroke-width: 3; }
+  .dial text { fill: var(--muted); font: 700 18px var(--sans); text-anchor: middle; }
+  .dial text.n { fill: #c0392b; font-size: 22px; }
+  .dial .arrow { fill: var(--green); stroke: var(--panel); stroke-width: 3; stroke-linejoin: round; }
+  .dial.here .arrow { fill: #c0392b; }
+  #rose, #arrow { transition: transform .25s linear; }
+  .nav-nums { flex: 1; min-width: 0; font-size: 16px; line-height: 1.5; }
+  .nav-nums .dist { font: 700 clamp(30px, 10vw, 44px)/1.1 var(--mono); }
+  .nav-nums .dim { color: var(--muted); font-size: 14px; }
+  .nav-hint { color: var(--muted); font-size: 13px; margin-top: 6px; min-height: 18px; }
+  body.large .nav-head b { font-size: 28px; }
+  body.large .nav-nums { font-size: 19px; }
+  body.large .nav-nums .dist { font-size: clamp(36px, 12vw, 54px); }
+  .flag { font-size: 30px; line-height: 1; filter: drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+
+  /* search results: every answer shown as a grid ref */
+  .results button .gr { display: block; font: 700 19px var(--mono); }
+  body.large .results button .gr { font-size: 23px; }
 
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
@@ -176,26 +206,48 @@
 <div class="layers" id="layers"></div>
 
 <section class="sheet" id="sheet">
-  <div class="label">
-    <button class="what" id="whatBtn" aria-label="Show or hide other formats"><span id="what">Under the crosshair</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
-    <span class="prec" id="prec">
-      <button data-d="6">6</button><button data-d="8">8</button><button data-d="10">10</button>
-    </span>
-  </div>
+  <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
   <button class="big" data-copy="ref" aria-label="Copy grid reference">
     <span class="ref" id="ref">—</span>
     <span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span>
   </button>
-  <div class="from-me" id="fromMe"></div>
-  <div class="rows">
-    <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
-    <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
-    <button class="row" data-copy="dms"><span class="k">Deg Min Sec</span><span class="v" id="vDMS"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
-    <a class="row" id="w3wRow" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
+  <div class="more">
+    <div class="meta">
+      <span class="from-me" id="fromMe"></span>
+      <span class="prec" id="prec"><button data-d="6">6 fig</button><button data-d="8">8 fig</button></span>
+    </div>
+    <div class="rows">
+      <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+      <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+      <a class="row" id="w3wRow" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
+    </div>
+    <div class="actions">
+      <button id="shareBtn">Share</button>
+      <button class="primary" id="navBtn">Navigate</button>
+      <button id="saveBtn">Save</button>
+    </div>
   </div>
-  <div class="actions">
-    <button class="primary" id="shareBtn">Share all</button>
-    <button id="saveBtn">Save point</button>
+  <div class="nav" id="nav">
+    <div class="nav-head">
+      <div><small>Going to</small><b id="navRef"></b></div>
+      <button id="navEnd">End</button>
+    </div>
+    <div class="nav-body">
+      <svg class="dial" viewBox="-100 -100 200 200" aria-hidden="true">
+        <g id="rose">
+          <circle r="92" class="ring"/>
+          <path d="M0-92v14M0 78v14M-92 0h14M78 0h14" class="tick"/>
+          <text y="-60" class="n">N</text><text x="62" y="6">E</text><text y="72">S</text><text x="-62" y="6">W</text>
+        </g>
+        <g id="arrow"><path d="M0-70 26 30 0 14-26 30Z" class="arrow"/></g>
+      </svg>
+      <div class="nav-nums">
+        <div class="dist" id="navDist">—</div>
+        <div id="navBrg"></div>
+        <div class="dim" id="navAcc"></div>
+      </div>
+    </div>
+    <div class="nav-hint" id="navHint"></div>
   </div>
 </section>
 
@@ -236,7 +288,7 @@
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
-  map.attributionControl.addAttribution("Search: contains OS data © Crown copyright 2026");
+  map.attributionControl.addAttribution("OS data © Crown copyright 2026");
   let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
   LAYERS[current].layer.addTo(map);
 
@@ -274,10 +326,6 @@
       };
       layersEl.appendChild(b);
     }
-    const g = document.createElement("button");
-    g.textContent = (showGrid ? "✓ " : "") + "Grid lines";
-    g.onclick = () => { showGrid = !showGrid; store.set("grid", showGrid); drawGrid(); layersEl.style.display = "none"; };
-    layersEl.appendChild(g);
     const big = document.createElement("button");
     big.textContent = (large ? "✓ " : "") + "Large text";
     big.onclick = () => { setLarge(!large); layersEl.style.display = "none"; };
@@ -313,11 +361,9 @@
   }
 
   // ---------- OS grid overlay ----------
-  let showGrid = store.get("grid", true);
   const gridLayer = L.layerGroup().addTo(map);
   function drawGrid() {
     gridLayer.clearLayers();
-    if (!showGrid) return;
     const z = map.getZoom();
     const step = z >= 13 ? 1000 : z >= 10 ? 10000 : 100000;
     const b = map.getBounds();
@@ -358,7 +404,9 @@
   }
 
   // ---------- readout ----------
-  let digits = store.get("digits", 8);
+  // 6 or 8 figures only: phone GPS (~5 m in the open, worse under trees) plus the ~3-5 m
+  // datum shift can't support a 10-figure (1 m) ref. 10-figure refs can still be searched.
+  let digits = store.get("digits", 8) === 6 ? 6 : 8;
   let here = null; // { lat, lon, acc }
   function setPrec(d) {
     digits = d;
@@ -380,14 +428,6 @@
   }
   function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
 
-  function dms(v, pos, neg) {
-    const a = Math.abs(v);
-    let d = Math.floor(a), m = Math.floor((a - d) * 60), sec = ((a - d) * 3600 - m * 60).toFixed(1);
-    if (sec === "60.0") { sec = "0.0"; m++; }
-    if (m === 60) { m = 0; d++; }
-    return `${d}°${String(m).padStart(2, "0")}′${sec.padStart(4, "0")}″${v < 0 ? neg : pos}`;
-  }
-
   // Monospace digits are ~0.6em wide: size the ref to the room left beside its Copy button
   function fitRef() {
     const ref = $("ref");
@@ -403,7 +443,6 @@
     const p = info(t);
     p.en = `${Math.round(p.e)}, ${Math.round(p.n)}`;
     p.ll = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
-    p.dms = `${dms(p.lat, "N", "S")} ${dms(p.lon, "E", "W")}`;
     last = p;
     const ref = $("ref");
     if (ref.textContent !== (p.ref || "Outside the GB grid")) {
@@ -413,10 +452,10 @@
     }
     $("vEN").textContent = p.ref ? p.en : "—";
     $("vLL").textContent = p.ll;
-    $("vDMS").textContent = p.dms;
     w3wUpdate(p);
-    $("what").textContent = following && here ? `${large ? "You" : "You are here"} (±${Math.round(here.acc)} m)` : large ? "Crosshair" : "Under the crosshair";
-    if (here && !following) {
+    if (following && here) {
+      $("fromMe").textContent = `You are here, GPS ±${Math.round(here.acc)} m`;
+    } else if (here) {
       const me = L.latLng(here.lat, here.lon);
       const d = me.distanceTo(t);
       $("fromMe").textContent = d < 3 ? "" : `${fmtDist(d)} from you, bearing ${String(Math.round(bearing(me, t))).padStart(3, "0")}°`;
@@ -490,15 +529,17 @@
     saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
   });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
-  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; panTo(e.latlng); });
+  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
 
   // ---------- GPS ----------
   let watchId = null, following = false, meDot = null, meRing = null;
-  function startGps() {
+  function startGps(follow = true) {
     if (!navigator.geolocation) { toast("Location isn't available on this device"); return; }
-    following = true;
-    $("locBtn").classList.add("on");
-    if (here) { panTo(L.latLng(here.lat, here.lon), Math.max(map.getZoom(), 15)); update(); }
+    if (follow) {
+      following = true;
+      $("locBtn").classList.add("on");
+      if (here) { panTo(L.latLng(here.lat, here.lon), Math.max(map.getZoom(), 15)); update(); }
+    }
     if (watchId != null) return;
     toast("Finding you…");
     let first = true;
@@ -512,9 +553,10 @@
         meRing.setLatLng(ll).setRadius(here.acc);
         meDot.setLatLng(ll);
       }
-      if (following) panTo(ll, first ? Math.max(map.getZoom(), 15) : undefined);
+      if (following && !nav) panTo(ll, first ? Math.max(map.getZoom(), 15) : undefined);
       first = false;
       update();
+      if (nav) drawNav();
     }, (err) => {
       following = false;
       $("locBtn").classList.remove("on");
@@ -569,7 +611,7 @@
     };
   }
   function shareText(p) {
-    const lines = [`Grid ref: ${p.ref}`, `E/N: ${p.en}`, `Lat/long: ${p.ll}`, p.dms];
+    const lines = [`Grid ref: ${p.ref}`, `E/N: ${p.en}`, `Lat/long: ${p.ll}`];
     if (w3w.words && w3w.at === spot(p)) lines.push(`what3words: ///${w3w.words}`);
     lines.push(`https://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`);
     return lines.join("\n");
@@ -748,10 +790,14 @@
     }
     for (const it of items) {
       const b = document.createElement("button");
-      b.innerHTML = "<span class='tag'></span><span class='t'></span><small></small>";
+      // Everything is shown as the grid ref it lands on; the name goes underneath
+      b.innerHTML = "<span class='tag'></span><span class='gr'></span><span class='t'></span><small></small>";
+      const gr = it.lat != null ? fmtRef(it.lat, it.lon) : "";
       if (it.tag) b.querySelector(".tag").textContent = it.tag;
       else b.querySelector(".tag").remove();
-      b.querySelector(".t").textContent = it.title;
+      b.querySelector(".gr").textContent = gr || it.title;
+      if (gr && it.title !== gr) b.querySelector(".t").textContent = it.title;
+      else b.querySelector(".t").remove();
       b.querySelector("small").textContent = it.sub || "";
       b.onclick = () => go(it);
       resultsEl.appendChild(b);
@@ -764,6 +810,7 @@
     $("q").blur();
     following = false;
     $("locBtn").classList.remove("on");
+    setCompact(true); // just the grid ref; swipe up for the other formats
     panTo(L.latLng(it.lat, it.lon), it.zoom || 15);
   }
   const fmtRef = (lat, lon) => { const g = OSGB.wgs84ToGrid(lat, lon); return OSGB.gridRef(g.e, g.n, digits); };
@@ -863,9 +910,123 @@
   });
   $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); });
 
-  // ---------- sheet: hide the extra formats to give the map more room ----------
+  // ---------- sheet: swipe down for just the grid ref, up for everything ----------
+  function setCompact(on) {
+    if ($("sheet").classList.contains("compact") === on) return;
+    keepTarget(() => { $("sheet").classList.toggle("compact", on); store.set("compact", on); });
+  }
   $("sheet").classList.toggle("compact", store.get("compact", false));
-  $("whatBtn").onclick = () => keepTarget(() => store.set("compact", $("sheet").classList.toggle("compact")));
+  $("grab").onclick = () => setCompact(!$("sheet").classList.contains("compact"));
+  let swipe = null;
+  $("sheet").addEventListener("touchstart", (e) => {
+    // Leave the format list free to scroll
+    if (e.target.closest(".rows") || document.body.classList.contains("navigating")) return (swipe = null);
+    swipe = { y: e.touches[0].clientY, moved: false };
+  }, { passive: true });
+  $("sheet").addEventListener("touchmove", (e) => {
+    if (swipe && Math.abs(e.touches[0].clientY - swipe.y) > 10) swipe.moved = true;
+  }, { passive: true });
+  $("sheet").addEventListener("touchend", (e) => {
+    if (!swipe) return;
+    const dy = e.changedTouches[0].clientY - swipe.y;
+    if (dy > 35) setCompact(true);
+    else if (dy < -35) setCompact(false);
+    // A swipe that starts on the grid ref mustn't also copy it
+    if (swipe.moved) { swallowClick = true; setTimeout(() => (swallowClick = false), 400); }
+    swipe = null;
+  });
+  let swallowClick = false;
+  $("sheet").addEventListener("click", (e) => { if (swallowClick) { e.stopPropagation(); e.preventDefault(); swallowClick = false; } }, true);
+
+  // ---------- navigate: map + compass to the crosshair point ----------
+  let nav = null, heading = null, wakeLock = null, navLine = null, navFlag = null;
+  const smooth = (prev, next) => (prev == null ? next : (prev + ((((next - prev) % 360) + 540) % 360 - 180) * 0.25 + 360) % 360);
+  function onOrient(e) {
+    let h = null;
+    if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading; // iPhone (magnetic; ~0.5° from true in Cumbria)
+    else if (e.absolute && typeof e.alpha === "number") h = 360 - e.alpha;      // Android
+    if (h == null) return;
+    h = (h + ((screen.orientation && screen.orientation.angle) || window.orientation || 0) + 360) % 360;
+    heading = smooth(heading, h);
+    if (nav) drawNav();
+  }
+  async function compassOn() {
+    // iPhone asks permission, and only from a tap
+    if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+      try { if ((await DeviceOrientationEvent.requestPermission()) !== "granted") return false; } catch { return false; }
+    }
+    window.addEventListener("deviceorientationabsolute", onOrient);
+    window.addEventListener("deviceorientation", onOrient);
+    return true;
+  }
+  function compassOff() {
+    window.removeEventListener("deviceorientationabsolute", onOrient);
+    window.removeEventListener("deviceorientation", onOrient);
+    heading = null;
+  }
+  function drawNav() {
+    if (!nav) return;
+    const to = L.latLng(nav.lat, nav.lon);
+    if (!here) {
+      $("navDist").textContent = "—";
+      $("navBrg").textContent = "Finding you…";
+      $("navAcc").textContent = "";
+      return;
+    }
+    const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
+    const arrived = d <= Math.max(8, here.acc);
+    $("navDist").textContent = arrived ? "Here" : fmtDist(d);
+    $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Bearing ${String(Math.round(brg)).padStart(3, "0")}°`;
+    $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
+    $("rose").style.transform = `rotate(${-(heading || 0)}deg)`;
+    $("arrow").style.transform = `rotate(${brg - (heading || 0)}deg)`;
+    document.querySelector(".dial").classList.toggle("here", arrived);
+    $("navHint").textContent = heading == null ? "No compass reading: the arrow assumes the top of the phone points north." : arrived ? "" : "Hold the phone flat. The arrow points the way to go.";
+    const line = [me, to];
+    if (navLine) navLine.setLatLngs(line);
+    else navLine = L.polyline(line, { color: "#c0392b", weight: 3, dashArray: "6 8", interactive: false }).addTo(map);
+    // Keep both ends on screen while walking
+    const b = map.getBounds().pad(-0.1);
+    if (!b.contains(me) || !b.contains(to)) fitNav();
+  }
+  function fitNav() {
+    if (!nav) return;
+    const pts = [[nav.lat, nav.lon]];
+    if (here) pts.push([here.lat, here.lon]);
+    map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 90], paddingBottomRight: [70, sheet.offsetHeight + 30], maxZoom: 17, animate: false });
+  }
+  $("navBtn").onclick = async () => {
+    if (!last || !last.ref) return;
+    if (following) return toast("Move the crosshair to where you want to go, then tap Navigate");
+    nav = { lat: last.lat, lon: last.lon, view: { c: map.getCenter(), z: map.getZoom() } };
+    $("navRef").textContent = last.ref;
+    document.body.classList.add("navigating");
+    layout();
+    navFlag = L.marker([nav.lat, nav.lon], { interactive: false, icon: L.divIcon({ className: "flag", html: "🚩", iconSize: [30, 30], iconAnchor: [6, 28] }) }).addTo(map);
+    const compass = await compassOn();
+    if (!compass) toast("Compass not allowed. The map and distance still work");
+    startGps(false);
+    try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
+    fitNav();
+    drawNav();
+  };
+  $("navEnd").onclick = () => {
+    const to = nav;
+    nav = null;
+    compassOff();
+    if (navLine) { map.removeLayer(navLine); navLine = null; }
+    if (navFlag) { map.removeLayer(navFlag); navFlag = null; }
+    try { wakeLock && wakeLock.release(); } catch {}
+    wakeLock = null;
+    document.body.classList.remove("navigating");
+    layout();
+    if (to) map.setView(to.view.c, to.view.z, { animate: false }); // back exactly where you started
+    update();
+  };
+  // The wake lock drops when the phone sleeps or the app is switched away
+  document.addEventListener("visibilitychange", async () => {
+    if (nav && document.visibilityState === "visible") { try { wakeLock = await navigator.wakeLock.request("screen"); } catch {} }
+  });
 
   // ---------- save an area for offline ----------
   // Loads the map tiles for what's on screen, a couple of zoom levels deeper, so the
