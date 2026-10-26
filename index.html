@@ -108,6 +108,8 @@
   .item button { border: 0; background: none; color: var(--danger); font: 14px var(--sans); padding: 8px; }
   .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
   .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+  .backup { margin: 0; padding: 10px 16px 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .backup:empty { display: none; }
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
@@ -176,8 +178,11 @@
     <button id="closeDrawer">Done</button>
   </header>
   <div class="list" id="list"></div>
+  <p class="backup" id="backup"></p>
   <footer>
+    <button id="importBtn">Import CSV</button>
     <button id="exportBtn">Share as CSV</button>
+    <input type="file" id="importFile" accept=".csv,text/csv,text/plain" hidden>
   </footer>
 </div>
 
@@ -192,7 +197,7 @@
   const $ = (id) => document.getElementById(id);
   const store = {
     get(k, d) { try { const v = localStorage.getItem("gridref." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-    set(k, v) { try { localStorage.setItem("gridref." + k, JSON.stringify(v)); } catch {} },
+    set(k, v) { try { localStorage.setItem("gridref." + k, JSON.stringify(v)); return true; } catch { return false; } },
   };
 
   // ---------- map ----------
@@ -387,7 +392,17 @@
       }
     }, 450);
   }
-  function w3wOpen(p) { window.open(`https://what3words.com/${p.lat.toFixed(6)},${p.lon.toFixed(6)}`, "_blank"); }
+  // Same-tab link, not window.open: a new tab made phones open the what3words app AND
+  // load the website, hiding this page. The view is saved, so coming back is seamless.
+  function openLink(url) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function w3wOpen(p) { openLink(`https://what3words.com/${p.lat.toFixed(6)},${p.lon.toFixed(6)}`); }
 
   let saveView;
   map.on("move", update);
@@ -489,8 +504,19 @@
   };
 
   // ---------- saved points ----------
+  // Kept in this browser's localStorage. Re-read before every change so two open
+  // copies of the app can't overwrite each other's points.
   let points = store.get("points", []);
-  function savePoints() { store.set("points", points); drawPins(); }
+  const fresh = () => (points = store.get("points", points));
+  function savePoints() {
+    const ok = store.set("points", points);
+    drawPins();
+    if (!ok) alert("This phone wouldn't let Grid Ref save. Share your points as CSV now so nothing is lost.");
+    return ok;
+  }
+  window.addEventListener("storage", (e) => { if (e.key === "gridref.points") { fresh(); drawPins(); } });
+  // Ask the browser not to clear our storage when space runs low
+  const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
   const pinLayer = L.layerGroup().addTo(map);
   function drawPins() {
     pinLayer.clearLayers();
@@ -502,48 +528,134 @@
   }
   $("saveBtn").onclick = () => {
     if (!last || !last.ref) return;
+    fresh();
     const def = "Point " + (points.length + 1);
     const name = prompt("Name this point", def);
     if (name === null) return;
+    fresh();
     points.unshift({ name: name.trim() || def, lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), at: new Date().toISOString(), acc: following && here ? Math.round(here.acc) : null });
-    savePoints();
-    toast("Saved — " + points.length + " point" + (points.length === 1 ? "" : "s"));
+    persist();
+    if (savePoints()) toast("Saved — " + points.length + " point" + (points.length === 1 ? "" : "s"));
   };
   $("listBtn").onclick = () => openDrawer();
 
+  function ago(iso) {
+    if (!iso) return "never";
+    const d = Math.floor((Date.now() - new Date(iso)) / 86400000);
+    return d < 1 ? "today" : d === 1 ? "yesterday" : d + " days ago";
+  }
   function openDrawer() {
+    fresh();
     const list = $("list");
     list.innerHTML = "";
-    if (!points.length) list.innerHTML = '<div class="empty">No saved points yet.<br>Line up the crosshair and tap <b>Save</b>.</div>';
-    points.forEach((pt, i) => {
+    if (!points.length) list.innerHTML = '<div class="empty">No saved points yet.<br>Line up the crosshair and tap <b>Save point</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>';
+    points.forEach((pt) => {
       const row = document.createElement("div");
       row.className = "item";
       const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
       row.innerHTML = `<div class="main"><div class="name"></div><div class="gr">${OSGB.gridRef(pt.e, pt.n, digits)}</div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div><button>Delete</button>`;
       row.querySelector(".name").textContent = pt.name;
       row.querySelector(".main").onclick = () => { closeDrawer(); following = false; $("locBtn").classList.remove("on"); panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15)); };
-      row.querySelector("button").onclick = () => { if (confirm(`Delete “${pt.name}”?`)) { points.splice(i, 1); savePoints(); openDrawer(); } };
+      row.querySelector("button").onclick = () => {
+        if (!confirm(`Delete “${pt.name}”?`)) return;
+        fresh();
+        points = points.filter((p) => !(p.at === pt.at && p.name === pt.name));
+        savePoints();
+        openDrawer();
+      };
       list.appendChild(row);
     });
+    const exported = store.get("exported", "");
+    const since = exported ? points.filter((p) => p.at > exported).length : 0;
+    $("backup").textContent = points.length
+      ? `${points.length} point${points.length === 1 ? "" : "s"}, kept on this phone only. Last shared as CSV: ${ago(exported)}${since ? ` (${since} new since)` : ""}.`
+      : "";
     $("drawer").classList.add("open");
   }
   function closeDrawer() { $("drawer").classList.remove("open"); }
   $("closeDrawer").onclick = closeDrawer;
   $("exportBtn").onclick = async () => {
+    fresh();
     if (!points.length) return;
     const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
     const rows = [["Name", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "GPS accuracy (m)", "Saved"]]
       .concat(points.map((p) => [q(p.name), OSGB.gridRef(p.e, p.n, 10), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), p.acc ?? "", p.at]));
     const csv = rows.map((r) => r.join(",")).join("\n");
     const file = new File([csv], "grid-refs-" + new Date().toISOString().slice(0, 10) + ".csv", { type: "text/csv" });
+    let done = false;
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      try { await navigator.share({ files: [file] }); } catch {}
+      try { await navigator.share({ files: [file] }); done = true; } catch {}
     } else {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(file);
       a.download = file.name;
       a.click();
+      done = true;
     }
+    if (done) { store.set("exported", new Date().toISOString()); openDrawer(); }
+  };
+
+  // Import: our own CSV back in, or any CSV with a name column and a grid ref,
+  // E/N or lat/long column (e.g. a list of dormouse boxes)
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], cell = "", quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (quoted) {
+        if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (ch === '"') quoted = false;
+        else cell += ch;
+      } else if (ch === '"') quoted = true;
+      else if (ch === ",") { row.push(cell); cell = ""; }
+      else if (ch === "\n" || ch === "\r") {
+        if (ch === "\r" && text[i + 1] === "\n") i++;
+        row.push(cell); rows.push(row); row = []; cell = "";
+      } else cell += ch;
+    }
+    if (cell || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter((r) => r.some((c) => c.trim()));
+  }
+  function importCSV(text) {
+    const rows = parseCSV(text.replace(/^﻿/, ""));
+    if (rows.length < 2) return { added: 0, skipped: 0 };
+    const head = rows[0].map((h) => h.trim().toLowerCase());
+    const col = (...names) => head.findIndex((h) => names.some((n) => h === n || h.startsWith(n)));
+    const iName = col("name", "label", "box", "id", "title"), iRef = col("grid ref", "gridref", "grid reference", "osgr", "ngr", "ref");
+    const iE = col("easting", "x"), iN = col("northing", "y"), iLat = col("lat"), iLon = col("lon", "lng", "long");
+    const iAt = col("saved", "date", "time"), iAcc = col("gps accuracy", "accuracy");
+    fresh();
+    const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
+    let added = 0, skipped = 0;
+    for (const r of rows.slice(1)) {
+      const get = (i) => (i >= 0 ? (r[i] || "").trim() : "");
+      let ll = null;
+      if (get(iLat) && get(iLon) && !isNaN(+get(iLat)) && !isNaN(+get(iLon))) ll = { lat: +get(iLat), lon: +get(iLon) };
+      else if (get(iRef)) ll = GridSearch.parse(get(iRef)).find((x) => x.lat != null) || null;
+      else if (get(iE) && get(iN) && OSGB.inGrid(+get(iE), +get(iN))) ll = OSGB.gridToWgs84(+get(iE), +get(iN));
+      if (!ll) { skipped++; continue; }
+      const g = OSGB.wgs84ToGrid(ll.lat, ll.lon);
+      const at = get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString();
+      const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null };
+      const key = pt.name + "|" + pt.e + "|" + pt.n;
+      if (seen.has(key)) { skipped++; continue; }
+      seen.add(key);
+      points.push(pt);
+      added++;
+    }
+    points.sort((a, b) => (a.at < b.at ? 1 : -1));
+    if (added) { persist(); savePoints(); }
+    return { added, skipped };
+  }
+  window.__importCSV = importCSV; // for testing
+  $("importBtn").onclick = () => $("importFile").click();
+  $("importFile").onchange = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    const { added, skipped } = importCSV(await f.text());
+    openDrawer();
+    toast(`Imported ${added}` + (skipped ? `, skipped ${skipped}` : ""));
   };
 
   // ---------- search ----------
@@ -569,7 +681,7 @@
     resultsEl.style.display = items.length || msg ? "block" : "none";
   }
   function go(it) {
-    if (it.url) { window.open(it.url, "_blank"); return; }
+    if (it.url) return openLink(it.url);
     resultsEl.style.display = "none";
     $("q").blur();
     following = false;
