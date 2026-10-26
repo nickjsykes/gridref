@@ -101,7 +101,13 @@
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
   .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
   .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .actions { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 8px; margin-top: 12px; }
+  .actions { display: grid; grid-template-columns: 34px repeat(4, 1fr); gap: 6px; margin-top: 10px; align-items: stretch; }
+  .tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 2px 6px !important; }
+  .tool svg { width: 24px; height: 24px; }
+  .tool span { font: 600 11px var(--sans); white-space: nowrap; }
+  .tool.small { background: none !important; color: var(--muted) !important; padding: 0 !important; }
+  .tool.small svg { width: 26px; height: 26px; }
+  .tool.small.on { color: var(--green) !important; }
   .actions button { border: 0; border-radius: 12px; padding: 13px 6px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
   .actions button.primary { background: var(--green); color: var(--panel); }
 
@@ -114,6 +120,7 @@
   .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .item { padding: 13px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
   .item .main { flex: 1; min-width: 0; }
+  .item .mk { flex: none; display: grid; place-items: center; }
   .item .name { font-weight: 600; font-size: 16px; }
   .item .gr { font: 15px var(--mono); margin-top: 2px; }
   .item .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
@@ -133,7 +140,8 @@
   body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
   body.large .row .v.dim { font-size: 18px; }
   body.large .prec button { font-size: 16px; padding: 8px 11px; }
-  body.large .actions button { font-size: 18px; padding: 16px 6px; }
+  body.large .tool svg { width: 28px; height: 28px; }
+  body.large .tool span { font-size: 13px; }
   body.large .from-me { font-size: 17px; }
   body.large .search input { font-size: 18px; }
   body.large .results button { font-size: 18px; padding: 15px 14px; }
@@ -164,7 +172,9 @@
   #rose, #arrow { will-change: transform; }
   .nav-nums { flex: 1; min-width: 0; font-size: 16px; line-height: 1.5; }
   .nav-nums .dist { font: 700 clamp(30px, 10vw, 44px)/1.1 var(--mono); }
-  .nav-nums .dim { color: var(--muted); font-size: 14px; }
+  .nav-nums .dim { color: var(--muted); font-size: 13px; }
+  .nav-nums .head { font: 700 clamp(20px, 6.4vw, 26px)/1.2 var(--sans); color: var(--green); }
+  .nav-nums .deg { font: 600 16px var(--mono); }
   .nav-hint { color: var(--muted); font-size: 12px; margin-top: 2px; }
   body.large .nav-head b { font-size: 26px; }
   body.large .dial { width: min(34vw, 140px); height: min(34vw, 140px); }
@@ -179,6 +189,23 @@
   /* no visible scrollbars anywhere: lists still scroll with a finger */
   .rows, .results, .list, .layers { scrollbar-width: none; }
   .rows::-webkit-scrollbar, .results::-webkit-scrollbar, .list::-webkit-scrollbar, .layers::-webkit-scrollbar { display: none; }
+
+  /* save popup */
+  .modal { position: fixed; inset: 0; z-index: 1300; background: rgba(0,0,0,.35); display: flex; align-items: flex-start; justify-content: center; padding: calc(var(--safe-t) + 14px) 12px 12px; }
+  .modal[hidden] { display: none; }
+  .card { width: 100%; max-width: 420px; background: var(--panel); border-radius: 16px; padding: 14px; box-shadow: 0 8px 30px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 10px; }
+  .card label { display: flex; flex-direction: column; gap: 4px; font: 600 14px var(--sans); color: var(--muted); }
+  .card input, .card textarea { font: 16px var(--sans); color: var(--ink); background: var(--green-soft); border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: none; }
+  .pick { display: flex; gap: 6px; }
+  .pick button { flex: 1 1 0; min-width: 0; max-width: 44px; aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); display: grid; place-items: center; padding: 0; }
+  .pick button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--panel) inset; }
+  .pick svg { width: 24px; height: 24px; }
+  .card .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .card .btns button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
+  .card .btns .primary { background: var(--green); color: var(--panel); }
+  .pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
+  .item .note { color: var(--ink); font-size: 13px; margin-top: 3px; white-space: pre-wrap; }
+  .item .go { color: var(--green) !important; font-weight: 600 !important; }
 
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
@@ -208,9 +235,6 @@
   <button class="fab" id="layersBtn" aria-label="Map style">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
-  <button class="fab" id="listBtn" aria-label="Saved points">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z" stroke-linejoin="round"/><path d="M12 6.5v13.4"/></svg>
-  </button>
   <button class="fab" id="locBtn" aria-label="Show my location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
   </button>
@@ -233,9 +257,11 @@
       <a class="row" id="w3wRow" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
     </div>
     <div class="actions">
-      <button id="shareBtn">Share</button>
-      <button class="primary" id="navBtn">Navigate</button>
-      <button id="saveBtn">Save</button>
+      <button class="tool small" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
+      <button class="tool" id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Share</span></button>
+      <button class="tool primary" id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg><span>Navigate</span></button>
+      <button class="tool" id="saveBtn" aria-label="Save point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg><span>Save</span></button>
+      <button class="tool" id="listBtn" aria-label="Saved points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg><span>Saved</span></button>
     </div>
   </div>
   <div class="nav" id="nav">
@@ -254,7 +280,8 @@
       </svg>
       <div class="nav-nums">
         <div class="dist" id="navDist">—</div>
-        <div id="navBrg"></div>
+        <div class="head" id="navBrg"></div>
+        <div class="deg" id="navDeg"></div>
         <div class="dim" id="navAcc"></div>
       </div>
     </div>
@@ -277,6 +304,15 @@
   </footer>
 </div>
 
+<div class="modal" id="saveModal" hidden>
+  <form class="card" id="saveForm" autocomplete="off">
+    <label>Name:<input id="ptName" enterkeyhint="next"></label>
+    <label>Notes:<textarea id="ptNotes" rows="3"></textarea></label>
+    <div class="pick" id="ptColour" aria-label="Colour"></div>
+    <div class="pick" id="ptShape" aria-label="Shape"></div>
+    <div class="btns"><button type="button" id="ptCancel">Cancel</button><button type="submit" class="primary">Save</button></div>
+  </form>
+</div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <label id="haptic" style="position:fixed;left:-99px;top:0;opacity:0;pointer-events:none"><input type="checkbox" switch tabindex="-1" aria-hidden="true"></label>
@@ -323,8 +359,10 @@
     });
   }
   document.body.classList.toggle("large", large);
+  $("textBtn").classList.toggle("on", large);
+  $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "30"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "31"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -341,10 +379,6 @@
       };
       layersEl.appendChild(b);
     }
-    const big = document.createElement("button");
-    big.textContent = (large ? "✓ " : "") + "Large text";
-    big.onclick = () => { setLarge(!large); layersEl.style.display = "none"; };
-    layersEl.appendChild(big);
     const off = document.createElement("button");
     off.textContent = "Save this area for offline";
     off.onclick = () => { layersEl.style.display = "none"; saveArea(); };
@@ -447,6 +481,7 @@
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
   }
   const POINTS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  const POINT_NAMES = ["North", "North-east", "East", "South-east", "South", "South-west", "West", "North-west"];
   const fmtBrg = (b) => `${POINTS[Math.round(b / 45) % 8]} (${String(Math.round(b) % 360).padStart(3, "0")}°)`;
   function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
 
@@ -500,12 +535,11 @@
     $("w3wAct").style.display = isWords ? "none" : ""; // words showing: tap the row to copy them
     $("w3wAct").classList.toggle("open", !isWords);
   }
-  // Coordinates: the what3words app ignores them and shows your own location, so use
-  // map.what3words.com, which the app doesn't claim. It opens in the browser and forwards
-  // to their map at exactly these coordinates, showing the 3 words for that square.
-  // 3 words (from search): w3w.co opens the app at that square.
+  // Coordinates: the what3words app grabs any what3words link but ignores the coordinates
+  // (it shows your own location), so go via w3w.html, which forwards after loading and so
+  // stays in the browser. 3 words (from search): w3w.co opens the app at that square.
   function w3wHref(path) {
-    return /^-?\d/.test(path) ? "https://map.what3words.com/" + path : "https://w3w.co/" + path;
+    return /^-?\d/.test(path) ? "w3w.html?ll=" + path : "https://w3w.co/" + path;
   }
   function w3wUpdate(p) {
     $("w3wRow").href = w3wHref(p.lat.toFixed(6) + "," + p.lon.toFixed(6));
@@ -658,24 +692,62 @@
   // Ask the browser not to clear our storage when space runs low
   const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
   const pinLayer = L.layerGroup().addTo(map);
+  // Point markers: a colour and a shape, so different jobs can be told apart on the map
+  const COLOURS = { orange: "#e67e22", red: "#d63031", blue: "#0984e3", green: "#00a86b", purple: "#8e44ad", yellow: "#f1c40f", black: "#2d3436", white: "#ffffff" };
+  const SHAPES = {
+    circle: '<circle cx="12" cy="12" r="8"/>',
+    square: '<rect x="4.5" y="4.5" width="15" height="15" rx="2"/>',
+    triangle: '<path d="M12 3.5 21 20H3Z"/>',
+    diamond: '<path d="M12 2.5 21.5 12 12 21.5 2.5 12Z"/>',
+    star: '<path d="m12 2.5 2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z"/>',
+  };
+  const shapeSvg = (shape, colour, size = 22) => {
+    const fill = COLOURS[colour] || COLOURS.orange, stroke = colour === "white" ? "#2d3436" : "#fff";
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round">${SHAPES[shape] || SHAPES.circle}</svg>`;
+  };
   function drawPins() {
     pinLayer.clearLayers();
     for (const pt of points) {
-      L.circleMarker([pt.lat, pt.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#e67e22", fillOpacity: 1 })
-        .bindTooltip(pt.name, { direction: "top", offset: [0, -6] })
+      L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) })
+        .bindTooltip(pt.name, { direction: "top", offset: [0, -10] })
         .addTo(pinLayer);
     }
   }
+
+  // One popup for name, notes, colour and shape (the last colour/shape is remembered)
+  let pick = { colour: store.get("ptColour", "orange"), shape: store.get("ptShape", "circle") };
+  function drawPickers() {
+    $("ptColour").innerHTML = Object.keys(COLOURS).map((c) => `<button type="button" data-c="${c}" aria-label="${c}" class="${c === pick.colour ? "on" : ""}">${shapeSvg("circle", c, 24)}</button>`).join("");
+    $("ptShape").innerHTML = Object.keys(SHAPES).map((sh) => `<button type="button" data-s="${sh}" aria-label="${sh}" class="${sh === pick.shape ? "on" : ""}">${shapeSvg(sh, pick.colour, 24)}</button>`).join("");
+  }
+  $("ptColour").onclick = (e) => { const b = e.target.closest("button"); if (b) { pick.colour = b.dataset.c; drawPickers(); } };
+  $("ptShape").onclick = (e) => { const b = e.target.closest("button"); if (b) { pick.shape = b.dataset.s; drawPickers(); } };
+  let saving = null;
   $("saveBtn").onclick = () => {
     if (!last || !last.ref) return;
     fresh();
-    const def = "Point " + (points.length + 1);
-    const name = prompt("Name this point", def);
-    if (name === null) return;
+    saving = { lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null };
+    $("ptName").value = "";
+    $("ptName").placeholder = "Point " + (points.length + 1);
+    $("ptNotes").value = "";
+    drawPickers();
+    $("saveModal").hidden = false;
+    setTimeout(() => $("ptName").focus(), 50);
+  };
+  const closeSave = () => { $("saveModal").hidden = true; saving = null; $("ptName").blur(); $("ptNotes").blur(); };
+  $("ptCancel").onclick = closeSave;
+  $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
+  $("saveForm").onsubmit = (e) => {
+    e.preventDefault();
+    if (!saving) return;
     fresh();
-    points.unshift({ name: name.trim() || def, lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), at: new Date().toISOString(), acc: following && here ? Math.round(here.acc) : null });
+    const name = $("ptName").value.trim() || $("ptName").placeholder;
+    points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, at: new Date().toISOString() });
+    store.set("ptColour", pick.colour);
+    store.set("ptShape", pick.shape);
     persist();
-    if (savePoints()) toast("Saved — " + points.length + " point" + (points.length === 1 ? "" : "s"));
+    closeSave();
+    if (savePoints()) toast("✓ Saved " + name);
   };
   $("listBtn").onclick = () => openDrawer();
 
@@ -693,10 +765,20 @@
       const row = document.createElement("div");
       row.className = "item";
       const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      row.innerHTML = `<div class="main"><div class="name"></div><div class="gr">${OSGB.gridRef(pt.e, pt.n, digits)}</div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div><button>Delete</button>`;
+      row.innerHTML = `<span class="mk">${shapeSvg(pt.shape, pt.colour)}</span><div class="main"><div class="name"></div><div class="gr">${OSGB.gridRef(pt.e, pt.n, digits)}</div><div class="note"></div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div><button class="go">Go</button><button class="del">Delete</button>`;
       row.querySelector(".name").textContent = pt.name;
+      if (pt.notes) row.querySelector(".note").textContent = pt.notes;
+      else row.querySelector(".note").remove();
+      row.querySelector(".go").onclick = () => {
+        closeDrawer();
+        following = false;
+        $("locBtn").classList.remove("on");
+        panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15), false);
+        update();
+        $("navBtn").click();
+      };
       row.querySelector(".main").onclick = () => { closeDrawer(); following = false; $("locBtn").classList.remove("on"); panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15)); };
-      row.querySelector("button").onclick = () => {
+      row.querySelector(".del").onclick = () => {
         if (!confirm(`Delete “${pt.name}”?`)) return;
         fresh();
         points = points.filter((p) => !(p.at === pt.at && p.name === pt.name));
@@ -718,8 +800,8 @@
     fresh();
     if (!points.length) return;
     const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
-    const rows = [["Name", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "GPS accuracy (m)", "Saved"]]
-      .concat(points.map((p) => [q(p.name), OSGB.gridRef(p.e, p.n, 10), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), p.acc ?? "", p.at]));
+    const rows = [["Name", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape"]]
+      .concat(points.map((p) => [q(p.name), OSGB.gridRef(p.e, p.n, 8), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle"]));
     const csv = rows.map((r) => r.join(",")).join("\n");
     const file = new File([csv], "grid-refs-" + new Date().toISOString().slice(0, 10) + ".csv", { type: "text/csv" });
     let done = false;
@@ -764,6 +846,7 @@
     const iName = col("name", "label", "box", "id", "title"), iRef = col("grid ref", "gridref", "grid reference", "osgr", "ngr", "ref");
     const iE = col("easting", "x"), iN = col("northing", "y"), iLat = col("lat"), iLon = col("lon", "lng", "long");
     const iAt = col("saved", "date", "time"), iAcc = col("gps accuracy", "accuracy");
+    const iNotes = col("notes", "note", "comment", "description"), iColour = col("colour", "color"), iShape = col("shape");
     fresh();
     const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
     let added = 0, skipped = 0;
@@ -776,7 +859,8 @@
       if (!ll) { skipped++; continue; }
       const g = OSGB.wgs84ToGrid(ll.lat, ll.lon);
       const at = get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString();
-      const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null };
+      const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null,
+        notes: get(iNotes), colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange", shape: SHAPES[get(iShape).toLowerCase()] ? get(iShape).toLowerCase() : "circle" };
       const key = pt.name + "|" + pt.e + "|" + pt.n;
       if (seen.has(key)) { skipped++; continue; }
       seen.add(key);
@@ -1017,7 +1101,8 @@
     const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
     const arrived = d <= Math.max(8, here.acc);
     $("navDist").textContent = arrived ? "Here" : fmtDist(d);
-    $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Head ${fmtBrg(brg)}`;
+    $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Head ${POINT_NAMES[Math.round(brg / 45) % 8]}`;
+    $("navDeg").textContent = arrived ? "" : `${String(Math.round(brg) % 360).padStart(3, "0")}°`;
     $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
     navBrgDeg = brg;
     drawDial();
