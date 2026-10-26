@@ -21,12 +21,10 @@ from rasterio.warp import Resampling, reproject, transform_bounds
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "build" / "src"
 OUT = ROOT / "maps"
-# NE South Cumbria and north Lancashire reserves (REF_CODE from the NNR dataset)
+# The reserves the team works (REF_CODE from the NNR dataset). Chosen by Nick, 27 Oct 2026.
 PACK = {
-    "1006126": "Roudsea Wood and Mosses", "1006127": "Rusland Moss", "1006018": "Blelham Bog",
-    "1006954": "Duddon Mosses", "1006067": "Hallsenna Moor", "1006114": "North Walney",
-    "1007227": "Sandscale Haws", "1006993": "Whitbarrow", "1006058": "Gait Barrows",
-    "1006038": "Clawthorpe Fell", "1084456": "Hutton Roof",
+    "1006126": "Roudsea Wood and Mosses", "1006018": "Blelham Bog", "1006954": "Duddon Mosses",
+    "1006067": "Hallsenna Moor", "1006114": "North Walney", "1006058": "Gait Barrows",
 }
 ZOOMS = range(11, 18)
 BUFFER_M = {11: 6000, 12: 4000, 13: 2500, 14: 1500, 15: 1000, 16: 700, 17: 500}  # map around each reserve
@@ -151,6 +149,14 @@ def main():
         if i % 500 == 0:
             print(f"  {i}/{len(wanted)}  {total / 1e6:.1f} MB")
     tiles.sort()
+    # Remove tiles left over from reserves no longer in the pack
+    keep = {OUT / t for t in tiles}
+    for f in OUT.rglob("*.webp"):
+        if f not in keep:
+            f.unlink()
+    for d in sorted(OUT.rglob("*"), reverse=True):
+        if d.is_dir() and not any(d.iterdir()):
+            d.rmdir()
     version = hashlib.sha1(("\n".join(tiles) + str(total)).encode()).hexdigest()[:10]
     index = {"version": version, "reserves": sorted(PACK.values()), "zooms": [min(ZOOMS), max(ZOOMS)], "bytes": total, "tiles": tiles,
              "source": "OS OpenMap Local raster, Contains OS data © Crown copyright 2026 (OGL v3)"}
