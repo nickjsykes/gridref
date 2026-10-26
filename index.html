@@ -236,6 +236,7 @@
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
+  map.attributionControl.addAttribution("Search: contains OS data © Crown copyright 2026");
   let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
   LAYERS[current].layer.addTo(map);
 
