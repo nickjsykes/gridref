@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Grid Ref</title>
+<meta name="description" content="Find and share Ordnance Survey grid references on your phone.">
+<meta name="theme-color" content="#2f5d3a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grid Ref">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root {
+    --green: #2f5d3a;
+    --green-soft: #e3ece4;
+    --ink: #1c211d;
+    --muted: #5f6b62;
+    --panel: #ffffff;
+    --line: #dde3de;
+    --danger: #a33a2a;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-t: env(safe-area-inset-top, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --green: #7fbf8c;
+      --green-soft: #22332a;
+      --ink: #eef2ee;
+      --muted: #a3ada6;
+      --panel: #161a17;
+      --line: #2c332e;
+      --danger: #ff8a75;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel); color: var(--ink); font-family: var(--sans); }
+  #map { position: fixed; inset: 0; background: #dfe6df; }
+
+  /* search */
+  .top { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 10px); display: flex; gap: 8px; }
+  .search { flex: 1; display: flex; background: var(--panel); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
+  .search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 16px var(--sans); padding: 12px 14px; outline: none; }
+  .search button { border: 0; background: none; color: var(--green); font: 600 15px var(--sans); padding: 0 14px; }
+  .results { position: fixed; z-index: 1001; left: 12px; right: 12px; top: calc(var(--safe-t) + 62px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); overflow: hidden; display: none; }
+  .results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 13px 14px; }
+  .results button small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .results .msg { padding: 13px 14px; color: var(--muted); font-size: 14px; }
+
+  /* crosshair */
+  .cross { position: fixed; z-index: 900; left: 50%; top: var(--cross-y, 40%); width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
+  .cross::before, .cross::after { content: ""; position: absolute; background: #c0392b; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85); }
+  .cross::before { left: 21px; top: 0; width: 2px; height: 44px; }
+  .cross::after { top: 21px; left: 0; height: 2px; width: 44px; }
+
+  /* floating buttons */
+  .fabs { position: fixed; z-index: 1000; right: 12px; display: flex; flex-direction: column; gap: 10px; bottom: calc(var(--sheet-h, 230px) + 12px); }
+  .fab { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--panel); color: var(--ink); box-shadow: 0 2px 10px rgba(0,0,0,.22); display: grid; place-items: center; }
+  .fab svg { width: 24px; height: 24px; }
+  .fab.on { background: var(--green); color: var(--panel); }
+
+  /* bottom sheet */
+  .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); }
+  .label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .ref { font: 700 clamp(28px, 9vw, 38px)/1.15 var(--mono); letter-spacing: .02em; margin: 6px 0 4px; user-select: all; -webkit-user-select: all; }
+  .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
+  .sub { font: 13px/1.5 var(--mono); color: var(--muted); }
+  .from-me { font: 14px var(--sans); color: var(--green); margin-top: 4px; min-height: 0; }
+  .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
+  .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
+  .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+  .actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .actions button { border: 0; border-radius: 12px; padding: 13px 6px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
+  .actions button.primary { background: var(--green); color: var(--panel); }
+
+  /* saved points drawer */
+  .drawer { position: fixed; z-index: 1100; inset: 0; background: var(--panel); display: none; flex-direction: column; padding-top: var(--safe-t); }
+  .drawer.open { display: flex; }
+  .drawer header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .drawer h2 { margin: 0; font-size: 19px; }
+  .drawer header button, .link { border: 0; background: none; color: var(--green); font: 600 16px var(--sans); padding: 6px 0; }
+  .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .item { padding: 13px 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; }
+  .item .main { flex: 1; min-width: 0; }
+  .item .name { font-weight: 600; font-size: 16px; }
+  .item .gr { font: 15px var(--mono); margin-top: 2px; }
+  .item .meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .item button { border: 0; background: none; color: var(--danger); font: 14px var(--sans); padding: 8px; }
+  .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
+  .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+  .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
+
+  .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  .toast.show { opacity: 1; }
+
+  .leaflet-control-attribution { font-size: 9px; }
+  .leaflet-bottom { bottom: var(--sheet-h, 230px); }
+  .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
+  .layers { position: fixed; z-index: 1001; right: 70px; bottom: calc(var(--sheet-h, 230px) + 12px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); overflow: hidden; display: none; }
+  .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 12px 18px; text-align: left; }
+  .layers button.on { color: var(--green); font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="cross" aria-hidden="true"></div>
+
+<div class="top">
+  <form class="search" id="searchForm" autocomplete="off">
+    <input id="q" type="search" enterkeyhint="search" placeholder="Grid ref, postcode or place" aria-label="Search">
+    <button type="submit">Go</button>
+  </form>
+</div>
+<div class="results" id="results"></div>
+
+<div class="fabs">
+  <button class="fab" id="layersBtn" aria-label="Map style">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
+  </button>
+  <button class="fab" id="listBtn" aria-label="Saved points">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>
+  </button>
+  <button class="fab" id="locBtn" aria-label="Show my location">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+  </button>
+</div>
+<div class="layers" id="layers"></div>
+
+<section class="sheet" id="sheet">
+  <div class="label">
+    <span id="what">Under the crosshair</span>
+    <span class="prec" id="prec">
+      <button data-d="6">6</button><button data-d="8">8</button><button data-d="10">10</button>
+    </span>
+  </div>
+  <div class="ref" id="ref">—</div>
+  <div class="sub" id="sub"></div>
+  <div class="from-me" id="fromMe"></div>
+  <div class="actions">
+    <button class="primary" id="copyBtn">Copy</button>
+    <button id="shareBtn">Share</button>
+    <button id="saveBtn">Save</button>
+  </div>
+</section>
+
+<div class="drawer" id="drawer">
+  <header>
+    <h2>Saved points</h2>
+    <button id="closeDrawer">Done</button>
+  </header>
+  <div class="list" id="list"></div>
+  <footer>
+    <button id="exportBtn">Share as CSV</button>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="osgb.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem("gridref." + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem("gridref." + k, JSON.stringify(v)); } catch {} },
+  };
+
+  // ---------- map ----------
+  const LAYERS = {
+    topo: { name: "Topo (contours)", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
+    street: { name: "Street map", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }) },
+    aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
+  };
+  const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
+  const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
+  let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
+  LAYERS[current].layer.addTo(map);
+
+  const layersEl = $("layers");
+  function drawLayerMenu() {
+    layersEl.innerHTML = "";
+    for (const [k, v] of Object.entries(LAYERS)) {
+      const b = document.createElement("button");
+      b.textContent = v.name;
+      b.className = k === current ? "on" : "";
+      b.onclick = () => {
+        map.removeLayer(LAYERS[current].layer);
+        current = k;
+        LAYERS[k].layer.addTo(map);
+        store.set("layer", k);
+        layersEl.style.display = "none";
+      };
+      layersEl.appendChild(b);
+    }
+    const g = document.createElement("button");
+    g.textContent = (showGrid ? "✓ " : "") + "Grid lines";
+    g.onclick = () => { showGrid = !showGrid; store.set("grid", showGrid); drawGrid(); layersEl.style.display = "none"; };
+    layersEl.appendChild(g);
+  }
+  $("layersBtn").onclick = () => {
+    const open = layersEl.style.display === "block";
+    if (!open) drawLayerMenu();
+    layersEl.style.display = open ? "none" : "block";
+  };
+
+  // Keep the crosshair in the middle of the visible map (above the sheet)
+  const sheet = $("sheet");
+  function layout() {
+    const h = sheet.offsetHeight;
+    document.documentElement.style.setProperty("--sheet-h", h + "px");
+    document.documentElement.style.setProperty("--cross-y", (window.innerHeight - h) / 2 + "px");
+  }
+  // The point under the crosshair, not the map's geometric centre
+  function target() {
+    const size = map.getSize();
+    return map.containerPointToLatLng([size.x / 2, (window.innerHeight - sheet.offsetHeight) / 2]);
+  }
+  function panTo(latlng, zoom) {
+    const z = Math.min(zoom || map.getZoom(), map.getMaxZoom());
+    const offsetY = (window.innerHeight - (window.innerHeight - sheet.offsetHeight) / 2) - window.innerHeight / 2;
+    const p = map.project(latlng, z).add([0, offsetY]);
+    map.setView(map.unproject(p, z), z, { animate: true });
+  }
+
+  // ---------- OS grid overlay ----------
+  let showGrid = store.get("grid", true);
+  const gridLayer = L.layerGroup().addTo(map);
+  function drawGrid() {
+    gridLayer.clearLayers();
+    if (!showGrid) return;
+    const z = map.getZoom();
+    const step = z >= 13 ? 1000 : z >= 10 ? 10000 : 100000;
+    const b = map.getBounds();
+    const corners = [b.getSouthWest(), b.getNorthWest(), b.getNorthEast(), b.getSouthEast()].map((c) => OSGB.wgs84ToGrid(c.lat, c.lng));
+    const minE = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.e)) / step) * step);
+    const maxE = Math.min(700000, Math.ceil(Math.max(...corners.map((c) => c.e)) / step) * step);
+    const minN = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.n)) / step) * step);
+    const maxN = Math.min(1300000, Math.ceil(Math.max(...corners.map((c) => c.n)) / step) * step);
+    if ((maxE - minE) / step > 80 || (maxN - minN) / step > 80) return;
+    const style = { color: "#1d4f8f", weight: step === 100000 ? 2 : 1, opacity: 0.55, interactive: false };
+    const seg = 8;
+    for (let e = minE; e <= maxE; e += step) {
+      const pts = [];
+      for (let i = 0; i <= seg; i++) { const ll = OSGB.gridToWgs84(e, minN + ((maxN - minN) * i) / seg); pts.push([ll.lat, ll.lon]); }
+      L.polyline(pts, style).addTo(gridLayer);
+    }
+    for (let n = minN; n <= maxN; n += step) {
+      const pts = [];
+      for (let i = 0; i <= seg; i++) { const ll = OSGB.gridToWgs84(minE + ((maxE - minE) * i) / seg, n); pts.push([ll.lat, ll.lon]); }
+      L.polyline(pts, style).addTo(gridLayer);
+    }
+    // Label the 1 km / 10 km lines along the top and left edges of the screen
+    if (step <= 10000) {
+      const div = step === 1000 ? 1000 : 10000;
+      const digits = step === 1000 ? 2 : 1;
+      const top = map.getBounds().getNorth(), left = map.getBounds().getWest();
+      for (let e = minE + step; e < maxE; e += step) {
+        const ll = OSGB.gridToWgs84(e + step * 0.04, OSGB.wgs84ToGrid(top, map.getCenter().lng).n - step * 0.0);
+        const txt = String(Math.floor((e % 100000) / div)).padStart(digits, "0");
+        L.marker([top, ll.lon], { interactive: false, icon: L.divIcon({ className: "grid-label", html: txt, iconSize: null, iconAnchor: [-2, -74] }) }).addTo(gridLayer);
+      }
+      for (let n = minN + step; n < maxN; n += step) {
+        const ll = OSGB.gridToWgs84(OSGB.wgs84ToGrid(map.getCenter().lat, left).e, n);
+        const txt = String(Math.floor((n % 100000) / div)).padStart(digits, "0");
+        L.marker([ll.lat, left], { interactive: false, icon: L.divIcon({ className: "grid-label", html: txt, iconSize: null, iconAnchor: [-4, 14] }) }).addTo(gridLayer);
+      }
+    }
+  }
+
+  // ---------- readout ----------
+  let digits = store.get("digits", 8);
+  let here = null; // { lat, lon, acc }
+  let pinned = null; // latlng shown by GPS-follow instead of crosshair
+  function setPrec(d) {
+    digits = d;
+    store.set("digits", d);
+    for (const b of $("prec").children) b.classList.toggle("on", +b.dataset.d === d);
+    update();
+  }
+  for (const b of $("prec").children) b.onclick = () => setPrec(+b.dataset.d);
+
+  function info(latlng) {
+    const g = OSGB.wgs84ToGrid(latlng.lat, latlng.lng);
+    return { lat: latlng.lat, lon: latlng.lng, e: g.e, n: g.n, ref: OSGB.gridRef(g.e, g.n, digits) };
+  }
+
+  function bearing(a, b) {
+    const φ1 = a.lat * Math.PI / 180, φ2 = b.lat * Math.PI / 180, Δλ = (b.lng - a.lng) * Math.PI / 180;
+    const y = Math.sin(Δλ) * Math.cos(φ2), x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+  }
+  function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
+
+  let last = null;
+  function update() {
+    const t = following && here ? L.latLng(here.lat, here.lon) : target();
+    const p = info(t);
+    last = p;
+    const ref = $("ref");
+    if (p.ref) {
+      ref.textContent = p.ref;
+      ref.classList.remove("off");
+    } else {
+      ref.textContent = "Outside the GB grid";
+      ref.classList.add("off");
+    }
+    $("sub").textContent = p.ref
+      ? `E ${Math.round(p.e)}  N ${Math.round(p.n)}  ·  ${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`
+      : `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
+    $("what").textContent = following && here ? `You are here (±${Math.round(here.acc)} m)` : "Under the crosshair";
+    if (here && !following) {
+      const me = L.latLng(here.lat, here.lon);
+      const d = me.distanceTo(t);
+      $("fromMe").textContent = d < 3 ? "" : `${fmtDist(d)} from you, bearing ${String(Math.round(bearing(me, t))).padStart(3, "0")}°`;
+    } else {
+      $("fromMe").textContent = "";
+    }
+    layout();
+  }
+
+  let saveView;
+  map.on("move", update);
+  map.on("moveend", () => {
+    drawGrid();
+    clearTimeout(saveView);
+    saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
+  });
+  map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
+  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; panTo(e.latlng); });
+
+  // ---------- GPS ----------
+  let watchId = null, following = false, meDot = null, meRing = null;
+  function startGps() {
+    if (!navigator.geolocation) { toast("Location isn't available on this device"); return; }
+    following = true;
+    $("locBtn").classList.add("on");
+    if (here) { panTo(L.latLng(here.lat, here.lon), Math.max(map.getZoom(), 15)); update(); }
+    if (watchId != null) return;
+    toast("Finding you…");
+    let first = true;
+    watchId = navigator.geolocation.watchPosition((pos) => {
+      here = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy };
+      const ll = L.latLng(here.lat, here.lon);
+      if (!meDot) {
+        meRing = L.circle(ll, { radius: here.acc, color: "#1a73e8", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
+        meDot = L.circleMarker(ll, { radius: 7, color: "#fff", weight: 2.5, fillColor: "#1a73e8", fillOpacity: 1, interactive: false }).addTo(map);
+      } else {
+        meRing.setLatLng(ll).setRadius(here.acc);
+        meDot.setLatLng(ll);
+      }
+      if (following) panTo(ll, first ? Math.max(map.getZoom(), 15) : undefined);
+      first = false;
+      update();
+    }, (err) => {
+      following = false;
+      $("locBtn").classList.remove("on");
+      navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      toast(err.code === 1 ? "Location blocked — allow it in Settings › Safari" : "Couldn't get a GPS fix");
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
+  }
+  $("locBtn").onclick = () => {
+    if (following) { following = false; $("locBtn").classList.remove("on"); update(); }
+    else startGps();
+  };
+
+  // ---------- actions ----------
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => t.classList.remove("show"), 1800);
+  }
+  async function copy(text) {
+    try { await navigator.clipboard.writeText(text); toast("Copied " + text); }
+    catch { toast("Couldn't copy — press and hold the grid ref instead"); }
+  }
+  function shareText(p) {
+    return `${p.ref}\n${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}\nhttps://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`;
+  }
+  $("copyBtn").onclick = () => { if (last && last.ref) copy(last.ref); };
+  $("shareBtn").onclick = async () => {
+    if (!last || !last.ref) return;
+    const text = shareText(last);
+    if (navigator.share) { try { await navigator.share({ text }); } catch {} }
+    else copy(text);
+  };
+
+  // ---------- saved points ----------
+  let points = store.get("points", []);
+  function savePoints() { store.set("points", points); drawPins(); }
+  const pinLayer = L.layerGroup().addTo(map);
+  function drawPins() {
+    pinLayer.clearLayers();
+    for (const pt of points) {
+      L.circleMarker([pt.lat, pt.lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#e67e22", fillOpacity: 1 })
+        .bindTooltip(pt.name, { direction: "top", offset: [0, -6] })
+        .addTo(pinLayer);
+    }
+  }
+  $("saveBtn").onclick = () => {
+    if (!last || !last.ref) return;
+    const def = "Point " + (points.length + 1);
+    const name = prompt("Name this point", def);
+    if (name === null) return;
+    points.unshift({ name: name.trim() || def, lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), at: new Date().toISOString(), acc: following && here ? Math.round(here.acc) : null });
+    savePoints();
+    toast("Saved — " + points.length + " point" + (points.length === 1 ? "" : "s"));
+  };
+  $("listBtn").onclick = () => openDrawer();
+
+  function openDrawer() {
+    const list = $("list");
+    list.innerHTML = "";
+    if (!points.length) list.innerHTML = '<div class="empty">No saved points yet.<br>Line up the crosshair and tap <b>Save</b>.</div>';
+    points.forEach((pt, i) => {
+      const row = document.createElement("div");
+      row.className = "item";
+      const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      row.innerHTML = `<div class="main"><div class="name"></div><div class="gr">${OSGB.gridRef(pt.e, pt.n, digits)}</div><div class="meta">${when}${pt.acc ? " · GPS ±" + pt.acc + " m" : ""}</div></div><button>Delete</button>`;
+      row.querySelector(".name").textContent = pt.name;
+      row.querySelector(".main").onclick = () => { closeDrawer(); following = false; $("locBtn").classList.remove("on"); panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15)); };
+      row.querySelector("button").onclick = () => { if (confirm(`Delete “${pt.name}”?`)) { points.splice(i, 1); savePoints(); openDrawer(); } };
+      list.appendChild(row);
+    });
+    $("drawer").classList.add("open");
+  }
+  function closeDrawer() { $("drawer").classList.remove("open"); }
+  $("closeDrawer").onclick = closeDrawer;
+  $("exportBtn").onclick = async () => {
+    if (!points.length) return;
+    const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+    const rows = [["Name", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "GPS accuracy (m)", "Saved"]]
+      .concat(points.map((p) => [q(p.name), OSGB.gridRef(p.e, p.n, 10), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), p.acc ?? "", p.at]));
+    const csv = rows.map((r) => r.join(",")).join("\n");
+    const file = new File([csv], "grid-refs-" + new Date().toISOString().slice(0, 10) + ".csv", { type: "text/csv" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file] }); } catch {}
+    } else {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(file);
+      a.download = file.name;
+      a.click();
+    }
+  };
+
+  // ---------- search ----------
+  const resultsEl = $("results");
+  function showResults(items, msg) {
+    resultsEl.innerHTML = "";
+    if (msg) resultsEl.innerHTML = `<div class="msg">${msg}</div>`;
+    for (const it of items) {
+      const b = document.createElement("button");
+      b.innerHTML = "<span></span><small></small>";
+      b.firstChild.textContent = it.title;
+      b.lastChild.textContent = it.sub || "";
+      b.onclick = () => go(it);
+      resultsEl.appendChild(b);
+    }
+    resultsEl.style.display = items.length || msg ? "block" : "none";
+  }
+  function go(it) {
+    resultsEl.style.display = "none";
+    $("q").blur();
+    following = false;
+    $("locBtn").classList.remove("on");
+    panTo(L.latLng(it.lat, it.lon), it.zoom || 15);
+  }
+  $("searchForm").onsubmit = async (ev) => {
+    ev.preventDefault();
+    const text = $("q").value.trim();
+    if (!text) return;
+    // 1. OS grid reference
+    const g = OSGB.parseGridRef(text);
+    if (g) {
+      const ll = OSGB.gridToWgs84(g.e, g.n);
+      const z = g.size >= 10000 ? 11 : g.size >= 1000 ? 14 : g.size >= 100 ? 16 : 18;
+      return go({ lat: ll.lat, lon: ll.lon, zoom: z });
+    }
+    // 2. Easting, northing  (e.g. 334567 481234)
+    const en = text.match(/^(\d{5,6})(?:\.\d+)?[\s,]+(\d{5,7})(?:\.\d+)?$/);
+    if (en && OSGB.inGrid(+en[1], +en[2])) {
+      const ll = OSGB.gridToWgs84(+en[1], +en[2]);
+      return go({ lat: ll.lat, lon: ll.lon, zoom: 17 });
+    }
+    // 3. Lat, long
+    const ll = text.match(/^(-?\d{1,2}\.\d+)[\s,]+(-?\d{1,3}\.\d+)$/);
+    if (ll) return go({ lat: +ll[1], lon: +ll[2], zoom: 16 });
+    // 4. Postcode
+    if (/^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i.test(text)) {
+      try {
+        const r = await fetch("https://api.postcodes.io/postcodes/" + encodeURIComponent(text));
+        const j = await r.json();
+        if (j.result) return go({ lat: j.result.latitude, lon: j.result.longitude, zoom: 16 });
+      } catch {}
+    }
+    // 5. Place name
+    showResults([], "Searching…");
+    try {
+      const r = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&countrycodes=gb&limit=6&q=" + encodeURIComponent(text));
+      const j = await r.json();
+      if (!j.length) return showResults([], "Nothing found. Try a grid ref like SD 345 812.");
+      showResults(j.map((x) => {
+        const parts = x.display_name.split(", ");
+        return { title: parts[0], sub: parts.slice(1, 4).join(", "), lat: +x.lat, lon: +x.lon, zoom: x.type === "city" || x.type === "administrative" ? 13 : 15 };
+      }));
+    } catch {
+      showResults([], "No signal — grid refs and lat/long still work offline.");
+    }
+  };
+  $("q").addEventListener("input", () => { if (!$("q").value) resultsEl.style.display = "none"; });
+
+  // ---------- go ----------
+  window.addEventListener("resize", () => { layout(); update(); });
+  setPrec(digits);
+  drawPins();
+  drawGrid();
+  layout();
+  update();
+  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
