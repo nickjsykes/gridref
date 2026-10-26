@@ -416,7 +416,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "32"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "33"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -1329,7 +1329,7 @@
         if (failed > 20) return;
       }
     };
-    await Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]);
+    await Promise.all(Array.from({ length: 14 }, worker)); // GitHub serves over HTTP/2, so many at once is fine
     if (failed > 20 || pack.done < pack.total) { pack.state = "failed"; return; }
     store.set("pack", idx.version);
     pack.state = "ready";
