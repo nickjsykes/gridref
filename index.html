@@ -84,6 +84,7 @@
   .row .v { flex: 1; min-width: 0; font: 14.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .v.dim { font-family: var(--sans); color: var(--muted); font-size: 14px; }
   .copied .c { color: var(--panel); background: var(--green); }
+  a.row { text-decoration: none; }
   .row:active, .big:active { opacity: .6; }
   .from-me { font: 14px var(--sans); color: var(--green); margin-top: 4px; min-height: 0; }
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
@@ -140,7 +141,7 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
   <button class="fab" id="listBtn" aria-label="Saved points">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z" stroke-linejoin="round"/><path d="M12 6.5v13.4"/></svg>
   </button>
   <button class="fab" id="locBtn" aria-label="Show my location">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
@@ -164,7 +165,7 @@
     <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
     <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
     <button class="row" data-copy="dms"><span class="k">Deg Min Sec</span><span class="v" id="vDMS"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
-    <button class="row" data-copy="w3w"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></button>
+    <a class="row" id="w3wRow" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
   </div>
   <div class="actions">
     <button class="primary" id="shareBtn">Share all</button>
@@ -374,7 +375,16 @@
     if (!$("w3wAct").closest(".copied")) $("w3wAct").innerHTML = isWords ? COPY_ICON : OPEN_ICON;
     $("w3wAct").classList.toggle("open", !isWords);
   }
+  // A real link the user taps (not a scripted click): that is what makes iPhones hand it
+  // to the what3words app cleanly. On Android an intent link opens only the app.
+  function w3wHref(path) {
+    const web = "https://what3words.com/" + path;
+    return /Android/i.test(navigator.userAgent)
+      ? "intent://what3words.com/" + path + "#Intent;scheme=https;package=com.what3words.android;S.browser_fallback_url=" + encodeURIComponent(web) + ";end"
+      : web;
+  }
   function w3wUpdate(p) {
+    $("w3wRow").href = w3wHref(p.lat.toFixed(6) + "," + p.lon.toFixed(6));
     if (!W3W_KEY) return w3wShow("Show the 3 words", false);
     const at = spot(p);
     if (w3w.at === at && w3w.words) return w3wShow("///" + w3w.words, true);
@@ -392,17 +402,19 @@
       }
     }, 450);
   }
-  // Same-tab link, not window.open: a new tab made phones open the what3words app AND
-  // load the website, hiding this page. The view is saved, so coming back is seamless.
   function openLink(url) {
     const a = document.createElement("a");
     a.href = url;
+    a.target = "_blank";
     a.rel = "noopener";
     document.body.appendChild(a);
     a.click();
     a.remove();
   }
-  function w3wOpen(p) { openLink(`https://what3words.com/${p.lat.toFixed(6)},${p.lon.toFixed(6)}`); }
+  // With words showing (API key), tapping the row copies them instead of opening
+  $("w3wRow").addEventListener("click", (e) => {
+    if (last && w3w.words && w3w.at === spot(last)) { e.preventDefault(); copy("///" + w3w.words, $("w3wRow")); }
+  });
 
   let saveView;
   map.on("move", update);
@@ -485,7 +497,6 @@
     el.onclick = () => {
       if (!last) return;
       const what = el.dataset.copy;
-      if (what === "w3w") return w3w.words && w3w.at === spot(last) ? copy("///" + w3w.words, el) : w3wOpen(last);
       if ((what === "ref" || what === "en") && !last.ref) return;
       copy(last[what], el);
     };
@@ -681,7 +692,7 @@
     resultsEl.style.display = items.length || msg ? "block" : "none";
   }
   function go(it) {
-    if (it.url) return openLink(it.url);
+    if (it.url) return openLink(it.w3w ? w3wHref(it.w3w) : it.url);
     resultsEl.style.display = "none";
     $("q").blur();
     following = false;
@@ -714,7 +725,7 @@
         const j = await getJSON(`https://api.what3words.com/v3/convert-to-coordinates?words=${encodeURIComponent(r.words)}&key=${W3W_KEY}`);
         if (j.coordinates) return [{ title: "///" + r.words, sub: j.nearestPlace || "", tag: "what3words", lat: j.coordinates.lat, lon: j.coordinates.lng, zoom: 18 }];
       }
-      return [{ title: "///" + r.words, sub: "Opens in what3words", tag: "what3words", url: "https://what3words.com/" + r.words }];
+      return [{ title: "///" + r.words, sub: "Opens in what3words", tag: "what3words", url: "https://what3words.com/" + r.words, w3w: r.words }];
     }
     return [];
   }

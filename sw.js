@@ -1,5 +1,5 @@
 // Caches the app shell so it opens with no signal. Map tiles are not cached.
-const CACHE = "gridref-v3";
+const CACHE = "gridref-v4";
 const SHELL = ["./", "index.html", "osgb.js", "parse.js", "config.js", "manifest.webmanifest", "icon-180.png",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"];
 
