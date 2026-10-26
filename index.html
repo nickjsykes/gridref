@@ -67,7 +67,7 @@
   .fab.on { background: var(--green); color: var(--panel); }
 
   /* bottom sheet */
-  .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); display: flex; flex-direction: column; max-height: 60vh; }
+  .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px max(10px, calc(var(--safe-b) - 14px)); display: flex; flex-direction: column; max-height: 60vh; }
   .grab { display: block; width: 100%; border: 0; background: none; padding: 0 0 8px; margin-top: -6px; touch-action: none; }
   .grab span { display: block; width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
   .sheet.compact .more { display: none; }
@@ -79,16 +79,23 @@
   .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
   .c { display: inline-flex; align-items: center; gap: 4px; color: var(--green); font: 600 13px var(--sans); flex: none; border-radius: 10px; transition: background .15s; }
   .c svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .big .c { background: var(--green-soft); padding: 8px 10px; }
-  .row .c { padding: 4px 8px; margin: -4px -8px -4px 0; }
-  .row .c b { display: none; }
-  .row.copied .c b, .row .c.open b { display: inline; }
+  .refline { display: flex; align-items: center; gap: 10px; }
+  .refline .big { flex: 1; min-width: 0; }
+  .refline .prec { flex-direction: column; flex: none; }
+  .refline .prec button { padding: 6px 10px; }
+  .row .c { padding: 4px 0; }
   .rows { margin-top: 6px; border-top: 1px solid var(--line); flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); padding: 9px 0; text-align: left; }
   .row .k { width: 80px; flex: none; font: 600 12px var(--sans); color: var(--muted); }
   .row .v { flex: 1; min-width: 0; font: 14.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row .v.dim { font-family: var(--sans); color: var(--muted); font-size: 14px; }
-  .copied .c { color: var(--panel); background: var(--green); }
+  /* Copied: the whole thing goes green with a tick, plus a toast, so nobody wonders */
+  .big, .row { position: relative; border-radius: 10px; transition: background .15s, color .15s; }
+  .copied { background: var(--green) !important; color: #fff !important; }
+  .copied .k, .copied .v { color: #fff !important; }
+  .copied::after { content: "✓ Copied"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 700 15px var(--sans); color: #fff; background: rgba(0,0,0,.18); padding: 4px 10px; border-radius: 20px; }
+  .big.copied .ref { color: #fff; }
+  .row.copied { padding-left: 8px; margin-left: -8px; padding-right: 8px; margin-right: -8px; width: calc(100% + 16px); }
   a.row { text-decoration: none; }
   .row:active, .big:active { opacity: .6; }
   .from-me { font: 14px var(--sans); color: var(--green); min-width: 0; }
@@ -120,14 +127,13 @@
 
   /* Large text: for small phones and tired eyes in the field */
   /* the grid ref itself is the copy button here, so the digits get the full width */
-  body.large .big .c { display: none; }
-  body.large .big.copied .ref { color: var(--green); }
   body.large .c svg { width: 22px; height: 22px; }
+  body.large .copied::after { font-size: 17px; }
   body.large .row { flex-wrap: wrap; row-gap: 2px; padding: 8px 0; }
   body.large .row .k { width: 100%; font-size: 13px; }
   body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
   body.large .row .v.dim { font-size: 18px; }
-  body.large .prec button { font-size: 16px; padding: 7px 12px; }
+  body.large .prec button { font-size: 16px; padding: 8px 11px; }
   body.large .actions button { font-size: 18px; padding: 16px 6px; }
   body.large .from-me { font-size: 17px; }
   body.large .search input { font-size: 18px; }
@@ -156,7 +162,7 @@
   .dial text.n { fill: #c0392b; font-size: 22px; }
   .dial .arrow { fill: var(--green); stroke: var(--panel); stroke-width: 3; stroke-linejoin: round; }
   .dial.here .arrow { fill: #c0392b; }
-  #rose, #arrow { transition: transform .25s linear; }
+  #rose, #arrow { will-change: transform; }
   .nav-nums { flex: 1; min-width: 0; font-size: 16px; line-height: 1.5; }
   .nav-nums .dist { font: 700 clamp(30px, 10vw, 44px)/1.1 var(--mono); }
   .nav-nums .dim { color: var(--muted); font-size: 14px; }
@@ -174,7 +180,7 @@
   .rows, .results, .list, .layers { scrollbar-width: none; }
   .rows::-webkit-scrollbar, .results::-webkit-scrollbar, .list::-webkit-scrollbar, .layers::-webkit-scrollbar { display: none; }
 
-  .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
+  .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
 
   .leaflet-control-attribution { font-size: 9px; }
@@ -213,17 +219,17 @@
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
-  <button class="big" data-copy="ref" aria-label="Copy grid reference">
-    <span class="ref" id="ref">—</span>
-    <span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span>
-  </button>
+  <div class="refline">
+    <button class="big" data-copy="ref" aria-label="Copy grid reference"><span class="ref" id="ref">—</span></button>
+    <span class="prec" id="prec" role="group" aria-label="Grid ref figures"><button data-d="6">6 fig</button><button data-d="8">8 fig</button></span>
+  </div>
   <div class="more">
     <div class="meta">
       <span class="from-me" id="fromMe"></span>
     </div>
     <div class="rows">
-      <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
-      <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span><span class="c"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg><b>Copy</b></span></button>
+      <button class="row" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span></button>
+      <button class="row" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span></button>
       <a class="row" id="w3wRow" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
     </div>
     <div class="actions">
@@ -271,6 +277,8 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
+<label id="haptic" style="position:fixed;left:-99px;top:0;opacity:0;pointer-events:none"><input type="checkbox" switch tabindex="-1" aria-hidden="true"></label>
 
 <script src="vendor/leaflet/leaflet.js"></script>
 <script src="config.js"></script>
@@ -315,7 +323,7 @@
   }
   document.body.classList.toggle("large", large);
 
-  const VERSION = "28"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "29"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -332,10 +340,6 @@
       };
       layersEl.appendChild(b);
     }
-    const fig = document.createElement("button");
-    fig.textContent = `Grid ref: ${digits}-figure (tap for ${digits === 8 ? 6 : 8})`;
-    fig.onclick = () => { setPrec(digits === 8 ? 6 : 8); layersEl.style.display = "none"; };
-    layersEl.appendChild(fig);
     const big = document.createElement("button");
     big.textContent = (large ? "✓ " : "") + "Large text";
     big.onclick = () => { setLarge(!large); layersEl.style.display = "none"; };
@@ -426,8 +430,10 @@
   function setPrec(d) {
     digits = d;
     store.set("digits", d);
+    for (const b of $("prec").children) b.classList.toggle("on", +b.dataset.d === d);
     update();
   }
+  for (const b of $("prec").children) b.onclick = () => setPrec(+b.dataset.d);
 
   function info(latlng) {
     const g = OSGB.wgs84ToGrid(latlng.lat, latlng.lng);
@@ -441,12 +447,11 @@
   }
   function fmtDist(m) { return m < 1000 ? Math.round(m) + " m" : (m / 1000).toFixed(m < 10000 ? 2 : 1) + " km"; }
 
-  // Monospace digits are ~0.6em wide: size the ref to the room left beside its Copy button
+  // Monospace digits are ~0.6em wide: size the ref to the room beside the 6/8 switch
   function fitRef() {
     const ref = $("ref");
     if (ref.classList.contains("off")) { ref.style.fontSize = ""; return; }
-    const box = ref.parentElement, btn = box.querySelector(".c");
-    const room = box.clientWidth - (btn.offsetWidth ? btn.offsetWidth + 12 : 0);
+    const room = ref.parentElement.clientWidth - 4;
     ref.style.fontSize = Math.max(20, Math.min(large ? 54 : 38, room / (ref.textContent.length * 0.62))) + "px";
   }
 
@@ -482,7 +487,6 @@
   // With an API key (config.js) the 3 words show in the row; without one the row
   // opens what3words at this spot, which shows the words there.
   const W3W_KEY = (window.GRIDREF_CONFIG || {}).what3wordsKey || "";
-  const COPY_ICON = document.querySelector(".row .c").innerHTML;
   const OPEN_ICON = $("w3wAct").innerHTML;
   let w3w = { at: "", words: "" }, w3wTimer;
   const spot = (p) => p.lat.toFixed(5) + "," + p.lon.toFixed(5);
@@ -490,7 +494,7 @@
     const v = $("vW3W");
     v.textContent = text;
     v.className = isWords ? "v" : "v dim";
-    if (!$("w3wAct").closest(".copied")) $("w3wAct").innerHTML = isWords ? COPY_ICON : OPEN_ICON;
+    $("w3wAct").style.display = isWords ? "none" : ""; // words showing: tap the row to copy them
     $("w3wAct").classList.toggle("open", !isWords);
   }
   // A real link the user taps (not a scripted click): that is what makes iPhones hand it
@@ -558,6 +562,7 @@
     let first = true;
     watchId = navigator.geolocation.watchPosition((pos) => {
       here = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy };
+      course = pos.coords.speed > 0.6 && pos.coords.heading >= 0 ? pos.coords.heading : null;
       const ll = L.latLng(here.lat, here.lon);
       if (!meDot) {
         meRing = L.circle(ll, { radius: here.acc, color: "#1a73e8", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(map);
@@ -607,13 +612,13 @@
       ta.remove();
     }
     if (!ok) return toast("Couldn't copy on this phone");
-    if (!el || (large && el.classList.contains("big"))) toast("Copied " + text);
+    toast("✓ Copied " + (text.length > 30 ? "" : text));
+    try { $("haptic").click(); } catch {}
+    try { navigator.vibrate && navigator.vibrate(30); } catch {}
     if (!el) return;
-    const b = el.querySelector(".c b"), was = b.dataset.was || (b.dataset.was = b.textContent);
     el.classList.add("copied");
-    b.textContent = "Copied";
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.classList.remove("copied"); b.textContent = was; }, 1300);
+    el._t = setTimeout(() => el.classList.remove("copied"), 1400);
   }
   for (const el of document.querySelectorAll("[data-copy]")) {
     el.onclick = () => {
@@ -953,15 +958,36 @@
 
   // ---------- navigate: map + compass to the crosshair point ----------
   let nav = null, heading = null, wakeLock = null, navLine = null, navFlag = null;
-  const smooth = (prev, next) => (prev == null ? next : (prev + ((((next - prev) % 360) + 540) % 360 - 180) * 0.25 + 360) % 360);
+  // The compass only turns the dial: readings arrive ~60 times a second, so they just
+  // update a number and one animation frame draws it. Distance, grid ref and the map
+  // line are redrawn on GPS fixes only.
+  let compassAcc = null, navBrgDeg = 0, frame = 0, shownRose = 0, shownArrow = 0, course = null;
+  const diff = (a, b) => ((((b - a) % 360) + 540) % 360) - 180; // shortest turn from a to b
   function onOrient(e) {
     let h = null;
-    if (typeof e.webkitCompassHeading === "number") h = e.webkitCompassHeading; // iPhone (magnetic; ~0.5° from true in Cumbria)
-    else if (e.absolute && typeof e.alpha === "number") h = 360 - e.alpha;      // Android
+    if (typeof e.webkitCompassHeading === "number" && e.webkitCompassHeading >= 0) {
+      h = e.webkitCompassHeading; // iPhone: magnetic north, ~0.5° from true in Cumbria
+      compassAcc = e.webkitCompassAccuracy;
+    } else if (e.absolute && typeof e.alpha === "number") h = (360 - e.alpha) % 360; // Android
     if (h == null) return;
-    h = (h + ((screen.orientation && screen.orientation.angle) || window.orientation || 0) + 360) % 360;
-    heading = smooth(heading, h);
-    if (nav) drawNav();
+    heading = heading == null ? h : (heading + diff(heading, h) * 0.35 + 360) % 360;
+    if (nav && !frame) frame = requestAnimationFrame(drawDial);
+  }
+  // Which way the phone (or, walking with no compass, the person) is facing
+  function facing() {
+    if (heading != null) return { deg: heading, src: "compass" };
+    if (course != null) return { deg: course, src: "travel" };
+    return { deg: 0, src: "none" };
+  }
+  function drawDial() {
+    frame = 0;
+    if (!nav) return;
+    const f = facing();
+    // Turn by the shortest way from where the dial is now, so passing north never spins it
+    shownRose += diff(shownRose, -f.deg);
+    shownArrow += diff(shownArrow, navBrgDeg - f.deg);
+    $("rose").style.transform = `rotate(${shownRose}deg)`;
+    $("arrow").style.transform = `rotate(${shownArrow}deg)`;
   }
   async function compassOn() {
     // iPhone asks permission, and only from a tap
@@ -991,10 +1017,16 @@
     $("navDist").textContent = arrived ? "Here" : fmtDist(d);
     $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Bearing ${String(Math.round(brg)).padStart(3, "0")}°`;
     $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
-    $("rose").style.transform = `rotate(${-(heading || 0)}deg)`;
-    $("arrow").style.transform = `rotate(${brg - (heading || 0)}deg)`;
+    navBrgDeg = brg;
+    drawDial();
     document.querySelector(".dial").classList.toggle("here", arrived);
-    $("navHint").textContent = heading == null ? "No compass reading: the arrow assumes the top of the phone points north." : arrived ? "" : "Hold the phone flat. The arrow points the way to go.";
+    const f = facing();
+    $("navHint").textContent = arrived ? ""
+      : f.src === "compass" ? (compassAcc != null && (compassAcc < 0 || compassAcc > 25)
+        ? "Compass unsure: wave the phone in a figure-of-8, away from the car or a magnetic case."
+        : "Hold the phone flat in front of you. The arrow points the way to go.")
+      : f.src === "travel" ? "No compass: the arrow follows your direction of walking. Keep moving."
+      : "No compass on this phone: the arrow is drawn with north at the top. Use the map and bearing.";
     const line = [me, to];
     if (navLine) navLine.setLatLngs(line);
     else navLine = L.polyline(line, { color: "#c0392b", weight: 3, dashArray: "6 8", interactive: false }).addTo(map);
