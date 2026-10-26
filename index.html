@@ -128,6 +128,17 @@
   .drawer h2 { margin: 0; font-size: 19px; }
   .drawer header button, .link { border: 0; background: none; color: var(--green); font: 600 16px var(--sans); padding: 6px 0; }
   .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; border-radius: 10px; padding: 9px 4px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--muted); }
+  .tabs button.on { background: var(--green); color: var(--panel); }
+  .modal.sheetmenu { align-items: flex-end; padding-bottom: calc(var(--safe-b) + 10px); }
+  .sheetmenu .card { gap: 6px; }
+  .im-title { display: flex; flex-direction: column; padding: 2px 4px 6px; }
+  .im-title b { font-size: 17px; }
+  .im-title span { font: 14px var(--mono); color: var(--muted); }
+  .sheetmenu button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
+  .sheetmenu .danger { color: var(--danger); }
+  .sheetmenu .cancel { background: none; color: var(--muted); }
   .group { padding: 10px 14px 4px; font: 700 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; background: var(--panel); position: sticky; top: 0; }
   .item { padding: 7px 8px 7px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
   .item .main { flex: 1; min-width: 0; }
@@ -139,7 +150,7 @@
   .item .ic { border: 0; background: none; padding: 8px; flex: none; display: grid; place-items: center; }
   .item .ic svg { width: 21px; height: 21px; }
   .item .go { color: var(--green); }
-  .item .del { color: var(--danger); }
+
   .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
   .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
   .credit { margin: 0; padding: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
@@ -147,12 +158,22 @@
   .backup:empty { display: none; }
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 
+  /* Aa: a big, simple readout. Just the location, centred; everything else hidden. */
+  body.large .actions { display: none; }
+  #textBtnBig { display: none; }
+  body.large #textBtnBig { display: flex; border: 0; background: none; position: absolute; top: 6px; left: 10px; width: 40px; height: 36px; color: var(--green) !important; z-index: 2; }
+  body.large #w3wRow, body.large .meta { display: none !important; }
+  body.large .refline { flex-direction: column; gap: 8px; margin-top: 6px; }
+  body.large .refline .big { justify-content: center; width: 100%; }
+  body.large .ref { text-align: center; flex: none; }
+  body.large .refline .prec { flex-direction: row; }
+  body.large .rows { border-top: 0; }
+  body.large .row { flex-direction: column; align-items: center; gap: 0; padding: 6px 8px; border-bottom: 0; }
+  body.large .row .k { width: auto; text-align: center; font-size: 13px; }
+  body.large .row .v { flex: none; text-align: center; font-size: clamp(22px, 7vw, 30px) !important; }
   /* Large text: for small phones and tired eyes in the field */
   /* the grid ref itself is the copy button here, so the digits get the full width */
   body.large .c svg { width: 22px; height: 22px; }
-  body.large .row { flex-wrap: wrap; row-gap: 2px; padding: 8px 0; }
-  body.large .row .k { width: 100%; font-size: 13px; }
-  body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
   body.large .row .v.dim { font-size: 18px; }
   body.large .prec button { font-size: 16px; padding: 8px 11px; }
   body.large .tool svg { width: 28px; height: 28px; }
@@ -176,7 +197,9 @@
   .m-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .m-nums small { display: block; font: 600 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .m-nums b { font: 700 clamp(24px, 8vw, 32px)/1.15 var(--mono); }
-  .m-hint { color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
+  .m-nums { margin-bottom: 8px; }
+  body.measuring:not(.area-mode) .m-area { display: none; }
+  body.measuring:not(.area-mode) .m-nums { grid-template-columns: 1fr; }
   .m-btns { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 6px; }
   .m-btns button { border: 0; border-radius: 12px; padding: 10px 4px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .m-btns button svg { width: 22px; height: 22px; }
@@ -236,6 +259,9 @@
   .card .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .card .btns button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
   .card .btns .primary { background: var(--green); color: var(--panel); }
+  .w3wcard { height: calc(100% - 10px); padding: 8px; }
+  .w3wcard iframe { flex: 1; width: 100%; border: 0; border-radius: 10px; background: #fff; }
+  .btnlink { display: grid; place-items: center; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); text-decoration: none; background: var(--green); color: var(--panel); }
   .pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
@@ -244,8 +270,10 @@
   .leaflet-control-attribution { font-size: 9px; }
   .leaflet-bottom { bottom: var(--sheet-h, 230px); }
   .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
-  .layers { position: fixed; z-index: 1001; right: 76px; top: calc(var(--safe-t) + 64px); max-height: calc(100% - var(--sheet-h, 230px) - var(--safe-t) - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
+  .layers { position: fixed; z-index: 1001; right: 76px; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
   .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
+  .lhead { padding: 8px 14px 2px; font: 700 11px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .lidar { mix-blend-mode: multiply; }
   .layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; }
   .layers button.on { color: var(--green); font-weight: 700; }
 </style>
@@ -271,6 +299,7 @@
   </button>
 </div>
 <div class="fabs left">
+  <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg></button>
   <button class="fab" id="measureBtn" aria-label="Measure distance and area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
   <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
   <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
@@ -279,6 +308,7 @@
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
+  <button class="tool small" id="textBtnBig" aria-label="Normal text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
   <div class="refline">
     <label class="big" for="hapticSw" data-copy="ref" aria-label="Copy grid reference"><span class="ref" id="ref">—</span></label>
     <span class="prec" id="prec" role="group" aria-label="Grid ref figures"><button data-d="6">6 fig</button><button data-d="8">8 fig</button></span>
@@ -302,10 +332,9 @@
   </div>
   <div class="measure" id="measure">
     <div class="m-nums">
-      <div><small>Distance</small><b id="mDist">0 m</b></div>
-      <div><small>Area</small><b id="mArea">—</b></div>
+      <div><small id="mDistK">Length</small><b id="mDist">0 m</b></div>
+      <div class="m-area"><small>Area</small><b id="mArea">—</b></div>
     </div>
-    <div class="m-hint" id="mHint">Line the crosshair up on the first corner or end, then tap Add point.</div>
     <div class="m-btns">
       <button class="primary" id="mAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add point</button>
       <button id="mUndo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
@@ -340,9 +369,10 @@
 
 <div class="drawer" id="drawer">
   <header>
-    <h2>Saved points</h2>
+    <h2>Saved</h2>
     <button id="closeDrawer">Done</button>
   </header>
+  <div class="tabs" id="tabs"><button data-k="point">Points</button><button data-k="line">Lines</button><button data-k="area">Areas</button></div>
   <div class="list" id="list"></div>
   <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
@@ -369,6 +399,22 @@
     <div class="btns"><button type="button" id="photoClose">Close</button><button type="button" class="primary" id="photoShare">Save / share</button></div>
   </div>
 </div>
+<div class="modal" id="w3wModal" hidden>
+  <div class="card w3wcard">
+    <iframe id="w3wFrame" title="what3words" referrerpolicy="no-referrer"></iframe>
+    <div class="btns"><button type="button" id="w3wClose">Close</button><a class="primary btnlink" id="w3wPaste" href="https://what3words.com/" target="_blank" rel="noopener">Open &amp; paste</a></div>
+  </div>
+</div>
+<div class="modal sheetmenu" id="itemMenu" hidden>
+  <div class="card">
+    <div class="im-title"><b id="imName"></b><span id="imRef"></span></div>
+    <button type="button" id="imShow">Show on map</button>
+    <button type="button" id="imNav">Navigate here</button>
+    <button type="button" id="imCopy">Copy grid ref</button>
+    <button type="button" id="imDel" class="danger">Delete</button>
+    <button type="button" id="imCancel" class="cancel">Cancel</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
@@ -391,6 +437,7 @@
   const LAYERS = {
     topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
+    lidar: { name: "LiDAR (ground shape)", layer: L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", { layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", maxZoom: 19, attribution: "LiDAR © Environment Agency" }) },
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -424,21 +471,58 @@
   }
   document.body.classList.toggle("large", large);
   $("textBtn").classList.toggle("on", large);
-  $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
+  $("textBtn").onclick = $("textBtnBig").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "35"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "36"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
+  // Overlays: switch on over any map. NE data comes live for what's on screen (zoom 12+).
+  const NE = "https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/";
+  const OVERLAYS = {
+    lidar: { name: "LiDAR shading", layer: L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", { layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxZoom: 19, attribution: "LiDAR © Environment Agency", className: "lidar" }) },
+    sssi: { name: "SSSI units", url: NE + "SSSI_Units_England/FeatureServer/0", style: { color: "#7b3fa0", weight: 2, fillColor: "#7b3fa0", fillOpacity: 0.06 } },
+    aw: { name: "Ancient woodland", url: NE + "Ancient_Woodland_England/FeatureServer/0", style: { color: "#8a5a1f", weight: 1.5, fillColor: "#a0702a", fillOpacity: 0.22 } },
+    crow: { name: "Open access land", url: NE + "CRoW_Act_2000_Access_Layer/FeatureServer/0", style: { color: "#c98a00", weight: 1.5, fillColor: "#f1c40f", fillOpacity: 0.18 } },
+  };
+  for (const o of Object.values(OVERLAYS)) if (o.url) o.layer = L.geoJSON(null, { interactive: false, style: o.style });
+  let overlaysOn = store.get("overlays", []);
+  async function loadOverlay(k) {
+    const o = OVERLAYS[k];
+    if (!o.url || !map.hasLayer(o.layer)) return;
+    if (map.getZoom() < 12) { o.layer.clearLayers(); return; }
+    const b = map.getBounds();
+    const tol = (b.getEast() - b.getWest()) / 1500; // simplify to about a pixel
+    const q = `${o.url}/query?where=1%3D1&geometry=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=&outSR=4326&maxAllowableOffset=${tol.toFixed(6)}&geometryPrecision=6&f=geojson`;
+    try { const gj = await (await fetch(q)).json(); o.layer.clearLayers().addData(gj); } catch {}
+  }
+  function setOverlay(k, on) {
+    const o = OVERLAYS[k];
+    if (on) { o.layer.addTo(map); loadOverlay(k); } else map.removeLayer(o.layer);
+    overlaysOn = Object.keys(OVERLAYS).filter((x) => map.hasLayer(OVERLAYS[x].layer));
+    store.set("overlays", overlaysOn);
+  }
+  map.on("moveend", () => { for (const k of overlaysOn) loadOverlay(k); });
   function drawLayerMenu() {
     layersEl.innerHTML = "";
+    const head = (t) => { const h = document.createElement("div"); h.className = "lhead"; h.textContent = t; layersEl.appendChild(h); };
+    head("Map");
     for (const [k, v] of Object.entries(LAYERS)) {
       const b = document.createElement("button");
-      b.textContent = v.name;
+      b.textContent = (k === current ? "● " : "○ ") + v.name;
       b.className = k === current ? "on" : "";
       b.onclick = () => {
         setBase(k);
         store.set("layer", k);
         layersEl.style.display = "none";
       };
+      layersEl.appendChild(b);
+    }
+    head("On top");
+    for (const [k, v] of Object.entries(OVERLAYS)) {
+      const on = map.hasLayer(v.layer);
+      const b = document.createElement("button");
+      b.textContent = (on ? "☑ " : "☐ ") + v.name;
+      b.className = on ? "on" : "";
+      b.onclick = () => { setOverlay(k, !on); drawLayerMenu(); placeLayerMenu(); };
       layersEl.appendChild(b);
     }
     if (pack.state === "failed") {
@@ -453,11 +537,22 @@
     ver.className = "ver";
     layersEl.appendChild(ver);
   }
+  // Open beside the layers button, bottom edges lined up, never off the top of the screen
+  function placeLayerMenu() {
+    const r = $("layersBtn").getBoundingClientRect();
+    layersEl.style.right = window.innerWidth - r.left + 8 + "px";
+    layersEl.style.top = "auto";
+    layersEl.style.bottom = Math.max(8, window.innerHeight - r.bottom) + "px";
+    const top = layersEl.getBoundingClientRect().top, minTop = 64;
+    if (top < minTop) { layersEl.style.bottom = "auto"; layersEl.style.top = minTop + "px"; }
+  }
   $("layersBtn").onclick = () => {
     const open = layersEl.style.display === "block";
     if (!open) drawLayerMenu();
     layersEl.style.display = open ? "none" : "block";
+    if (!open) placeLayerMenu();
   };
+  setTimeout(() => { for (const k of overlaysOn) if (OVERLAYS[k]) setOverlay(k, true); }, 0);
 
   // Keep the crosshair in the middle of the visible map (above the sheet)
   const sheet = $("sheet");
@@ -554,7 +649,7 @@
     const ref = $("ref");
     if (ref.classList.contains("off")) { ref.style.fontSize = ""; return; }
     const room = ref.parentElement.clientWidth - 20; // less the 8 px padding each side
-    ref.style.fontSize = Math.max(20, Math.min(large ? 54 : 38, room / (ref.textContent.length * 0.62))) + "px";
+    ref.style.fontSize = Math.max(20, Math.min(large ? 72 : 38, room / (ref.textContent.length * 0.62))) + "px";
   }
 
   let last = null;
@@ -607,7 +702,7 @@
   }
   function w3wUpdate(p) {
 
-    if (!W3W_KEY) return w3wShow("Copy & open", false);
+    if (!W3W_KEY) return w3wShow("Show the 3 words", false);
     const at = spot(p);
     if (w3w.at === at && w3w.words) return w3wShow("///" + w3w.words, true);
     w3wShow("…", false);
@@ -636,11 +731,23 @@
   // With words showing (API key), tapping the row copies them instead of opening
   // The what3words app won't take a location from a link (it shows your own), so: copy the
   // lat/long, open what3words, and they paste it into its search to get the 3 words.
+  // Their app grabs every what3words link and opens at your own location. A page shown
+  // inside our app can't be grabbed, so their map opens here, at the crosshair, with the
+  // 3 words. If it won't load, "Open & paste" copies the lat/long and opens their app.
   $("w3wRow").addEventListener("click", (e) => {
     if (!last) return;
-    if (w3w.words && w3w.at === spot(last)) { e.preventDefault(); return copy("///" + w3w.words, $("w3wRow")); }
-    copy(`${last.lat.toFixed(6)}, ${last.lon.toFixed(6)}`, $("w3wRow"));
+    e.preventDefault();
+    if (w3w.words && w3w.at === spot(last)) return copy("///" + w3w.words, $("w3wRow"));
+    w3wAt = `${last.lat.toFixed(6)}, ${last.lon.toFixed(6)}`;
+    $("w3wFrame").src = `https://what3words.com/${last.lat.toFixed(6)},${last.lon.toFixed(6)}`;
+    $("w3wModal").hidden = false;
+  });
+  let w3wAt = "";
+  $("w3wClose").onclick = () => { $("w3wModal").hidden = true; $("w3wFrame").src = "about:blank"; };
+  $("w3wPaste").addEventListener("click", () => {
+    copy(w3wAt);
     setTimeout(() => toast("Lat/long copied: paste it into the what3words search"), 50);
+    $("w3wModal").hidden = true;
   });
 
   let saveView;
@@ -823,7 +930,7 @@
     fresh();
     saving = geom;
     const isShape = geom.kind !== "point";
-    $("ptKind").hidden = !isShape;
+    $("ptKind").hidden = true;
     $("ptShape").hidden = isShape;
     if (isShape) {
       for (const b of $("ptKind").children) {
@@ -872,56 +979,84 @@
     update();
     $("navBtn").click();
   }
+  // Where a saved thing "is": a point, the start of a line, the middle of an area
+  function centreOf(pt) {
+    if (pt.kind !== "area") return { lat: pt.lat, lon: pt.lon, e: pt.e, n: pt.n };
+    const g = pt.pts.map(([a, b]) => OSGB.wgs84ToGrid(a, b));
+    let A = 0, cx = 0, cy = 0;
+    for (let i = 0; i < g.length; i++) {
+      const j = (i + 1) % g.length, f = g[i].e * g[j].n - g[j].e * g[i].n;
+      A += f; cx += (g[i].e + g[j].e) * f; cy += (g[i].n + g[j].n) * f;
+    }
+    const e = cx / (3 * A), n = cy / (3 * A), ll = OSGB.gridToWgs84(e, n);
+    return { lat: ll.lat, lon: ll.lon, e: Math.round(e), n: Math.round(n) };
+  }
+  let tab = store.get("tab", "point"), menuPt = null;
+  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.k; store.set("tab", tab); openDrawer(); } };
+  function showOnMap(pt) {
+    closeDrawer();
+    following = false;
+    $("locBtn").classList.remove("on");
+    if (pt.pts) map.fitBounds(L.latLngBounds(pt.pts), { paddingTopLeft: [30, 80], paddingBottomRight: [80, sheet.offsetHeight + 20], maxZoom: 17 });
+    else panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15));
+  }
   function openDrawer() {
     fresh();
+    const counts = { point: 0, line: 0, area: 0 };
+    for (const p of points) counts[p.kind || "point"]++;
+    for (const b of $("tabs").children) {
+      b.classList.toggle("on", b.dataset.k === tab);
+      b.textContent = { point: "Points", line: "Lines", area: "Areas" }[b.dataset.k] + (counts[b.dataset.k] ? ` (${counts[b.dataset.k]})` : "");
+    }
     const list = $("list");
     list.innerHTML = "";
-    if (!points.length) list.innerHTML = '<div class="empty">Nothing saved yet.<br>Line up the crosshair and tap <b>Save</b>, or save a line or area from <b>Measure</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>';
-    const groups = [["point", "Points"], ["line", "Lines"], ["area", "Areas"]];
-    for (const [kind, title] of groups) {
-      const items = points.filter((p) => (p.kind || "point") === kind);
-      if (!items.length) continue;
-      const h = document.createElement("div");
-      h.className = "group";
-      h.textContent = `${title} (${items.length})`;
-      list.appendChild(h);
-      for (const pt of items) {
-        const row = document.createElement("div");
-        row.className = "item";
-        const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-        const isShape = kind !== "point";
-        const st = isShape ? shapeStats(pt) : null;
-        const col = COLOURS[pt.colour] || COLOURS.orange;
-        const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
-          : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
-        const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : kind === "area" ? fmtArea(st.area) : fmtDist(st.length);
-        row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button><button class="ic del" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>`;
-        row.querySelector(".name").textContent = pt.name;
-        row.querySelector(".gr").textContent = what;
-        row.querySelector(".meta").textContent = [pt.notes, when + (pt.acc ? ` · ±${pt.acc} m` : "")].filter(Boolean).join(" · ");
-        // Navigate: points to the point, lines to their start, areas to their middle
-        const goTo = kind === "area" ? L.latLngBounds(pt.pts).getCenter() : L.latLng(pt.lat, pt.lon);
-        row.querySelector(".go").onclick = () => navigateTo(goTo.lat, goTo.lng);
-        row.querySelector(".main").onclick = () => {
-          closeDrawer();
-          following = false;
-          $("locBtn").classList.remove("on");
-          if (isShape) map.fitBounds(L.latLngBounds(pt.pts), { paddingTopLeft: [30, 80], paddingBottomRight: [80, sheet.offsetHeight + 20], maxZoom: 17 });
-          else panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15));
-        };
-        row.querySelector(".del").onclick = () => {
-          if (!confirm(`Delete “${pt.name}”?`)) return;
-          fresh();
-          points = points.filter((p) => !(p.at === pt.at && p.name === pt.name));
-          savePoints();
-          openDrawer();
-        };
-        list.appendChild(row);
-      }
+    const items = points.filter((p) => (p.kind || "point") === tab);
+    if (!items.length) list.innerHTML = {
+      point: '<div class="empty">No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>',
+      line: '<div class="empty">No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</div>',
+      area: '<div class="empty">No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</div>',
+    }[tab];
+    for (const pt of items) {
+      const row = document.createElement("div");
+      row.className = "item";
+      const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      const isShape = tab !== "point";
+      const st = isShape ? shapeStats(pt) : null;
+      const col = COLOURS[pt.colour] || COLOURS.orange;
+      const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
+        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${tab === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${tab === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
+      const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : tab === "area" ? fmtArea(st.area) : fmtDist(st.length);
+      row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
+      row.querySelector(".name").textContent = pt.name;
+      row.querySelector(".gr").textContent = what;
+      row.querySelector(".meta").textContent = [pt.notes, when + (pt.acc ? ` · ±${pt.acc} m` : "")].filter(Boolean).join(" · ");
+      const c = centreOf(pt);
+      row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
+      row.querySelector(".main").onclick = () => {
+        menuPt = pt;
+        $("imName").textContent = pt.name;
+        $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
+        $("itemMenu").hidden = false;
+      };
+      list.appendChild(row);
     }
     $("backup").textContent = `Last export: ${ago(store.get("exported", ""))}`;
     $("drawer").classList.add("open");
   }
+  const closeMenu = () => { $("itemMenu").hidden = true; };
+  $("imCancel").onclick = closeMenu;
+  $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
+  $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
+  $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
+  $("imCopy").onclick = () => { const c = centreOf(menuPt); copy(OSGB.gridRef(c.e, c.n, digits)); closeMenu(); };
+  $("imDel").onclick = () => {
+    if (!confirm(`Delete “${menuPt.name}”?`)) return;
+    fresh();
+    points = points.filter((p) => !(p.at === menuPt.at && p.name === menuPt.name));
+    savePoints();
+    closeMenu();
+    openDrawer();
+  };
   function closeDrawer() { $("drawer").classList.remove("open"); }
   $("closeDrawer").onclick = closeDrawer;
   $("exportBtn").onclick = async () => {
@@ -1282,7 +1417,7 @@
     document.querySelector(".dial").classList.toggle("here", arrived);
     const f = facing();
     $("navHint").textContent = arrived ? ""
-      : f.src === "compass" ? (compassTrusted() ? "Hold the phone flat in front of you. The arrow points the way to go."
+      : f.src === "compass" ? (compassTrusted() ? "Hold flat. Keep away from magnets: phone case, car, gates."
         : Math.abs(tilt) > 60 ? "Hold the phone flatter: the compass only works lying roughly flat."
         : disagree >= 3 ? "Compass disagrees with your walking direction: wave the phone in a figure-of-8, away from metal or a magnetic case."
         : "Compass settling (grey arrow). Hold flat; if it stays grey, wave the phone in a figure-of-8.")
@@ -1484,48 +1619,49 @@
     return { d, area };
   }
   const fmtArea = (m2) => (m2 < 10000 ? `${Math.round(m2)} m²` : `${(m2 / 10000).toFixed(m2 < 100000 ? 2 : 1)} ha`);
+  // Two tools: the ruler measures a line (walls, fences, hedges), the area tool measures an
+  // area (bracken, scrub). Numbers are for the points added; the dotted line is the next one.
   function drawMeasure() {
     if (!measure) return;
-    const pts = measure.pts, t = target();
-    mLine.setLatLngs(pts.length >= 3 ? pts.concat([pts[0]]) : pts);
+    const pts = measure.pts, t = target(), isArea = measure.kind === "area";
+    mLine.setLatLngs(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     mLive.setLatLngs(pts.length ? [pts[pts.length - 1], t] : []);
     mDots.clearLayers();
     pts.forEach((p) => L.circleMarker(p, { radius: 5, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
-    // Numbers are for the points you've added (the solid line); the dotted line just shows
-    // where the next point would go
-    const done = mStats(pts);
-    $("mDist").textContent = fmtDist(done.d);
-    $("mArea").textContent = done.area != null ? fmtArea(done.area) : "—";
-    $("mHint").textContent = !pts.length ? "Line the crosshair up on the first corner or end, then tap Add point."
-      : pts.length < 3 ? `${pts.length} point${pts.length > 1 ? "s" : ""}. Add 3 or more for an area.`
-      : `${pts.length} points · perimeter ${fmtDist(mStats(pts.concat([pts[0]])).d)}. Tap a number to copy it.`;
+    const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
+    $("mDistK").textContent = isArea ? "Edge" : "Length";
+    $("mDist").textContent = fmtDist(st.d);
+    $("mArea").textContent = isArea && pts.length >= 3 ? fmtArea(mStats(pts).area) : "—";
   }
-  $("measureBtn").onclick = () => {
-    measure = { pts: [] };
+  function startMeasure(kind) {
+    measure = { kind, pts: [] };
     mLine = L.polyline([], { color: "#c0392b", weight: 3, interactive: false }).addTo(map);
     mLive = L.polyline([], { color: "#c0392b", weight: 2, dashArray: "4 6", interactive: false }).addTo(map);
     mDots = L.layerGroup().addTo(map);
+    document.body.classList.toggle("area-mode", kind === "area");
     document.body.classList.add("measuring");
     keepTarget(() => {});
     drawMeasure();
-  };
+  }
+  $("measureBtn").onclick = () => startMeasure("line");
+  $("areaBtn").onclick = () => startMeasure("area");
   $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); };
   $("mUndo").onclick = () => { measure.pts.pop(); drawMeasure(); };
   $("mSave").onclick = () => {
-    const pts = measure.pts;
-    if (pts.length < 2) return toast("Add at least 2 points to save a line");
+    const pts = measure.pts, isArea = measure.kind === "area";
+    if (pts.length < (isArea ? 3 : 2)) return toast(isArea ? "Add at least 3 corners" : "Add at least 2 points");
     const st = mStats(pts), first = OSGB.wgs84ToGrid(pts[0].lat, pts[0].lng);
     openSave({
-      kind: pts.length >= 3 ? "area" : "line",
+      kind: measure.kind,
       pts: pts.map((q) => [+q.lat.toFixed(6), +q.lng.toFixed(6)]),
       lat: pts[0].lat, lon: pts[0].lng, e: Math.round(first.e), n: Math.round(first.n),
-      length: Math.round(st.d), area: st.area != null ? Math.round(st.area) : null, acc: null,
+      length: Math.round(st.d), area: isArea ? Math.round(st.area) : null, acc: null,
     });
   };
   $("mDone").onclick = () => {
     measure = null;
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
-    keepTarget(() => document.body.classList.remove("measuring"));
+    keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
   };
   for (const id of ["mDist", "mArea"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v); };
   map.on("move", () => { if (measure) drawMeasure(); });
@@ -1576,14 +1712,15 @@
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
     // On iPhone the share sheet has "Save Image" for the Photos library.
     photoFile = out;
+    photoText = `${ref} · ${when.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${reserve ? " · " + reserve : ""}`;
     $("photoOut").src = URL.createObjectURL(out);
     $("photoModal").hidden = false;
   };
-  let photoFile = null;
+  let photoFile = null, photoText = "";
   $("photoShare").onclick = async () => {
     if (!photoFile) return;
     if (navigator.canShare && navigator.canShare({ files: [photoFile] })) {
-      try { await navigator.share({ files: [photoFile] }); } catch {}
+      try { await navigator.share({ files: [photoFile], text: photoText }); } catch {}
     } else {
       const a = document.createElement("a");
       a.href = $("photoOut").src;
