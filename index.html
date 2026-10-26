@@ -67,7 +67,11 @@
   .fab.on { background: var(--green); color: var(--panel); }
 
   /* bottom sheet */
-  .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); }
+  .sheet { position: fixed; z-index: 1000; left: 0; right: 0; bottom: 0; background: var(--panel); border-radius: 18px 18px 0 0; box-shadow: 0 -2px 16px rgba(0,0,0,.18); padding: 14px 16px calc(var(--safe-b) + 14px); display: flex; flex-direction: column; max-height: 60vh; }
+  .what { white-space: nowrap; border: 0; background: none; color: inherit; font: inherit; letter-spacing: inherit; text-transform: inherit; padding: 6px 0; display: inline-flex; align-items: center; gap: 4px; }
+  .what svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.4; transition: transform .2s; }
+  .sheet.compact .what svg { transform: rotate(-90deg); }
+  .sheet.compact .rows { display: none; }
   .label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
   .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 0 2px; text-align: left; }
   .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
@@ -78,7 +82,7 @@
   .row .c { padding: 4px 8px; margin: -4px -8px -4px 0; }
   .row .c b { display: none; }
   .row.copied .c b, .row .c.open b { display: inline; }
-  .rows { margin-top: 6px; border-top: 1px solid var(--line); }
+  .rows { margin-top: 6px; border-top: 1px solid var(--line); flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .row { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); padding: 9px 0; text-align: left; }
   .row .k { width: 80px; flex: none; font: 600 12px var(--sans); color: var(--muted); }
   .row .v { flex: 1; min-width: 0; font: 14.5px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -112,6 +116,28 @@
   .backup { margin: 0; padding: 10px 16px 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
   .backup:empty { display: none; }
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
+
+  /* Large text: for small phones and tired eyes in the field */
+  body.large .label { font-size: 14px; }
+  /* the grid ref itself is the copy button here, so the digits get the full width */
+  body.large .big .c { display: none; }
+  body.large .big.copied .ref { color: var(--green); }
+  body.large .c svg { width: 22px; height: 22px; }
+  body.large .row { flex-wrap: wrap; row-gap: 2px; padding: 8px 0; }
+  body.large .row .k { width: 100%; font-size: 13px; }
+  body.large .row .v { font-size: clamp(16px, 5.4vw, 20px); font-weight: 600; }
+  body.large .row .v.dim { font-size: 18px; }
+  body.large .prec button { font-size: 16px; padding: 7px 13px; }
+  body.large .actions button { font-size: 18px; padding: 16px 6px; }
+  body.large .from-me { font-size: 17px; }
+  body.large .search input { font-size: 18px; }
+  body.large .results button { font-size: 18px; padding: 15px 14px; }
+  body.large .results button small { font-size: 14px; }
+  body.large .fab { width: 56px; height: 56px; }
+  body.large .fab svg { width: 28px; height: 28px; }
+  body.large .item .name { font-size: 19px; }
+  body.large .item .gr { font-size: 18px; }
+  body.large .layers button { font-size: 18px; padding: 15px 20px; }
 
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 20px; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; white-space: nowrap; }
   .toast.show { opacity: 1; }
@@ -151,7 +177,7 @@
 
 <section class="sheet" id="sheet">
   <div class="label">
-    <span id="what">Under the crosshair</span>
+    <button class="what" id="whatBtn" aria-label="Show or hide other formats"><span id="what">Under the crosshair</span><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
     <span class="prec" id="prec">
       <button data-d="6">6</button><button data-d="8">8</button><button data-d="10">10</button>
     </span>
@@ -193,6 +219,7 @@
 <script src="config.js"></script>
 <script src="osgb.js"></script>
 <script src="parse.js"></script>
+<script src="local.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -203,14 +230,32 @@
 
   // ---------- map ----------
   const LAYERS = {
-    topo: { name: "Topo (contours)", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
-    street: { name: "Street map", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap contributors" }) },
+    topo: { name: "Topo (contours)", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
+    street: { name: "Street map", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }) },
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
   let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
   LAYERS[current].layer.addTo(map);
+
+  let large = store.get("large", false);
+  function keepTarget(change) {
+    const t = target();
+    change();
+    layout();
+    panTo(t, map.getZoom(), false);
+    fitRef();
+    update();
+  }
+  function setLarge(on) {
+    keepTarget(() => {
+      large = on;
+      store.set("large", on);
+      document.body.classList.toggle("large", on);
+    });
+  }
+  document.body.classList.toggle("large", large);
 
   const layersEl = $("layers");
   function drawLayerMenu() {
@@ -232,6 +277,14 @@
     g.textContent = (showGrid ? "✓ " : "") + "Grid lines";
     g.onclick = () => { showGrid = !showGrid; store.set("grid", showGrid); drawGrid(); layersEl.style.display = "none"; };
     layersEl.appendChild(g);
+    const big = document.createElement("button");
+    big.textContent = (large ? "✓ " : "") + "Large text";
+    big.onclick = () => { setLarge(!large); layersEl.style.display = "none"; };
+    layersEl.appendChild(big);
+    const off = document.createElement("button");
+    off.textContent = "Save this area for offline";
+    off.onclick = () => { layersEl.style.display = "none"; saveArea(); };
+    layersEl.appendChild(off);
   }
   $("layersBtn").onclick = () => {
     const open = layersEl.style.display === "block";
@@ -251,11 +304,11 @@
     const size = map.getSize();
     return map.containerPointToLatLng([size.x / 2, (window.innerHeight - sheet.offsetHeight) / 2]);
   }
-  function panTo(latlng, zoom) {
+  function panTo(latlng, zoom, animate = true) {
     const z = Math.min(zoom || map.getZoom(), map.getMaxZoom());
     const offsetY = (window.innerHeight - (window.innerHeight - sheet.offsetHeight) / 2) - window.innerHeight / 2;
     const p = map.project(latlng, z).add([0, offsetY]);
-    map.setView(map.unproject(p, z), z, { animate: true });
+    map.setView(map.unproject(p, z), z, { animate });
   }
 
   // ---------- OS grid overlay ----------
@@ -334,6 +387,15 @@
     return `${d}°${String(m).padStart(2, "0")}′${sec.padStart(4, "0")}″${v < 0 ? neg : pos}`;
   }
 
+  // Monospace digits are ~0.6em wide: size the ref to the room left beside its Copy button
+  function fitRef() {
+    const ref = $("ref");
+    if (ref.classList.contains("off")) { ref.style.fontSize = ""; return; }
+    const box = ref.parentElement, btn = box.querySelector(".c");
+    const room = box.clientWidth - (btn.offsetWidth ? btn.offsetWidth + 12 : 0);
+    ref.style.fontSize = Math.max(20, Math.min(large ? 54 : 38, room / (ref.textContent.length * 0.62))) + "px";
+  }
+
   let last = null;
   function update() {
     const t = following && here ? L.latLng(here.lat, here.lon) : target();
@@ -343,13 +405,16 @@
     p.dms = `${dms(p.lat, "N", "S")} ${dms(p.lon, "E", "W")}`;
     last = p;
     const ref = $("ref");
-    ref.textContent = p.ref || "Outside the GB grid";
-    ref.classList.toggle("off", !p.ref);
+    if (ref.textContent !== (p.ref || "Outside the GB grid")) {
+      ref.textContent = p.ref || "Outside the GB grid";
+      ref.classList.toggle("off", !p.ref);
+      fitRef();
+    }
     $("vEN").textContent = p.ref ? p.en : "—";
     $("vLL").textContent = p.ll;
     $("vDMS").textContent = p.dms;
     w3wUpdate(p);
-    $("what").textContent = following && here ? `You are here (±${Math.round(here.acc)} m)` : "Under the crosshair";
+    $("what").textContent = following && here ? `${large ? "You" : "You are here"} (±${Math.round(here.acc)} m)` : large ? "Crosshair" : "Under the crosshair";
     if (here && !following) {
       const me = L.latLng(here.lat, here.lon);
       const d = me.distanceTo(t);
@@ -486,7 +551,8 @@
       ta.remove();
     }
     if (!ok) return toast("Couldn't copy on this phone");
-    if (!el) return toast("Copied");
+    if (!el || (large && el.classList.contains("big"))) toast("Copied " + text);
+    if (!el) return;
     const b = el.querySelector(".c b"), was = b.dataset.was || (b.dataset.was = b.textContent);
     el.classList.add("copied");
     b.textContent = "Copied";
@@ -709,12 +775,14 @@
       return [{ title: r.title || fmtRef(r.lat, r.lon) || ll, sub: ll, tag: r.label, lat: r.lat, lon: r.lon, zoom: r.zoom }];
     }
     if (r.kind === "postcode") {
+      try { const hit = await LocalSearch.postcode(r.code); if (hit) return [hit]; } catch {}
       const j = await getJSON("https://api.postcodes.io/postcodes/" + r.code);
       if (!j.result) return [];
       const x = j.result;
       return [{ title: x.postcode, sub: [x.admin_ward, x.admin_district].filter(Boolean).join(", "), tag: "Postcode", lat: x.latitude, lon: x.longitude, zoom: 16 }];
     }
     if (r.kind === "outcode") {
+      try { const hit = await LocalSearch.outcode(r.code); if (hit) return [hit]; } catch {}
       const j = await getJSON("https://api.postcodes.io/outcodes/" + r.code);
       if (!j.result) return [];
       const x = j.result;
@@ -761,13 +829,26 @@
     // Grid refs, E/N, lat/long and map links work offline and show at once
     for (const r of readings) if (r.lat != null) items.push(...(await resolve(r)));
     if (items.length && !submit) showResults(items);
+    const exact = readings.some((r) => r.lat != null || r.kind === "postcode" || r.kind === "w3w");
+    // Places from the offline OS data (Cumbria and north Lancashire) show at once
+    if (!exact && text.length >= 2) {
+      try { items.push(...(await LocalSearch.searchPlaces(text, map.getCenter(), 6))); } catch {}
+      if (my !== seq) return;
+      if (items.length && !submit) showResults(items);
+    }
+    let offline = false;
     try {
       for (const r of readings) if (r.lat == null) items.push(...(await resolve(r)));
-      const exact = readings.some((r) => r.lat != null || r.kind === "postcode" || r.kind === "w3w");
-      if (!exact && text.length >= 3) items.push(...(await places(text)));
-    } catch {
-      if (my === seq && !items.length) return showResults([], "No signal. Grid refs, E/N and lat/long still work offline.");
+    } catch { offline = true; }
+    // Then everywhere else, online. Skip anything the offline data already found.
+    if (!exact && text.length >= 3 && !(submit && items.length)) {
+      try {
+        const near = (it) => items.some((x) => LocalSearch.norm(x.title) === LocalSearch.norm(it.title) && L.latLng(x.lat, x.lon).distanceTo([it.lat, it.lon]) < 800);
+        items.push(...(await places(text)).filter((it) => !near(it)));
+      } catch { offline = true; }
     }
+    if (my !== seq) return;
+    if (offline && !items.length) return showResults([], "No signal, and not in the offline place list. Grid refs, E/N and lat/long always work.");
     if (my !== seq) return;
     if (submit && items.length) return go(items[0]);
     showResults(items, items.length ? "" : text.length >= 3 ? "Nothing found. Try a grid ref (SD 339 836), postcode, lat/long or place." : "");
@@ -781,14 +862,49 @@
   });
   $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); });
 
+  // ---------- sheet: hide the extra formats to give the map more room ----------
+  $("sheet").classList.toggle("compact", store.get("compact", false));
+  $("whatBtn").onclick = () => keepTarget(() => store.set("compact", $("sheet").classList.toggle("compact")));
+
+  // ---------- save an area for offline ----------
+  // Loads the map tiles for what's on screen, a couple of zoom levels deeper, so the
+  // service worker keeps them. Capped to a personal-use amount, as the free map
+  // servers ask: about one reserve at a time.
+  async function saveArea() {
+    if (current === "aerial") return toast("Aerial photos can't be saved. Switch to Topo or Street first");
+    if (!navigator.onLine) return toast("Needs signal to save an area");
+    const layer = LAYERS[current].layer, b = map.getBounds(), z0 = map.getZoom(), zMax = Math.min(z0 + 2, layer.options.maxZoom);
+    const urls = [];
+    for (let z = z0; z <= zMax; z++) {
+      const nw = map.project(b.getNorthWest(), z).divideBy(256).floor(), se = map.project(b.getSouthEast(), z).divideBy(256).floor();
+      for (let x = nw.x; x <= se.x; x++) for (let y = nw.y; y <= se.y; y++) {
+        urls.push(L.Util.template(layer._url, { s: "abc"[(x + y) % 3], z, x, y, r: "" }));
+      }
+    }
+    if (urls.length > 800) return toast(`That's ${urls.length} tiles. Zoom in to one reserve and try again`);
+    let done = 0, failed = 0;
+    toast(`Saving ${urls.length} map tiles…`);
+    const queue = urls.slice();
+    const worker = async () => {
+      while (queue.length) {
+        const u = queue.shift();
+        try { const r = await fetch(u, { mode: "cors" }); if (!r.ok) failed++; } catch { failed++; }
+        done++;
+        if (done % 40 === 0) toast(`Saving map… ${Math.round((done / urls.length) * 100)}%`);
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
+    toast(failed ? `Saved, but ${failed} tiles failed. Try again on better signal` : `Area saved for offline (zoom ${z0}–${zMax})`);
+  }
+
   // ---------- go ----------
-  window.addEventListener("resize", () => { layout(); update(); });
+  window.addEventListener("resize", () => { layout(); fitRef(); update(); });
   setPrec(digits);
   drawPins();
   drawGrid();
   layout();
   update();
-  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();
 </script>
 </body>

@@ -1,21 +1,57 @@
-// Caches the app shell so it opens with no signal. Map tiles are not cached.
-const CACHE = "gridref-v4";
-const SHELL = ["./", "index.html", "osgb.js", "parse.js", "config.js", "manifest.webmanifest", "icon-180.png",
+// Keeps Grid Ref working with no signal:
+//  - the app itself and the offline place/postcode data (network first, so updates land)
+//  - map tiles you've looked at (cache first, refreshed in the background after a week)
+const CACHE = "gridref-v5";
+const TILES = "gridref-tiles";
+const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
+const SHELL = ["./", "index.html", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png",
+  "data/places.json", "data/postcodes.json",
   "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css", "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"];
+// Aerial imagery isn't cached: Esri's terms don't allow keeping it offline
+const TILE_HOSTS = /(^|\.)tile\.opentopomap\.org$|^tile\.openstreetmap\.org$/;
+const WEEK = 7 * 24 * 3600 * 1000;
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE && k !== TILES).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
-// Network first for the shell (so updates land), cache as the fallback
+
+let puts = 0;
+async function trimTiles(cache) {
+  const keys = await cache.keys();
+  // keys() comes back oldest first, so drop from the front
+  for (const k of keys.slice(0, Math.max(0, keys.length - MAX_TILES))) await cache.delete(k);
+}
+
+async function tile(request) {
+  const cache = await caches.open(TILES);
+  const hit = await cache.match(request);
+  const refresh = () => fetch(request).then(async (r) => {
+    if (r.ok) {
+      await cache.put(request, r.clone());
+      if (++puts % 100 === 0) trimTiles(cache);
+    }
+    return r;
+  });
+  if (hit) {
+    const age = Date.now() - new Date(hit.headers.get("date") || 0).getTime();
+    if (age > WEEK) refresh().catch(() => {});
+    return hit;
+  }
+  return refresh();
+}
+
 self.addEventListener("fetch", (e) => {
-  const url = e.request.url;
-  if (e.request.method !== "GET" || !SHELL.some((s) => url.endsWith(s.replace("./", "/")) || url === s)) return;
+  if (e.request.method !== "GET") return;
+  const url = new URL(e.request.url);
+  if (TILE_HOSTS.test(url.hostname)) return e.respondWith(tile(e.request));
+  const href = e.request.url;
+  if (!SHELL.some((s) => (s.startsWith("http") ? href === s : href.split("?")[0].endsWith(s.replace("./", "/"))))) return;
   e.respondWith(fetch(e.request).then((r) => {
     const copy = r.clone();
     caches.open(CACHE).then((c) => c.put(e.request, copy));
     return r;
-  }).catch(() => caches.match(e.request)));
+  }).catch(() => caches.match(e.request, { ignoreSearch: true })));
 });
