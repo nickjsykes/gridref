@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=46">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=47">
 <style>
   :root {
     --green: #2f5d3a;
@@ -69,7 +69,7 @@
   .fab.on { background: var(--green); color: var(--panel); }
   .fab { position: relative; }
   .fabs.left { right: auto; left: 12px; }
-  body.measuring .fabs.left, body.navigating .fabs.left { display: none; }
+  body.measuring .fabs.left, body.navigating .fabs.left, body.moving .fabs.left { display: none; }
   /* GPS accuracy, always in view once GPS is on: green good, amber so-so, red poor */
   .acc { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); font: 700 11px var(--sans); color: #fff; background: #1f8a4c; padding: 1px 6px; border-radius: 9px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
   .acc.mid { background: #c98a00; }
@@ -219,6 +219,15 @@
   body.navigating .sheet > :not(.nav) { display: none; }
   .measure { display: none; }
   body.measuring .sheet > :not(.measure) { display: none; }
+  .movepanel { display: none; }
+  body.moving .sheet > :not(.movepanel) { display: none; }
+  body.moving .movepanel { display: block; }
+  body.shape-mode .cross { display: none; }
+  .mvhint { margin: 2px 4px 10px; color: var(--muted); font-size: 14px; }
+  .movepanel .btns { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+  .movepanel .btns button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
+  .movepanel .btns .primary { background: var(--green); color: var(--panel); }
+  .handle { width: 34px; height: 34px; border-radius: 50%; background: rgba(192,57,43,.25); border: 3px solid #c0392b; box-shadow: 0 0 0 2px #fff inset; }
   body.measuring .measure { display: block; }
   .m-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .m-nums small { display: block; font: 600 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -378,6 +387,11 @@
       <button id="mDone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>Done</button>
     </div>
   </div>
+  <div class="movepanel" id="movePanel">
+    <div class="im-title"><b id="mvTitle"></b><span id="mvInfo"></span></div>
+    <p class="mvhint" id="mvHint"></p>
+    <div class="btns"><button type="button" id="mvCancel">Cancel</button><button type="button" class="primary" id="mvGo">Place here</button></div>
+  </div>
   <div class="nav" id="nav">
     <div class="nav-head">
       <div><small>Going to</small><b id="navRef"></b></div>
@@ -452,6 +466,8 @@
     <button type="button" id="imNav">Navigate</button>
     <button type="button" id="imShare">Share</button>
     <button type="button" id="imEdit">Edit</button>
+    <button type="button" id="imMove">Move</button>
+    <button type="button" id="imShape">Reshape</button>
     <button type="button" id="imDel" class="danger">Delete</button>
     <button type="button" id="imCancel" class="cancel">Cancel</button>
   </div>
@@ -488,11 +504,11 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=46"></script>
-<script src="config.js?v=46"></script>
-<script src="osgb.js?v=46"></script>
-<script src="parse.js?v=46"></script>
-<script src="local.js?v=46"></script>
+<script src="vendor/leaflet/leaflet.js?v=47"></script>
+<script src="config.js?v=47"></script>
+<script src="osgb.js?v=47"></script>
+<script src="parse.js?v=47"></script>
+<script src="local.js?v=47"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -545,7 +561,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "46"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "47"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1036,7 +1052,7 @@
 
   // ---------- tap something on the map: snap to it, then a small menu ----------
   function openFeature(pt) {
-    if (measure || nav) return;
+    if (measure || nav || moving) return;
     const c = centreOf(pt), to = L.latLng(c.lat, c.lon);
     following = false;
     $("locBtn").classList.remove("on");
@@ -1058,6 +1074,8 @@
     item("Navigate", () => { const cc = centreOf(pt); navigateTo(cc.lat, cc.lon); });
     item("Share", () => shareSaved(pt));
     item("Edit", () => editSaved(pt));
+    item("Move", () => startMove(pt, "move"));
+    if (pt.pts) item("Reshape", () => startMove(pt, "shape"));
     item("Delete", () => deleteSaved(pt));
     m.lastChild.classList.add("danger");
     m.style.right = "auto";
@@ -1226,6 +1244,7 @@
         $("imName").textContent = pt.name;
         $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
         $("imView").hidden = pt.kind !== "photo";
+        $("imShape").hidden = !pt.pts;
         $("imNotes").textContent = pt.notes || "";
         $("itemMenu").hidden = false;
       };
@@ -1247,6 +1266,8 @@
   }
   $("imShare").onclick = () => { closeMenu(); shareSaved(menuPt); };
   $("imEdit").onclick = () => { closeMenu(); editSaved(menuPt); };
+  $("imMove").onclick = () => { closeMenu(); startMove(menuPt, "move"); };
+  $("imShape").onclick = () => { closeMenu(); startMove(menuPt, "shape"); };
   $("imView").onclick = () => { closeMenu(); viewPhoto(menuPt); };
   function deleteSaved(pt) {
     if (!confirm(`Delete “${pt.name}”?`)) return false;
@@ -2049,6 +2070,92 @@
   };
   function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; }
   $("photoClose").onclick = closePhoto;
+
+  // ---------- move and reshape saved things ----------
+  // Move: the thing follows the crosshair (a dashed preview) until "Place here". Using the
+  // crosshair rather than dragging the pin means your finger never hides where it's going.
+  // Reshape (lines and areas): drag the big corner handles; length/area update as you go.
+  let moving = null;
+  const moveLayer = L.layerGroup().addTo(map);
+  const shiftPts = (pts, dLat, dLon) => pts.map(([a, b]) => [+(a + dLat).toFixed(6), +(b + dLon).toFixed(6)]);
+  function moveStats(pts, kind) {
+    const ll = pts.map(([a, b]) => L.latLng(a, b));
+    if (kind === "area") return `${fmtArea(mStats(ll).area)} · edge ${fmtDist(mStats(ll.concat([ll[0]])).d)}`;
+    return fmtDist(mStats(ll).d);
+  }
+  function drawMove() {
+    if (!moving) return;
+    moveLayer.clearLayers();
+    const { pt } = moving;
+    const col = "#c0392b", style = { color: col, weight: 3, dashArray: "7 6", fillColor: col, fillOpacity: 0.12, interactive: false };
+    if (moving.mode === "move") {
+      const t = target(), dLat = t.lat - moving.from.lat, dLon = t.lng - moving.from.lng;
+      if (pt.pts) {
+        const pts = shiftPts(pt.pts, dLat, dLon);
+        (pt.kind === "area" ? L.polygon(pts, style) : L.polyline(pts, style)).addTo(moveLayer);
+      }
+      $("mvInfo").textContent = `${fmtDist(moving.from.distanceTo(t))} from where it was`;
+    } else {
+      (pt.kind === "area" ? L.polygon(moving.pts, style) : L.polyline(moving.pts, style)).addTo(moveLayer);
+      moving.pts.forEach((q, i) => {
+        L.marker(q, { draggable: true, icon: L.divIcon({ className: "", html: '<div class="handle"></div>', iconSize: [34, 34], iconAnchor: [17, 17] }) })
+          .on("drag", (e) => { const ll = e.target.getLatLng(); moving.pts[i] = [+ll.lat.toFixed(6), +ll.lng.toFixed(6)]; redrawShape(); })
+          .addTo(moveLayer);
+      });
+      $("mvInfo").textContent = moveStats(moving.pts, pt.kind);
+    }
+  }
+  // While dragging a handle, only the outline and numbers change (redrawing the handles would drop the drag)
+  function redrawShape() {
+    moveLayer.eachLayer((l) => { if (l.setLatLngs) l.setLatLngs(moving.pts); });
+    $("mvInfo").textContent = moveStats(moving.pts, moving.pt.kind);
+  }
+  function startMove(pt, mode) {
+    closeDrawer();
+    $("featMenu").style.display = "none";
+    following = false;
+    $("locBtn").classList.remove("on");
+    const c = centreOf(pt);
+    moving = { pt, mode, from: L.latLng(c.lat, c.lon), pts: pt.pts ? pt.pts.map((q) => q.slice()) : null };
+    $("mvTitle").textContent = (mode === "move" ? "Moving " : "Reshaping ") + pt.name;
+    $("mvHint").textContent = mode === "move" ? "Drag the map until the crosshair is on the new spot." : "Drag the round handles to move each corner.";
+    $("mvGo").textContent = mode === "move" ? "Place here" : "Save shape";
+    keepTarget(() => document.body.classList.add("moving", mode === "move" ? "move-mode" : "shape-mode"));
+    if (mode === "move") panTo(moving.from, map.getZoom(), false);
+    else map.fitBounds(L.latLngBounds(pt.pts), { paddingTopLeft: [40, 80], paddingBottomRight: [40, sheet.offsetHeight + 30], maxZoom: 18 });
+    drawMove();
+  }
+  function endMove() {
+    moving = null;
+    moveLayer.clearLayers();
+    keepTarget(() => document.body.classList.remove("moving", "move-mode", "shape-mode"));
+  }
+  map.on("move", () => { if (moving && moving.mode === "move") drawMove(); });
+  $("mvCancel").onclick = endMove;
+  $("mvGo").onclick = () => {
+    fresh();
+    const i = points.findIndex((q) => q.at === moving.pt.at && q.name === moving.pt.name);
+    if (i < 0) return endMove();
+    const p = { ...points[i] };
+    if (moving.mode === "move") {
+      const t = target(), dLat = t.lat - moving.from.lat, dLon = t.lng - moving.from.lng;
+      if (p.pts) p.pts = shiftPts(p.pts, dLat, dLon);
+      p.lat = p.pts ? p.pts[0][0] : t.lat;
+      p.lon = p.pts ? p.pts[0][1] : t.lng;
+    } else {
+      p.pts = moving.pts;
+      p.lat = p.pts[0][0];
+      p.lon = p.pts[0][1];
+    }
+    const g = OSGB.wgs84ToGrid(p.lat, p.lon);
+    p.e = Math.round(g.e);
+    p.n = Math.round(g.n);
+    p.acc = null; // no longer where the GPS put it
+    points[i] = p;
+    const name = p.name, mode = moving.mode;
+    endMove();
+    if (savePoints()) toast(mode === "move" ? `✓ Moved ${name}` : `✓ Reshaped ${name}`);
+  };
 
   // ---------- a haptic tick on every tap (field tool: you should feel it worked) ----------
   // iPhone (iOS 18+) ticks when a switch is flipped through its label, and only inside the
