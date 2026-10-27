@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=40">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=42">
 <style>
   :root {
     --green: #2f5d3a;
@@ -139,6 +139,15 @@
   .sheetmenu button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
   .sheetmenu .danger { color: var(--danger); }
   .sheetmenu .cancel { background: none; color: var(--muted); }
+  .card .btns.three { grid-template-columns: 1fr 1fr 1.2fr; }
+  .featmenu { width: min(160px, calc(50vw - 34px)); }
+  .featmenu .fm-title b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .featmenu .fm-title { padding: 10px 14px 6px; border-bottom: 1px solid var(--line); }
+  .featmenu .fm-title b { display: block; font-size: 15px; }
+  .featmenu .fm-title span { font: 13px var(--mono); color: var(--muted); }
+  .item .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; background: var(--green-soft); }
+  .photopin { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #2d3436; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+  .photopin svg { width: 15px; height: 15px; }
   .shopts { display: grid; gap: 4px; }
   .card .shopts label { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px 6px; font: 400 16px var(--sans); color: var(--ink); border-bottom: 1px solid var(--line); }
   .shopts input { width: 22px; height: 22px; accent-color: var(--green); flex: none; }
@@ -150,6 +159,9 @@
   .item .line1 { display: flex; gap: 8px; align-items: baseline; min-width: 0; }
   .item .name { font-weight: 600; font-size: 15px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item .gr { font: 13px var(--mono); flex: none; white-space: nowrap; }
+  .item .note { font-size: 13px; color: var(--ink); margin-top: 2px; white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .im-notes { margin: 0 4px 4px; font-size: 15px; line-height: 1.45; white-space: pre-wrap; max-height: 35vh; overflow-y: auto; }
+  .im-notes:empty { display: none; }
   .item .meta { color: var(--muted); font-size: 12px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .item .ic { border: 0; background: none; padding: 8px; flex: none; display: grid; place-items: center; }
   .item .ic svg { width: 21px; height: 21px; }
@@ -315,6 +327,7 @@
   <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg></button>
 </div>
 <div class="layers" id="layers"></div>
+<div class="layers featmenu" id="featMenu"></div>
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
@@ -383,7 +396,7 @@
     <h2>Saved</h2>
     <button id="closeDrawer">Done</button>
   </header>
-  <div class="tabs" id="tabs"><button data-k="point">Points</button><button data-k="line">Lines</button><button data-k="area">Areas</button></div>
+  <div class="tabs" id="tabs"><button data-k="point">Points</button><button data-k="line">Lines</button><button data-k="area">Areas</button><button data-k="photo">Photos</button></div>
   <div class="list" id="list"></div>
   <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
@@ -398,7 +411,7 @@
   <form class="card" id="saveForm" autocomplete="off">
     <div class="kind" id="ptKind" hidden><button type="button" data-k="line">Line</button><button type="button" data-k="area">Area</button></div>
     <label>Name:<input id="ptName" enterkeyhint="next"></label>
-    <label>Notes:<textarea id="ptNotes" rows="3"></textarea></label>
+    <label>Notes:<textarea id="ptNotes" rows="4"></textarea></label>
     <div class="pick" id="ptColour" aria-label="Colour"></div>
     <div class="pick" id="ptShape" aria-label="Shape"></div>
     <div class="btns"><button type="button" id="ptCancel">Cancel</button><button type="submit" class="primary">Save</button></div>
@@ -407,7 +420,7 @@
 <div class="modal" id="photoModal" hidden>
   <div class="card">
     <img id="photoOut" alt="Stamped photo" style="width:100%;border-radius:10px;display:block">
-    <div class="btns"><button type="button" id="photoClose">Close</button><button type="button" class="primary" id="photoShare">Save / share</button></div>
+    <div class="btns three"><button type="button" id="photoClose">Close</button><button type="button" id="photoShare">Share</button><button type="button" class="primary" id="photoSave">Save</button></div>
   </div>
 </div>
 <div class="modal" id="w3wModal" hidden>
@@ -420,10 +433,13 @@
 <div class="modal sheetmenu" id="itemMenu" hidden>
   <div class="card">
     <div class="im-title"><b id="imName"></b><span id="imRef"></span></div>
+    <p class="im-notes" id="imNotes"></p>
+    <button type="button" id="imView">View photo</button>
     <button type="button" id="imShow">Show on map</button>
     <button type="button" id="imNav">Navigate here</button>
     <button type="button" id="imCopy">Copy grid ref</button>
-    <button type="button" id="imShare">Share grid ref</button>
+    <button type="button" id="imShare">Share</button>
+    <button type="button" id="imEdit">Edit</button>
     <button type="button" id="imDel" class="danger">Delete</button>
     <button type="button" id="imCancel" class="cancel">Cancel</button>
   </div>
@@ -435,7 +451,7 @@
 </div>
 <div class="modal sheetmenu" id="shareModal" hidden>
   <div class="card">
-    <div class="im-title"><b>Share</b><span id="shTitle"></span></div>
+    <div class="im-title"><b>Share</b></div>
     <div class="shopts" id="shOpts"></div>
     <pre class="shprev" id="shPrev"></pre>
     <div class="btns"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></div>
@@ -445,11 +461,11 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=40"></script>
-<script src="config.js?v=40"></script>
-<script src="osgb.js?v=40"></script>
-<script src="parse.js?v=40"></script>
-<script src="local.js?v=40"></script>
+<script src="vendor/leaflet/leaflet.js?v=42"></script>
+<script src="config.js?v=42"></script>
+<script src="osgb.js?v=42"></script>
+<script src="parse.js?v=42"></script>
+<script src="local.js?v=42"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -502,7 +518,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "40"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "42"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -761,7 +777,7 @@
     clearTimeout(saveView);
     saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
   });
-  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; });
+  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
   map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
 
@@ -878,7 +894,6 @@
   }
   function openShare(item) {
     shareItem = item;
-    $("shTitle").textContent = item.head || item.ref;
     drawShare();
     $("shareModal").hidden = false;
   }
@@ -894,6 +909,26 @@
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     openShare({ ref: last.ref, lat: last.lat, lon: last.lon, e: last.e, n: last.n });
   };
+
+  // ---------- photo store (IndexedDB: room for hundreds of photos) ----------
+  const photoDB = (() => {
+    let dbp;
+    const open = () => dbp || (dbp = new Promise((res, rej) => {
+      const r = indexedDB.open("gridref", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("photos");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => { dbp = null; rej(r.error); };
+    }));
+    const run = async (mode, fn) => {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const t = db.transaction("photos", mode), req = fn(t.objectStore("photos"));
+        t.oncomplete = () => res(req && req.result);
+        t.onerror = () => rej(t.error);
+      });
+    };
+    return { put: (id, blob) => run("readwrite", (st) => st.put(blob, id)), get: (id) => run("readonly", (st) => st.get(id)), del: (id) => run("readwrite", (st) => st.delete(id)) };
+  })();
 
   // ---------- saved points ----------
   // Kept in this browser's localStorage. Re-read before every change so two open
@@ -952,17 +987,57 @@
       if (pt.kind === "line" || pt.kind === "area") {
         const c = COLOURS[pt.colour] || COLOURS.orange, st = shapeStats(pt);
         const style = { color: c, weight: 4, opacity: 0.9, fillColor: c, fillOpacity: 0.18 };
-        (pt.kind === "area" ? L.polygon(pt.pts, style) : L.polyline(pt.pts, style))
-          .bindTooltip(`${esc(pt.name)} · ${pt.kind === "area" ? fmtArea(st.area) : fmtDist(st.length)}`, { sticky: true })
+        (pt.kind === "area" ? L.polygon(pt.pts, { ...style, bubblingMouseEvents: false }) : L.polyline(pt.pts, { ...style, bubblingMouseEvents: false }))
+          .on("click", () => openFeature(pt))
+          .addTo(pinLayer);
+        continue;
+      }
+      if (pt.kind === "photo") {
+        L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "", html: `<div class="photopin">${CAMERA_SVG}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
+          .on("click", () => openFeature(pt))
           .addTo(pinLayer);
         continue;
       }
       (many
-        ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas })
+        ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas, bubblingMouseEvents: false })
         : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) }))
-        .bindTooltip(esc(pt.name), { direction: "top", offset: [0, -10] })
+        .on("click", () => openFeature(pt))
         .addTo(pinLayer);
     } catch {}
+  }
+  const CAMERA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#2d3436" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+
+  // ---------- tap something on the map: snap to it, then a small menu ----------
+  function openFeature(pt) {
+    if (measure || nav) return;
+    const c = centreOf(pt), to = L.latLng(c.lat, c.lon);
+    following = false;
+    $("locBtn").classList.remove("on");
+    if (target().distanceTo(to) < 1) return showFeatMenu(pt);
+    map.once("moveend", () => setTimeout(() => showFeatMenu(pt), 0));
+    panTo(to, Math.max(map.getZoom(), 15));
+  }
+  function showFeatMenu(pt) {
+    const m = $("featMenu"), c = centreOf(pt);
+    m.innerHTML = "";
+    const head = document.createElement("div");
+    head.className = "fm-title";
+    head.innerHTML = "<b></b><span></span>";
+    head.querySelector("b").textContent = pt.name;
+    head.querySelector("span").textContent = OSGB.gridRef(c.e, c.n, digits) + (pt.kind === "area" ? ` · ${fmtArea(shapeStats(pt).area)}` : pt.kind === "line" ? ` · ${fmtDist(shapeStats(pt).length)}` : "");
+    m.appendChild(head);
+    const item = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { m.style.display = "none"; fn(); }; m.appendChild(b); };
+    if (pt.kind === "photo") item("View photo", () => viewPhoto(pt));
+    item("Navigate", () => { const cc = centreOf(pt); navigateTo(cc.lat, cc.lon); });
+    item("Share", () => shareSaved(pt));
+    item("Edit", () => editSaved(pt));
+    m.style.right = "auto";
+    m.style.bottom = "auto";
+    m.style.display = "block";
+    // Beside the crosshair, never on top of the thing you tapped
+    const w = m.offsetWidth, h = m.offsetHeight, crossY = (window.innerHeight - sheet.offsetHeight) / 2, cx = window.innerWidth / 2;
+    m.style.left = (cx + 26 + w <= window.innerWidth - 8 ? cx + 26 : Math.max(8, cx - 26 - w)) + "px";
+    m.style.top = Math.min(Math.max(64, crossY - h / 2), window.innerHeight - sheet.offsetHeight - h - 8) + "px";
   }
   const pinCanvas = L.canvas({ padding: 0.3 });
 
@@ -980,13 +1055,19 @@
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
-  const closeSave = () => { $("saveModal").hidden = true; saving = null; $("ptName").blur(); $("ptNotes").blur(); };
+  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "orange"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
   $("ptCancel").onclick = closeSave;
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
-  function openSave(geom) {
+  let editing = null;
+  function editSaved(pt) {
+    closeDrawer();
+    openSave(pt, pt);
+  }
+  function openSave(geom, edit) {
     fresh();
     saving = geom;
-    const isShape = geom.kind !== "point";
+    editing = edit || null;
+    const isShape = !!geom.kind && geom.kind !== "point"; // points saved before types existed have no kind
     $("ptKind").hidden = true;
     $("ptShape").hidden = isShape;
     if (isShape) {
@@ -995,9 +1076,10 @@
         b.classList.toggle("on", b.dataset.k === geom.kind);
       }
     }
-    $("ptName").value = "";
-    $("ptName").placeholder = (isShape ? (geom.kind === "line" ? "Line " : "Area ") : "Point ") + (points.length + 1);
-    $("ptNotes").value = "";
+    $("ptName").value = editing ? editing.name : "";
+    $("ptName").placeholder = (isShape ? ({ line: "Line ", area: "Area ", photo: "Photo " }[geom.kind] || "Point ") : "Point ") + (points.length + 1);
+    $("ptNotes").value = editing ? editing.notes || "" : "";
+    if (editing) pick = { colour: editing.colour || "orange", shape: editing.shape || "circle" };
     drawPickers();
     $("saveModal").hidden = false;
     setTimeout(() => $("ptName").focus(), 50);
@@ -1014,6 +1096,13 @@
     if (!saving) return;
     fresh();
     const name = $("ptName").value.trim() || $("ptName").placeholder;
+    if (editing) {
+      const i = points.findIndex((q) => q.at === editing.at && q.name === editing.name);
+      if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(points[i].kind ? {} : { shape: pick.shape }) };
+      closeSave();
+      if (savePoints()) toast("✓ Updated " + name);
+      return;
+    }
     points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, at: new Date().toISOString() });
     store.set("ptColour", pick.colour);
     store.set("ptShape", pick.shape);
@@ -1061,11 +1150,11 @@
   }
   function openDrawer() {
     fresh();
-    const counts = { point: 0, line: 0, area: 0 };
+    const counts = { point: 0, line: 0, area: 0, photo: 0 };
     for (const p of points) counts[p.kind || "point"]++;
     for (const b of $("tabs").children) {
       b.classList.toggle("on", b.dataset.k === tab);
-      b.textContent = { point: "Points", line: "Lines", area: "Areas" }[b.dataset.k] + (counts[b.dataset.k] ? ` (${counts[b.dataset.k]})` : "");
+      b.textContent = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" }[b.dataset.k] + (counts[b.dataset.k] ? ` (${counts[b.dataset.k]})` : "");
     }
     const list = $("list");
     list.innerHTML = "";
@@ -1074,27 +1163,34 @@
       point: '<div class="empty">No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>',
       line: '<div class="empty">No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</div>',
       area: '<div class="empty">No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</div>',
+      photo: '<div class="empty">No photos yet.<br>Tap <b>Photo</b>, take a picture, then <b>Save</b>. It\'s pinned on the map where you took it.</div>',
     }[tab];
     for (const pt of items) {
       const row = document.createElement("div");
       row.className = "item";
       const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const isShape = tab !== "point";
+      const isShape = tab === "line" || tab === "area";
       const st = isShape ? shapeStats(pt) : null;
       const col = COLOURS[pt.colour] || COLOURS.orange;
-      const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
+      const mk = tab === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
         : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${tab === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${tab === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
       const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : tab === "area" ? fmtArea(st.area) : fmtDist(st.length);
-      row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
+      row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
       row.querySelector(".name").textContent = pt.name;
       row.querySelector(".gr").textContent = what;
-      row.querySelector(".meta").textContent = [pt.notes, when + (pt.acc ? ` · ±${pt.acc} m` : "")].filter(Boolean).join(" · ");
+      if (tab === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
+      // Notes: up to 4 lines here; tap the entry to read them in full
+      if (pt.notes) row.querySelector(".note").textContent = pt.notes;
+      else row.querySelector(".note").remove();
+      row.querySelector(".meta").textContent = when + (pt.acc ? ` · ±${pt.acc} m` : "");
       const c = centreOf(pt);
       row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
       row.querySelector(".main").onclick = () => {
         menuPt = pt;
         $("imName").textContent = pt.name;
         $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
+        $("imView").hidden = pt.kind !== "photo";
+        $("imNotes").textContent = pt.notes || "";
         $("itemMenu").hidden = false;
       };
       list.appendChild(row);
@@ -1108,16 +1204,19 @@
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
   $("imCopy").onclick = () => { const c = centreOf(menuPt); copy(OSGB.gridRef(c.e, c.n, digits)); closeMenu(); };
-  $("imShare").onclick = () => {
-    const pt = menuPt, c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
+  function shareSaved(pt) {
+    const c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
-    closeMenu();
     openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n });
-  };
+  }
+  $("imShare").onclick = () => { closeMenu(); shareSaved(menuPt); };
+  $("imEdit").onclick = () => { closeMenu(); editSaved(menuPt); };
+  $("imView").onclick = () => { closeMenu(); viewPhoto(menuPt); };
   $("imDel").onclick = () => {
     if (!confirm(`Delete “${menuPt.name}”?`)) return;
     fresh();
     points = points.filter((p) => !(p.at === menuPt.at && p.name === menuPt.name));
+    if (menuPt.photoId) photoDB.del(menuPt.photoId).catch(() => {});
     savePoints();
     closeMenu();
     openDrawer();
@@ -1785,15 +1884,39 @@
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
     // On iPhone the share sheet has "Save Image" for the Photos library.
     photoFile = out;
+    photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: here ? Math.round(here.acc) : null,
+      name: "Photo " + when.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
+    $("photoSave").hidden = false;
     photoText = `${ref} · ${when.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${reserve ? " · " + reserve : ""}`;
     $("photoOut").src = URL.createObjectURL(out);
     $("photoModal").hidden = false;
   };
-  let photoFile = null, photoText = "";
+  let photoFile = null, photoText = "", photoNew = null;
+  $("photoSave").onclick = async () => {
+    if (!photoFile || !photoNew) return;
+    const id = "ph" + Date.now();
+    try { await photoDB.put(id, photoFile); } catch { return toast("Couldn't save the photo on this phone"); }
+    fresh();
+    points.unshift({ kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, at: new Date().toISOString() });
+    persist();
+    savePoints();
+    closePhoto();
+    toast("✓ Saved");
+  };
+  async function viewPhoto(pt) {
+    let blob;
+    try { blob = await photoDB.get(pt.photoId); } catch {}
+    if (!blob) return toast("That photo isn't on this phone any more");
+    photoFile = new File([blob], `${pt.name.replace(/[^\w-]+/g, "_")}.jpg`, { type: "image/jpeg" });
+    photoNew = null;
+    $("photoSave").hidden = true;
+    $("photoOut").src = URL.createObjectURL(blob);
+    $("photoModal").hidden = false;
+  }
   $("photoShare").onclick = async () => {
     if (!photoFile) return;
     if (navigator.canShare && navigator.canShare({ files: [photoFile] })) {
-      try { await navigator.share({ files: [photoFile], text: photoText }); } catch {}
+      try { await navigator.share({ files: [photoFile] }); } catch {}
     } else {
       const a = document.createElement("a");
       a.href = $("photoOut").src;
@@ -1801,7 +1924,8 @@
       a.click();
     }
   };
-  $("photoClose").onclick = () => { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; };
+  function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; }
+  $("photoClose").onclick = closePhoto;
 
   // ---------- install nudge ----------
   // Offline maps and saved points only work properly from the Home Screen icon, and only
