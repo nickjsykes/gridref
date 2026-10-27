@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "87"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "88"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -65,6 +65,72 @@
   function setShade(on) {
     shadeOn = on;
     if (on) lidarShade.addTo(map); else map.removeLayer(lidarShade);
+  }
+  // ---------- on-the-ground overlays (baked for the team's reserves, so they work offline) ----------
+  // SSSI condition units (Natural England): thin dashed edges, unit numbers when zoomed in, and
+  // "unit 14 · Unfavourable recovering" in the panel. Paths, gates, stiles, walls and fences
+  // (OpenStreetMap), styled like the OS Explorer map rangers know: green dashes for public
+  // rights of way, red dashes for other paths, solid for walls, dotted for fences.
+  map.createPane("ground").style.zIndex = 380;
+  const groundCanvas = L.canvas({ pane: "ground", padding: 0.3 });
+  let units = [], ovUnits = store.get("ovUnits", true), ovOsm = store.get("ovOsm", true);
+  const unitLines = L.geoJSON(null, { renderer: groundCanvas, interactive: false, attribution: "SSSI units © Natural England",
+    style: () => ({ color: "#5b4a8a", weight: 1.6, opacity: 0.85, dashArray: "5 4", fill: false }) });
+  const unitLabels = L.layerGroup();
+  const OSM_STYLE = {
+    path: { color: "#c2391b", weight: 2, dashArray: "5 4" },
+    prow: { color: "#2a8a3e", weight: 2.6, dashArray: "7 4" },
+    track: { color: "#7a5432", weight: 2.4, opacity: 0.85 },
+    wall: { color: "#45413a", weight: 2.4 },
+    fence: { color: "#45413a", weight: 1.4, dashArray: "1 4", lineCap: "round" },
+    bridge: { color: "#26261f", weight: 5 },
+  };
+  const osmLines = L.geoJSON(null, { renderer: groundCanvas, interactive: false, attribution: "© OpenStreetMap contributors",
+    filter: (f) => f.geometry.type !== "Point",
+    style: (f) => ({ opacity: 0.95, ...(OSM_STYLE[f.properties.prow && f.properties.kind === "path" ? "prow" : f.properties.kind] || OSM_STYLE.path) }) });
+  const SYM = {
+    gate: '<path d="M2.5 3v8M11.5 3v8M2.5 5.2h9M2.5 8.8h9M2.5 8.8l9-3.6"/>',
+    stile: '<path d="M2.5 11.5h3v-3h3v-3h3v-3"/>',
+    grid: '<path d="M2 4h10M2 7h10M2 10h10"/>',
+    bridge: '<path d="M2 4.5q5 2.5 10 0M2 9.5q5-2.5 10 0"/>',
+    hide: '<path d="M2.5 11.5V6l4.5-3 4.5 3v5.5ZM5 7.5h4"/>',
+    board: '<path d="M3 3h8v5H3ZM7 8v4"/>',
+    parking: '<text x="7" y="10.6" text-anchor="middle" font-size="9.5" font-weight="800" font-family="-apple-system,sans-serif" fill="#fff" stroke="none">P</text>',
+  };
+  const symIcon = (k) => L.divIcon({ className: "gsym " + k, iconSize: [16, 16], iconAnchor: [8, 8],
+    html: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SYM[k] || SYM.gate}</svg>` });
+  const osmPoints = L.geoJSON(null, { filter: (f) => f.geometry.type === "Point" && SYM[f.properties.kind],
+    pointToLayer: (f, ll) => L.marker(ll, { icon: symIcon(f.properties.kind), interactive: false, keyboard: false }) });
+  // Show each when it's useful: units from 13, paths and walls from 15, gate symbols from 16
+  function drawGround() {
+    const z = map.getZoom(), show = (layer, on) => (on ? map.hasLayer(layer) || layer.addTo(map) : map.removeLayer(layer));
+    show(unitLines, ovUnits && z >= 13);
+    show(unitLabels, ovUnits && z >= 14);
+    show(osmLines, ovOsm && z >= 15);
+    show(osmPoints, ovOsm && z >= 16);
+  }
+  map.on("zoomend", drawGround);
+  async function loadGround() {
+    try {
+      const [u, o] = await Promise.all(["data/units.geojson", "data/osm.geojson"].map((f) => fetch(f).then((r) => r.json())));
+      unitLines.addData(u);
+      units = u.features.map((f) => { const b = L.geoJSON(f).getBounds(); return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], mid: b.getCenter() }; });
+      for (const f of units) L.marker(f.mid, { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<div class="unitlabel">${esc(String(f.properties.unit))}</div>` }) }).addTo(unitLabels);
+      osmLines.addData(o);
+      osmPoints.addData(o);
+      drawGround();
+      update();
+    } catch {}
+  }
+  // Which SSSI unit a spot is in
+  function unitAt(ll) {
+    for (const f of units) {
+      const [w, s, e, n] = f.bbox;
+      if (ll.lng < w || ll.lng > e || ll.lat < s || ll.lat > n) continue;
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) if (inRing(ll.lng, ll.lat, poly[0]) && !poly.slice(1).some((h) => inRing(ll.lng, ll.lat, h))) return f.properties;
+    }
+    return null;
   }
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -84,6 +150,14 @@
     sh.className = "tick" + (shadeOn ? " on" : "");
     sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
     layersEl.appendChild(sh);
+    for (const [label, get, set] of [["SSSI units", () => ovUnits, (v) => { ovUnits = v; store.set("ovUnits", v); }],
+                                     ["Paths, gates & walls", () => ovOsm, (v) => { ovOsm = v; store.set("ovOsm", v); }]]) {
+      const b = document.createElement("button");
+      b.textContent = (get() ? "☑ " : "☐ ") + label;
+      b.className = "tick2" + (get() ? " on" : "");
+      b.onclick = () => { set(!get()); drawGround(); update(); drawLayerMenu(); placeLayerMenu(); };
+      layersEl.appendChild(b);
+    }
     if (pack.names) {
       const note = document.createElement("div");
       note.className = "lnote";
@@ -236,6 +310,9 @@
     } else {
       $("fromMe").textContent = "";
     }
+    // Where you are on the reserve: its SSSI unit and that unit's condition
+    const u = ovUnits ? unitAt(t) : null;
+    $("whereNow").textContent = u ? `${u.sssi} · unit ${u.unit}${u.condition ? " · " + u.condition : ""}` : "";
     layout();
   }
 
@@ -2056,7 +2133,7 @@
     map.fitBounds([[54.118, -3.292], [54.198, -2.785]], {
       paddingTopLeft: [68, 104], paddingBottomRight: [68, sheet.offsetHeight + 10], animate: false });
   };
-  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
+  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, loadGround, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);

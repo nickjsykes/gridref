@@ -4,6 +4,9 @@ Source: OS OpenMap Local, Full Colour Raster (OGL v3), 5 km GeoTIFFs at 1 m on t
 National Grid, downloaded per 100 km square into build/src as omlras_gtfc_<sq>.zip.
 Reserves: Natural England NNR boundaries in data/nnr.geojson (build/README).
 
+Ground relief from the EA 1 m LiDAR (build/build_relief.py, run that first) is blended into
+zooms 14-17 around each reserve, so walls, banks, ditches and drains show on the map.
+
 Output: maps/{z}/{x}/{y}.webp web-map tiles around each reserve, and maps/index.json, the
 list the app downloads. Needs rasterio and Pillow (the Terra venv has both):
   C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py
@@ -28,6 +31,11 @@ PACK = {
     "1006111": "North Fen",
 }
 ZOOMS = range(11, 18)
+RELIEF_FROM = 14  # zooms below this are too coarse for walls and drains
+RELIEF = {}  # REF_CODE -> (factor array, transform, bounds) on the British National Grid
+for f in sorted((SRC / "relief").glob("*.tif")):
+    with rasterio.open(f) as d:
+        RELIEF[f.stem] = (d.read(1), d.transform, d.bounds)
 BUFFER_M = {11: 6000, 12: 4000, 13: 2500, 14: 1500, 15: 1000, 16: 700, 17: 500}  # map around each reserve
 QUALITY = 80
 TILE = 256
@@ -111,6 +119,14 @@ def render(z, x, y):
             reproject(np.full((1,) + rgb.shape[1:], 255, np.uint8), alpha, resampling=Resampling.nearest, init_dest_nodata=False, **kw)
     if not found or not alpha.any():
         return None
+    if z >= RELIEF_FROM:
+        fac = np.ones((1, TILE, TILE), np.float32)
+        for arr, tr, bd in RELIEF.values():
+            if bd.right < w or bd.left > e or bd.top < s or bd.bottom > n:
+                continue
+            reproject(arr[None], fac, src_transform=tr, src_crs="EPSG:27700", dst_transform=dst_t, dst_crs="EPSG:3857",
+                      resampling=Resampling.bilinear if metres_per_px < 1.5 else Resampling.average, init_dest_nodata=False)
+        dst = np.clip(dst.astype(np.float32) * fac, 0, 255).astype(np.uint8)
     img = np.concatenate([dst, alpha]).transpose(1, 2, 0)
     return Image.fromarray(img, "RGBA") if alpha.min() < 255 else Image.fromarray(img[..., :3], "RGB")
 
@@ -160,7 +176,7 @@ def main():
             d.rmdir()
     version = hashlib.sha1(("\n".join(tiles) + str(total)).encode()).hexdigest()[:10]
     index = {"version": version, "reserves": sorted(PACK.values()), "zooms": [min(ZOOMS), max(ZOOMS)], "bytes": total, "tiles": tiles,
-             "source": "OS OpenMap Local raster, Contains OS data © Crown copyright 2026 (OGL v3)"}
+             "source": "OS OpenMap Local raster, Contains OS data © Crown copyright 2026 (OGL v3); relief from EA LiDAR © Environment Agency (OGL v3)"}
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")), "utf-8", newline="\n")
     print(f"done: {len(tiles)} tiles, {total / 1e6:.1f} MB, version {version}")
 
