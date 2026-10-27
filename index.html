@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=42">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=43">
 <style>
   :root {
     --green: #2f5d3a;
@@ -144,11 +144,22 @@
   .featmenu .fm-title b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .featmenu .fm-title { padding: 10px 14px 6px; border-bottom: 1px solid var(--line); }
   .featmenu .fm-title b { display: block; font-size: 15px; }
+  .featmenu button.danger { color: var(--danger); }
+  .featmenu .fm-title span:empty { display: none; }
   .featmenu .fm-title span { font: 13px var(--mono); color: var(--muted); }
   .item .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; background: var(--green-soft); }
   .photopin { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #2d3436; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
   .photopin svg { width: 15px; height: 15px; }
   .shopts { display: grid; gap: 4px; }
+  .selbar { display: none; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+  .drawer.selecting .selbar { display: flex; }
+  .drawer.selecting footer, .drawer.selecting .item .go, .drawer.selecting #backup { display: none; }
+  .selbar button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
+  .selbar .primary { background: var(--green); color: var(--panel); }
+  .item .chk { display: none; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); flex: none; place-items: center; color: var(--panel); font: 700 15px var(--sans); }
+  .drawer.selecting .item .chk { display: grid; }
+  .item.picked .chk { background: var(--green); border-color: var(--green); }
+  .item.picked { background: var(--green-soft); }
   .card .shopts label { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px 6px; font: 400 16px var(--sans); color: var(--ink); border-bottom: 1px solid var(--line); }
   .shopts input { width: 22px; height: 22px; accent-color: var(--green); flex: none; }
   .shprev { margin: 4px 0 0; padding: 8px 10px; background: var(--green-soft); border-radius: 10px; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow: auto; color: var(--ink); }
@@ -400,9 +411,10 @@
   <div class="list" id="list"></div>
   <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
+  <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
   <footer>
     <button id="importBtn">Import CSV</button>
-    <button id="exportBtn">Share as CSV</button>
+    <button id="exportBtn">Export</button>
     <input type="file" id="importFile" accept=".csv,text/csv,text/plain" hidden>
   </footer>
 </div>
@@ -457,15 +469,30 @@
     <div class="btns"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></div>
   </div>
 </div>
+<div class="modal sheetmenu" id="exportModal" hidden>
+  <div class="card">
+    <div class="im-title"><b>Export</b></div>
+    <div class="shopts">
+      <label><input type="radio" name="exs" value="all"> <span id="exAll">Everything</span></label>
+      <label><input type="radio" name="exs" value="tab"> <span id="exTab">Just this tab</span></label>
+      <label><input type="radio" name="exs" value="pick"> <span>Pick which ones</span></label>
+    </div>
+    <div class="shopts">
+      <label><input type="radio" name="exf" value="csv"> <span>CSV · spreadsheets, Excel</span></label>
+      <label><input type="radio" name="exf" value="geojson"> <span>GeoJSON · ArcGIS, QGIS</span></label>
+    </div>
+    <div class="btns"><button type="button" id="exCancel">Cancel</button><button type="button" class="primary" id="exGo">Export</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=42"></script>
-<script src="config.js?v=42"></script>
-<script src="osgb.js?v=42"></script>
-<script src="parse.js?v=42"></script>
-<script src="local.js?v=42"></script>
+<script src="vendor/leaflet/leaflet.js?v=43"></script>
+<script src="config.js?v=43"></script>
+<script src="osgb.js?v=43"></script>
+<script src="parse.js?v=43"></script>
+<script src="local.js?v=43"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -518,7 +545,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "42"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "43"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1024,13 +1051,15 @@
     head.className = "fm-title";
     head.innerHTML = "<b></b><span></span>";
     head.querySelector("b").textContent = pt.name;
-    head.querySelector("span").textContent = OSGB.gridRef(c.e, c.n, digits) + (pt.kind === "area" ? ` · ${fmtArea(shapeStats(pt).area)}` : pt.kind === "line" ? ` · ${fmtDist(shapeStats(pt).length)}` : "");
+    head.querySelector("span").textContent = pt.kind === "area" ? fmtArea(shapeStats(pt).area) : pt.kind === "line" ? fmtDist(shapeStats(pt).length) : "";
     m.appendChild(head);
     const item = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { m.style.display = "none"; fn(); }; m.appendChild(b); };
     if (pt.kind === "photo") item("View photo", () => viewPhoto(pt));
     item("Navigate", () => { const cc = centreOf(pt); navigateTo(cc.lat, cc.lon); });
     item("Share", () => shareSaved(pt));
     item("Edit", () => editSaved(pt));
+    item("Delete", () => deleteSaved(pt));
+    m.lastChild.classList.add("danger");
     m.style.right = "auto";
     m.style.bottom = "auto";
     m.style.display = "block";
@@ -1175,7 +1204,7 @@
       const mk = tab === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
         : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${tab === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${tab === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
       const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : tab === "area" ? fmtArea(st.area) : fmtDist(st.length);
-      row.innerHTML = `<span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
+      row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
       row.querySelector(".name").textContent = pt.name;
       row.querySelector(".gr").textContent = what;
       if (tab === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
@@ -1185,7 +1214,14 @@
       row.querySelector(".meta").textContent = when + (pt.acc ? ` · ±${pt.acc} m` : "");
       const c = centreOf(pt);
       row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
+      if (picked.has(keyOf(pt))) row.classList.add("picked");
       row.querySelector(".main").onclick = () => {
+        if (selecting) {
+          const k = keyOf(pt);
+          picked.has(k) ? picked.delete(k) : picked.add(k);
+          row.classList.toggle("picked", picked.has(k));
+          return drawSelBar();
+        }
         menuPt = pt;
         $("imName").textContent = pt.name;
         $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
@@ -1196,6 +1232,7 @@
       list.appendChild(row);
     }
     $("backup").textContent = `Last export: ${ago(store.get("exported", ""))}`;
+    if (selecting) drawSelBar();
     $("drawer").classList.add("open");
   }
   const closeMenu = () => { $("itemMenu").hidden = true; };
@@ -1212,34 +1249,56 @@
   $("imShare").onclick = () => { closeMenu(); shareSaved(menuPt); };
   $("imEdit").onclick = () => { closeMenu(); editSaved(menuPt); };
   $("imView").onclick = () => { closeMenu(); viewPhoto(menuPt); };
-  $("imDel").onclick = () => {
-    if (!confirm(`Delete “${menuPt.name}”?`)) return;
+  function deleteSaved(pt) {
+    if (!confirm(`Delete “${pt.name}”?`)) return false;
     fresh();
-    points = points.filter((p) => !(p.at === menuPt.at && p.name === menuPt.name));
-    if (menuPt.photoId) photoDB.del(menuPt.photoId).catch(() => {});
+    points = points.filter((p) => !(p.at === pt.at && p.name === pt.name));
+    if (pt.photoId) photoDB.del(pt.photoId).catch(() => {});
     savePoints();
-    closeMenu();
-    openDrawer();
-  };
-  function closeDrawer() { $("drawer").classList.remove("open"); }
+    toast("Deleted");
+    return true;
+  }
+  $("imDel").onclick = () => { if (deleteSaved(menuPt)) { closeMenu(); openDrawer(); } };
+  function closeDrawer() { if (selecting) { selecting = false; picked.clear(); $("drawer").classList.remove("selecting"); } $("drawer").classList.remove("open"); }
   $("closeDrawer").onclick = closeDrawer;
-  $("exportBtn").onclick = async () => {
-    fresh();
-    if (!points.length) return;
-    const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  // ---------- export: everything, one tab, or picked entries; CSV or GeoJSON ----------
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  function toCSV(list) {
     const wkt = (p) => {
       if (!p.pts) return "";
       const c = p.pts.map(([a, b]) => `${b} ${a}`);
       return p.kind === "area" ? `POLYGON((${c.concat([c[0]]).join(", ")}))` : `LINESTRING(${c.join(", ")})`;
     };
     const rows = [["Name", "Type", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)"]]
-      .concat(points.map((p) => {
+      .concat(list.map((p) => {
         const st = p.pts ? shapeStats(p) : null;
         return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
           p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p))];
       }));
-    const csv = rows.map((r) => r.join(",")).join("\n");
-    const file = new File([csv], "grid-refs-" + new Date().toISOString().slice(0, 10) + ".csv", { type: "text/csv" });
+    return rows.map((r) => r.join(",")).join("\n");
+  }
+  // GeoJSON: what ArcGIS Online, Field Maps and QGIS take directly, shapes and all
+  function toGeoJSON(list) {
+    const features = list.map((p) => {
+      const c = centreOf(p), st = p.pts ? shapeStats(p) : null;
+      const ring = p.pts ? p.pts.map(([a, b]) => [+b.toFixed(6), +a.toFixed(6)]) : null;
+      const geometry = p.kind === "area" ? { type: "Polygon", coordinates: [ring.concat([ring[0]])] }
+        : p.kind === "line" ? { type: "LineString", coordinates: ring }
+        : { type: "Point", coordinates: [+p.lon.toFixed(6), +p.lat.toFixed(6)] };
+      return { type: "Feature", geometry, properties: {
+        name: p.name, type: p.kind || "point", notes: p.notes || "", grid_ref: OSGB.gridRef(c.e, c.n, 8),
+        easting: Math.round(c.e), northing: Math.round(c.n), length_m: st ? Math.round(st.length) : null,
+        area_ha: st && st.area != null ? +(st.area / 10000).toFixed(4) : null, gps_accuracy_m: p.acc ?? null,
+        saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle" } };
+    });
+    return JSON.stringify({ type: "FeatureCollection", features }, null, 1);
+  }
+  async function exportList(list, fmt) {
+    if (!list.length) return toast("Nothing picked to export");
+    const day = new Date().toISOString().slice(0, 10);
+    const file = fmt === "geojson"
+      ? new File([toGeoJSON(list)], `field-notes-${day}.geojson`, { type: "application/geo+json" })
+      : new File([toCSV(list)], `field-notes-${day}.csv`, { type: "text/csv" });
     let done = false;
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file] }); done = true; } catch {}
@@ -1251,7 +1310,52 @@
       done = true;
     }
     if (done) { store.set("exported", new Date().toISOString()); openDrawer(); }
+  }
+  let exportFmt = store.get("exportFmt", "csv"), selecting = false;
+  const picked = new Set();
+  const keyOf = (p) => p.at + "|" + p.name;
+  const TAB_NAMES = { point: "points", line: "lines", area: "areas", photo: "photos" };
+  $("exportBtn").onclick = () => {
+    fresh();
+    if (!points.length) return toast("Nothing saved yet");
+    const inTab = points.filter((p) => (p.kind || "point") === tab).length;
+    $("exAll").textContent = `Everything (${points.length})`;
+    $("exTab").textContent = `Just ${TAB_NAMES[tab]} (${inTab})`;
+    for (const r of document.querySelectorAll('#exportModal input[name="exs"]')) r.checked = r.value === "all";
+    for (const r of document.querySelectorAll('#exportModal input[name="exf"]')) r.checked = r.value === exportFmt;
+    $("exportModal").hidden = false;
   };
+  $("exCancel").onclick = () => { $("exportModal").hidden = true; };
+  $("exportModal").onclick = (e) => { if (e.target === $("exportModal")) $("exportModal").hidden = true; };
+  $("exGo").onclick = () => {
+    const scope = document.querySelector('#exportModal input[name="exs"]:checked').value;
+    exportFmt = document.querySelector('#exportModal input[name="exf"]:checked').value;
+    store.set("exportFmt", exportFmt);
+    $("exportModal").hidden = true;
+    fresh();
+    if (scope === "all") return exportList(points, exportFmt);
+    if (scope === "tab") return exportList(points.filter((p) => (p.kind || "point") === tab), exportFmt);
+    // Pick: tap entries to tick them (across any tab), then Export
+    selecting = true;
+    picked.clear();
+    $("drawer").classList.add("selecting");
+    openDrawer();
+    toast("Tap entries to pick them");
+  };
+  function endSelect() {
+    selecting = false;
+    picked.clear();
+    $("drawer").classList.remove("selecting");
+    openDrawer();
+  }
+  $("selCancel").onclick = endSelect;
+  $("selGo").onclick = () => {
+    fresh();
+    const list = points.filter((p) => picked.has(keyOf(p)));
+    endSelect();
+    exportList(list, exportFmt);
+  };
+  function drawSelBar() { $("selGo").textContent = `Export ${picked.size}`; }
 
   // Import: our own CSV back in, or any CSV with a name column and a grid ref,
   // E/N or lat/long column (e.g. a list of dormouse boxes)
@@ -1798,7 +1902,8 @@
     mLine.setLatLngs(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     mLive.setLatLngs(pts.length ? [pts[pts.length - 1], t] : []);
     mDots.clearLayers();
-    pts.forEach((p) => L.circleMarker(p, { radius: 5, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
+    // Big enough to see past the crosshair; the first one ringed so you know you've started
+    pts.forEach((p, i) => L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     $("mDist").textContent = fmtDist(st.d);
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
@@ -1817,8 +1922,8 @@
   }
   $("measureBtn").onclick = () => startMeasure("line");
   $("areaBtn").onclick = () => startMeasure("area");
-  $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); };
-  $("mUndo").onclick = () => { measure.pts.pop(); drawMeasure(); };
+  $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); toast(`Point ${measure.pts.length} added`); };
+  $("mUndo").onclick = () => { if (!measure.pts.length) return; measure.pts.pop(); drawMeasure(); toast(measure.pts.length ? `Back to ${measure.pts.length} point${measure.pts.length > 1 ? "s" : ""}` : "No points"); };
   $("mSave").onclick = () => {
     const pts = measure.pts, isArea = measure.kind === "area";
     if (pts.length < (isArea ? 3 : 2)) return toast(isArea ? "Add at least 3 corners" : "Add at least 2 points");
@@ -1926,6 +2031,29 @@
   };
   function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; }
   $("photoClose").onclick = closePhoto;
+
+  // ---------- a haptic tick on every tap (field tool: you should feel it worked) ----------
+  // iPhone (iOS 18+) ticks when a switch is flipped through its label, and only inside the
+  // tap itself, so each tap flips a throwaway switch. Android just vibrates.
+  function haptic() {
+    try { navigator.vibrate && navigator.vibrate(12); } catch {}
+    try {
+      const l = document.createElement("label"), i = document.createElement("input");
+      i.type = "checkbox";
+      i.setAttribute("switch", "");
+      i.className = "hx";
+      l.className = "hx";
+      l.style.cssText = "position:fixed;left:-99px;top:0;opacity:0";
+      l.appendChild(i);
+      document.body.appendChild(l);
+      l.click();
+      l.remove();
+    } catch {}
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".hx, #hapticSw, [data-copy]")) return; // copy rows already tick through their own switch
+    if (e.target.closest("button, a, .item .main, .shopts label, .leaflet-marker-icon")) haptic();
+  }, true);
 
   // ---------- install nudge ----------
   // Offline maps and saved points only work properly from the Home Screen icon, and only
