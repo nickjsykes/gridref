@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "122"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "123"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -2169,13 +2169,13 @@
   // What goes on the stamp: tick and it redraws. Remembered for next time.
   // Where the position came from (GPS ±m, crosshair, the photo's own) always rides along with
   // the location, so nobody trusts a crosshair guess as a GPS fix
-  const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["line", "Your line"]];
+  const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["line", "Add notes"]];
   let stampJob = null, stampOn = new Set(store.get("stampOpts", ["ref", "when", "reserve"]));
   function drawStampOpts() {
     $("stampOpts").hidden = false;
     $("stampOpts").innerHTML = STAMP_OPTS.filter(([k]) => k !== "reserve" || stampJob.reserve)
       .map(([k, l]) => `<button type="button" data-k="${k}" class="${stampOn.has(k) ? "on" : ""}">${l}</button>`).join("");
-    // "Your line": a credit each person types once (their team, their name), kept on this phone
+    // "Add notes": a line each person types (a note, their team, their name) (their team, their name), kept on this phone
     $("stampLine").hidden = !stampOn.has("line");
     $("stampLine").value = store.get("stampLine", "");
   }
