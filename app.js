@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "58"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "60"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1825,7 +1825,14 @@
 
   // ---------- go ----------
   window.addEventListener("resize", () => { layout(); fitRef(); update(); });
-  for (const step of [() => setPrec(digits), drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
+  // Every launch opens on the team's patch, Walney to Gait Barrows, framed in the clear map
+  // between the reserve chips, the side buttons and the panel
+  const openOnPatch = () => {
+    layout();
+    map.fitBounds([[54.118, -3.292], [54.198, -2.785]], {
+      paddingTopLeft: [68, 104], paddingBottomRight: [68, sheet.offsetHeight + 10], animate: false });
+  };
+  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
