@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=65">
-<link rel="stylesheet" href="app.css?v=65">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=67">
+<link rel="stylesheet" href="app.css?v=67">
 </head>
 <body>
 <div id="map"></div>
@@ -31,24 +31,26 @@
 
 <div class="fabs">
   <button class="fab" id="locBtn" aria-label="Show my location"><span class="acc" id="accBadge" hidden></span>
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 3.5 3 11l7.6 2.4L13 21Z"/></svg>
   </button>
+  <button class="fab" id="listBtn" aria-label="Saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
   <button class="fab" id="layersBtn" aria-label="Map style">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
 </div>
 <div class="fabs left">
-  <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+  <button class="fab add" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="plus" aria-hidden="true"></span></button>
   <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
-  <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg></button>
-  <button class="fab" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
-  <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg></button>
+  <button class="fab add" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg><span class="plus" aria-hidden="true"></span></button>
+  <button class="fab add" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg><span class="plus" aria-hidden="true"></span></button>
+  <button class="fab add" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6"/></svg><span class="plus" aria-hidden="true"></span></button>
 </div>
 <div class="layers" id="layers"></div>
 <div class="layers featmenu" id="featMenu"></div>
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
+  <button class="aa" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
   <div class="refline">
     <label class="big" for="hapticSw" data-copy="ref" aria-label="Copy grid reference"><span class="ref" id="ref">—</span></label>
   </div>
@@ -56,16 +58,14 @@
     <div class="meta">
       <span class="from-me" id="fromMe"></span>
     </div>
+    <div class="actions">
+      <button id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button>
+      <button id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z" fill="currentColor"/></svg>Navigate</button>
+    </div>
     <div class="rows">
       <label class="row" for="hapticSw" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span></label>
       <label class="row" for="hapticSw" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span></label>
       <a class="row" id="w3wRow" href="https://what3words.com/" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
-    </div>
-    <div class="actions">
-      <button class="tool small" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
-      <button class="tool" id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Share</span></button>
-      <button class="tool primary" id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg><span>Navigate</span></button>
-      <button class="tool" id="listBtn" aria-label="Saved points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg><span>Saved</span></button>
     </div>
   </div>
   <div class="measure" id="measure">
@@ -200,12 +200,12 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=65"></script>
-<script src="config.js?v=65"></script>
-<script src="osgb.js?v=65"></script>
-<script src="parse.js?v=65"></script>
-<script src="zip.js?v=65"></script>
-<script src="local.js?v=65"></script>
-<script src="app.js?v=65"></script>
+<script src="vendor/leaflet/leaflet.js?v=67"></script>
+<script src="config.js?v=67"></script>
+<script src="osgb.js?v=67"></script>
+<script src="parse.js?v=67"></script>
+<script src="zip.js?v=67"></script>
+<script src="local.js?v=67"></script>
+<script src="app.js?v=67"></script>
 </body>
 </html>
