@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "108"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "109"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1798,10 +1798,11 @@
     const now = Date.now(), next = ev.filter((e) => Date.parse(e.at) > now);
     if (!next.length) return "";
     const day = (d) => (new Date(d).toDateString() === new Date().toDateString() ? "" : "tomorrow ");
-    const at = (e) => `${day(e.at)}${new Date(e.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} (${e.m.toFixed(1)} m)`;
+    // Just the next high water: when and how high, as rangers read it off the tide table
     const hi = next.find((e) => e.high);
-    return next[0].high ? `Tide coming in · high at ${at(next[0])}`
-      : `Tide going out · low at ${at(next[0])}${hi ? ` · next high ${at(hi)}` : ""}`;
+    if (!hi) return "";
+    const when = `${day(hi.at)}${new Date(hi.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+    return `Tide ${next[0].high ? "coming in" : "going out"} · high at ${when} ${hi.m.toFixed(1)} m`;
   }
   let cardFor = null;
   function closeResCard() { $("resCard").hidden = true; cardFor = null; }
