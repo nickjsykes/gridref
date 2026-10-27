@@ -116,12 +116,6 @@ a.row { text-decoration: none; }
 .aa svg { width: 24px; height: 24px; }
 .aa.on { color: var(--green); background: var(--green-soft); }
 .refline { padding-right: 40px; }
-/* the left-hand buttons all add something: a small plus says so */
-.plus { position: absolute; top: -2px; right: -2px; width: 17px; height: 17px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px var(--panel); }
-.plus::before, .plus::after { content: ""; position: absolute; left: 50%; top: 50%; width: 9px; height: 2px; border-radius: 1px; background: var(--panel); transform: translate(-50%, -50%); }
-.plus::after { transform: translate(-50%, -50%) rotate(90deg); }
-body.large .plus { width: 20px; height: 20px; }
-body.large .plus::before, body.large .plus::after { width: 11px; }
 body.measuring #listBtn, body.navigating #listBtn, body.moving #listBtn { display: none; }
 
 /* saved points drawer */
@@ -422,3 +416,15 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 
 /* photo stamp: what goes on it */
 .stampopts { flex-wrap: wrap; padding: 10px 0 2px; }
+
+/* the + button and what it opens: Photo, Area, Line, Point stacked above it, with names */
+.addbtn { background: var(--green); color: var(--panel); }
+.addbtn svg { transition: transform .18s; }
+body.adding .addbtn svg { transform: rotate(45deg); }
+.addmenu { display: none; flex-direction: column; align-items: flex-start; gap: 10px; }
+body.adding .addmenu { display: flex; animation: addin .14s ease-out; }
+@keyframes addin { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.addmenu .fab { width: auto; border-radius: 24px; padding: 0 16px 0 12px; display: flex; gap: 8px; align-items: center; }
+.addmenu .lbl { font: 600 15px var(--sans); }
+body.large .addmenu .lbl { font-size: 17px; }
+body.adding .chips { visibility: hidden; } /* the menu may need their room on a small phone */

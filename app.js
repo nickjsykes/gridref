@@ -58,7 +58,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "90"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "92"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1808,6 +1808,19 @@
   // ---------- photo with the grid ref stamped on ----------
   // Take one: placed by GPS if the blue dot is on, otherwise the crosshair.
   // Choose one from the phone: placed where the photo says it was taken, otherwise the crosshair.
+  // One + button: tap it for Point, Line, Area and Photo; tap again (or pick one, or leave it
+  // 10 s without touching anything) and they tuck away. Moving the map keeps them open, so
+  // you can line up the crosshair and then pick.
+  let addTimer = null;
+  function setAdding(on) {
+    document.body.classList.toggle("adding", on);
+    $("addBtn").setAttribute("aria-expanded", on);
+    clearTimeout(addTimer);
+    if (on) addTimer = setTimeout(() => setAdding(false), 10000);
+  }
+  $("addBtn").onclick = () => setAdding(!document.body.classList.contains("adding"));
+  map.on("move", () => { if (document.body.classList.contains("adding")) setAdding(true); });
+  for (const id of ["saveBtn", "measureBtn", "areaBtn"]) $(id).addEventListener("click", () => setAdding(false));
   const photoMenu = $("photoMenu");
   $("photoBtn").onclick = () => {
     if (photoMenu.style.display === "block") return (photoMenu.style.display = "none");
@@ -1816,8 +1829,9 @@
     photoMenu.style.top = b.top + "px";
     photoMenu.style.display = "block";
   };
-  $("pmTake").onclick = () => { photoMenu.style.display = "none"; $("photoIn").click(); };
-  $("pmPick").onclick = () => { photoMenu.style.display = "none"; $("photoPick").click(); };
+  $("photoBtn").addEventListener("click", () => setAdding(true)); // keep the menu while choosing
+  $("pmTake").onclick = () => { photoMenu.style.display = "none"; setAdding(false); $("photoIn").click(); };
+  $("pmPick").onclick = () => { photoMenu.style.display = "none"; setAdding(false); $("photoPick").click(); };
   $("photoIn").onchange = (e) => stampPhoto(e, false);
   $("photoPick").onchange = (e) => stampPhoto(e, true);
   async function stampPhoto(e, fromPhone) {

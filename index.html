@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=90">
-<link rel="stylesheet" href="app.css?v=90">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=92">
+<link rel="stylesheet" href="app.css?v=92">
 </head>
 <body>
 <div id="map"></div>
@@ -39,12 +39,15 @@
   </button>
 </div>
 <div class="fabs left">
-  <button class="fab add" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="plus" aria-hidden="true"></span></button>
+  <div class="addmenu" id="addMenu">
+  <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="lbl">Photo</span></button>
   <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
   <input type="file" id="photoPick" accept="image/*" hidden>
-  <button class="fab add" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg><span class="plus" aria-hidden="true"></span></button>
-  <button class="fab add" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg><span class="plus" aria-hidden="true"></span></button>
-  <button class="fab add" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6"/></svg><span class="plus" aria-hidden="true"></span></button>
+  <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg><span class="lbl">Area</span></button>
+  <button class="fab" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg><span class="lbl">Line</span></button>
+  <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6"/></svg><span class="lbl">Point</span></button>
+  </div>
+  <button class="fab addbtn" id="addBtn" aria-label="Add a point, line, area or photo" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
 </div>
 <div class="layers" id="layers"></div>
 <div class="layers featmenu" id="featMenu"></div>
@@ -206,13 +209,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=90"></script>
-<script src="config.js?v=90"></script>
-<script src="osgb.js?v=90"></script>
-<script src="parse.js?v=90"></script>
-<script src="zip.js?v=90"></script>
-<script src="exif.js?v=90"></script>
-<script src="local.js?v=90"></script>
-<script src="app.js?v=90"></script>
+<script src="vendor/leaflet/leaflet.js?v=92"></script>
+<script src="config.js?v=92"></script>
+<script src="osgb.js?v=92"></script>
+<script src="parse.js?v=92"></script>
+<script src="zip.js?v=92"></script>
+<script src="exif.js?v=92"></script>
+<script src="local.js?v=92"></script>
+<script src="app.js?v=92"></script>
 </body>
 </html>
