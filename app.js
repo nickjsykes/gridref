@@ -10,10 +10,10 @@
   const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   const OS_KEY = (window.GRIDREF_CONFIG || {}).osKey || "";
   const LAYERS = {
-    aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
+    aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, crossOrigin: true, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
     // OS Outdoor: proper OS cartography (contours, paths, woods). Open data up to zoom 16 on
     // OS's free plan; needs a free OS Data Hub key in config.js, and only appears once there is one.
-    ...(OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
+    ...(OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -67,13 +67,25 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "116"; // bump with each release so a phone can show which copy it's running
+  // Big text, read aloud: the grid ref spoken letter by letter and digit by digit ("S D,
+  // three four zero zero, eight one nine nine"), for reading it over the radio or phone
+  $("sayBtn").onclick = () => {
+    if (!last || !last.ref || !("speechSynthesis" in window)) return toast("This phone can't read aloud");
+    const said = last.ref.split(" ").map((p) => p.split("").join(" ")).join(", ");
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(said);
+    u.lang = "en-GB";
+    u.rate = 0.8;
+    speechSynthesis.speak(u);
+  };
+
+  const VERSION = "118"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
   map.createPane("shade").style.zIndex = 250;
   const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
-    layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
+    layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, crossOrigin: true, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
   // Round the team's reserves the ground detail is our own, sharper relief (walls, banks,
   // ditches, drains), part of the offline pack so it works with no signal. Elsewhere it's
   // the Environment Agency's online shading. One switch: whichever fits where you're looking.
@@ -432,6 +444,7 @@
   // blank line, then the name and notes, so it's easy to read.
   // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
+    ["pic", "Map picture", () => ""],
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
@@ -441,6 +454,7 @@
     ["notes", "Notes", (x) => x.notes],
   ];
   let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]).filter((k) => k !== "app"));
+  if (!store.get("sharePic", false)) { shareOn.add("pic"); store.set("shareOpts", [...shareOn]); store.set("sharePic", true); }
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
   function shareTextFor(x) {
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
@@ -449,27 +463,130 @@
   function drawShare() {
     $("shOpts").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
-      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes)) continue;
+      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes) || (k === "pic" && !shareItem.canPic)) continue;
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
       b.className = shareOn.has(k) ? "on" : "";
-      b.onclick = () => { shareOn.has(k) ? shareOn.delete(k) : shareOn.add(k); store.set("shareOpts", [...shareOn]); b.classList.toggle("on", shareOn.has(k)); $("shPrev").textContent = shareTextFor(shareItem); };
+      b.onclick = () => {
+        shareOn.has(k) ? shareOn.delete(k) : shareOn.add(k);
+        store.set("shareOpts", [...shareOn]);
+        b.classList.toggle("on", shareOn.has(k));
+        $("shPrev").textContent = shareTextFor(shareItem);
+        if (k === "pic") { if (shareOn.has("pic")) makePic(); else $("shPic").hidden = true; }
+      };
       $("shOpts").appendChild(b);
     }
     $("shPrev").textContent = shareTextFor(shareItem);
   }
+  // ---------- a picture of the map for sharing ----------
+  // The map under the crosshair as a square picture: map tiles (and LiDAR if it's on), the
+  // reserve edge, a pin, and a footer with the grid ref, lat/long, reserve and date. Nothing
+  // of yours goes in it: no saved points, no blue dot. Chats show it as the big preview.
+  async function mapPicture(x) {
+    const box = map.getContainer().getBoundingClientRect();
+    const cx = box.width / 2, cy = (window.innerHeight - sheet.offsetHeight) / 2;
+    const half = Math.min(cx, cy), S = 1080, k = S / (2 * half), FOOT = 190;
+    const c = document.createElement("canvas");
+    c.width = S;
+    c.height = S + FOOT;
+    const ctx = c.getContext("2d");
+    ctx.fillStyle = "#ece4d0";
+    ctx.fillRect(0, 0, S, S);
+    const put = (img) => {
+      const r = img.getBoundingClientRect();
+      ctx.drawImage(img, (r.left - box.left - (cx - half)) * k, (r.top - box.top - (cy - half)) * k, r.width * k, r.height * k);
+    };
+    for (const img of document.querySelectorAll(".leaflet-tile-pane img.leaflet-tile-loaded")) put(img);
+    const shade = [...document.querySelectorAll(".leaflet-shade-pane img.leaflet-tile-loaded")];
+    if (shade.length) {
+      ctx.save();
+      ctx.globalCompositeOperation = "hard-light";
+      ctx.globalAlpha = 0.65;
+      for (const img of shade) { ctx.filter = img.classList.contains("lidar") ? "brightness(.72) contrast(1.35)" : "none"; put(img); }
+      ctx.restore();
+    }
+    // the team's reserve edges, drawn fresh (the map's own vector layer also holds your shapes)
+    ctx.save();
+    ctx.strokeStyle = "#d9480f";
+    ctx.lineWidth = 5;
+    ctx.lineJoin = "round";
+    const at = (lat, lon) => { const p = map.latLngToContainerPoint([lat, lon]); return [(p.x - (cx - half)) * k, (p.y - (cy - half)) * k]; };
+    for (const f of nnr) {
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) for (const ring of poly) {
+        ctx.beginPath();
+        ring.forEach(([lon, lat], i) => { const [px, py] = at(lat, lon); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // the pin, its point on the spot
+    const [px, py] = at(x.lat, x.lon);
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.shadowColor = "rgba(0,0,0,.35)";
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = "#c2255c";
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.bezierCurveTo(-10, -22, -30, -34, -30, -58);
+    ctx.arc(0, -58, 30, Math.PI, 0);
+    ctx.bezierCurveTo(30, -34, 10, -22, 0, 0);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.arc(0, -58, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // footer
+    ctx.fillStyle = "#fbf9f3";
+    ctx.fillRect(0, S, S, FOOT);
+    ctx.fillStyle = "#e3dfd1";
+    ctx.fillRect(0, S, S, 2);
+    ctx.fillStyle = "#26261f";
+    ctx.font = "700 64px ui-monospace, Menlo, monospace";
+    ctx.fillText(x.ref, 44, S + 84);
+    ctx.font = "500 30px -apple-system, sans-serif";
+    ctx.fillStyle = "#6b695c";
+    const where = reserveAt(L.latLng(x.lat, x.lon)).replace(/ \(NNR\)$/, "");
+    const day = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    ctx.fillText([`${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`, where, day].filter(Boolean).join("  ·  "), 44, S + 138);
+    ctx.font = "400 19px -apple-system, sans-serif";
+    ctx.textAlign = "right";
+    const credit = Object.keys(map.attributionControl._attributions || {}).join(" · ").replace(/<[^>]+>/g, "").slice(0, 120);
+    ctx.fillText(credit, S - 30, S + FOOT - 22);
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88)); // fails (null) if a map server didn't allow it
+    return blob ? new File([blob], `${x.ref.replace(/\s+/g, "")}.jpg`, { type: "image/jpeg" }) : null;
+  }
+  // The picture is made as the share sheet opens: an iPhone only shares straight from a tap,
+  // so it has to be ready when Share is pressed
+  let sharePic = null;
   function openShare(item) {
     shareItem = item;
+    // only when the map is showing the place being shared (not from a notebook entry elsewhere)
+    item.canPic = map.getContainer().clientWidth > 0 && target().distanceTo([item.lat, item.lon]) < 30;
+    sharePic = null;
+    $("shPic").hidden = true;
+    if (item.canPic && shareOn.has("pic")) makePic();
     drawShare();
     $("shareModal").hidden = false;
+  }
+  function makePic() {
+    const it = shareItem;
+    sharePic = mapPicture(it).catch(() => null);
+    sharePic.then((f) => { if (shareItem === it && f && shareOn.has("pic")) { $("shPic").src = URL.createObjectURL(f); $("shPic").hidden = false; } });
   }
   $("shCancel").onclick = () => { $("shareModal").hidden = true; };
   $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) $("shareModal").hidden = true; };
   $("shGo").onclick = async () => {
     const text = shareTextFor(shareItem);
-    if (!text) return toast("Tick at least one thing to share");
+    const pic = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : null;
+    if (!text && !pic) return toast("Tick at least one thing to share");
     $("shareModal").hidden = true;
+    if (pic && navigator.canShare && navigator.canShare({ files: [pic] })) { try { await navigator.share({ files: [pic], text }); } catch {} return; }
     if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
   };
   $("shareBtn").onclick = () => {
@@ -812,7 +929,7 @@
     const inRes = [...TEAM.values()].filter((r) => [...resOf.values()].includes(r));
     if (resF && !inRes.includes(resF)) resF = "";
     // Reserve filter (only offered when something is in a reserve)
-    $("resFilter").innerHTML = inRes.map((r) => `<button data-r="${esc(r)}" class="${r === resF ? "on" : ""}">${esc(r)}</button>`).join("");
+    $("resFilter").innerHTML = [["", "Everything"], ...inRes.map((r) => [r, r])].map(([v, l]) => `<button data-r="${esc(v)}" class="${v === resF ? "on" : ""}">${esc(l)}</button>`).join("");
     $("resFilter").hidden = !inRes.length;
     const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || resOf.get(p) === resF);
     // Header: the notebook, or the folder you're in
@@ -1631,6 +1748,7 @@
     pack.names = idx.reserves;
     pack.mb = Math.round(idx.bytes / 1e6);
     if (store.get("pack", "") === idx.version) { pack.state = "ready"; return; }
+    if (store.get("pack", "")) { await caches.delete("gridref-maps"); store.set("pack", ""); }
     const cache = await caches.open("gridref-maps");
     const missing = async () => {
       const have = new Set((await cache.keys()).map((r) => new URL(r.url).pathname.split("/maps/")[1]));

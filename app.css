@@ -476,3 +476,14 @@ body.large .more-hint { display: none !important; }
 body.large .row .v.dim { font-size: 17px !important; }
 .sheetmenu .shchips button { padding: 6px 12px; font-size: 13.5px; border-radius: 16px; background: var(--green-soft); color: var(--muted); }
 .sheetmenu .shchips button.on { background: var(--green); color: var(--panel); }
+.shpic { display: block; width: 100%; max-height: 26vh; object-fit: cover; object-position: center 40%; border-radius: 10px; }
+.shpic[hidden] { display: none; }
+
+/* Big text (John mode): also high contrast, a read-aloud button, and a big "Copied" */
+body.large { --ink: #000; --muted: #2b2b28; --panel: #fff; --line: #bdb8a8; }
+@media (prefers-color-scheme: dark) { body.large { --ink: #fff; --muted: #e4e2da; --panel: #000; --line: #55534a; } }
+body.large .row .k { font-weight: 700; }
+.say { display: none; }
+body.large .say { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 22px; padding: 8px 16px; font: 700 17px var(--sans); background: var(--green-soft); color: var(--green); }
+body.large .say svg { width: 24px; height: 24px; }
+body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
