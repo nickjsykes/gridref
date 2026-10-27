@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "79"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "80"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1310,6 +1310,35 @@
     window.removeEventListener("deviceorientation", onOrient);
     heading = null;
   }
+  // Arriving: the panel goes green with a tick, the phone buzzes, and a short quiet chime
+  // plays. iPhone web apps can't vibrate, so the chime is what you'll notice in a pocket.
+  // Sound has to be switched on by a tap first, so tapping Navigate readies it.
+  let chime = null;
+  function unlockChime() {
+    try {
+      chime = chime || new (window.AudioContext || window.webkitAudioContext)();
+      if (chime.state === "suspended") chime.resume();
+    } catch { chime = null; }
+  }
+  function announceArrival() {
+    try { navigator.vibrate && navigator.vibrate([180, 90, 180, 90, 320]); } catch {}
+    [0, 160, 320].forEach((t) => setTimeout(haptic, t));
+    if (!chime) return;
+    try {
+      const now = chime.currentTime;
+      [[784, 0], [1047, 0.16]].forEach(([f, at]) => { // G5 then C6: a rising "found it"
+        const o = chime.createOscillator(), g = chime.createGain();
+        o.type = "sine";
+        o.frequency.value = f;
+        g.gain.setValueAtTime(0, now + at);
+        g.gain.linearRampToValueAtTime(0.18, now + at + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, now + at + 0.5);
+        o.connect(g).connect(chime.destination);
+        o.start(now + at);
+        o.stop(now + at + 0.55);
+      });
+    } catch {}
+  }
   function drawNav() {
     if (!nav) return;
     const to = L.latLng(nav.lat, nav.lon);
@@ -1321,15 +1350,13 @@
       return;
     }
     const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
-    const arrived = d <= Math.max(8, here.acc);
-    if (arrived && !nav.arrived) {
-      const res = reserveAt(to) || "";
-      $("navArt").src = /Roudsea/.test(res) ? "osprey.svg" : /Walney/.test(res) ? "art/natterjack.svg" : "art/cairn.svg";
-      haptic();
-    }
+    // Arrived within GPS accuracy; it takes a few metres more to "leave" again, so a GPS
+    // wobble at the spot doesn't flick it on and off
+    const arrived = nav.arrived ? d <= Math.max(15, here.acc * 1.5) : d <= Math.max(8, here.acc);
+    if (arrived && !nav.arrived) announceArrival();
     nav.arrived = arrived;
-    document.querySelector(".nav-body").classList.toggle("arrived", arrived);
-    $("navDist").textContent = arrived ? "You're here" : fmtDist(d);
+    sheet.classList.toggle("arrived", arrived);
+    $("navDist").textContent = arrived ? "You've arrived" : fmtDist(d);
     $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Head ${POINT_NAMES[Math.round(brg / 45) % 8]}`;
     $("navDeg").textContent = arrived ? "" : `${String(Math.round(brg) % 360).padStart(3, "0")}°`;
     $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
@@ -1361,6 +1388,7 @@
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     if (following) return toast("Move the crosshair to where you want to go, then tap Navigate");
     nav = { lat: last.lat, lon: last.lon, view: { c: map.getCenter(), z: map.getZoom() } };
+    unlockChime();
     $("navRef").textContent = last.ref;
     document.body.classList.add("navigating");
     layout();
@@ -1375,7 +1403,7 @@
   $("navEnd").onclick = () => {
     const to = nav;
     nav = null;
-    document.querySelector(".nav-body").classList.remove("arrived");
+    sheet.classList.remove("arrived");
     compassOff();
     if (navLine) { map.removeLayer(navLine); navLine = null; }
     if (navFlag) { map.removeLayer(navFlag); navFlag = null; }

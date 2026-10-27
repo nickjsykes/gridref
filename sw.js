@@ -1,11 +1,11 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v79";
+const CACHE = "gridref-v80";
 const TILES = "gridref-tiles";
 const MAPS = "gridref-maps"; // the offline OS map pack and boundary data: kept across updates
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
-const SHELL = ["./", "index.html", "app.js", "app.css", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html", "install.html", "qr.png", "osprey.svg", "art/waymark.svg", "art/wall.svg", "art/bogcotton.svg", "art/trailcam.svg", "art/cairn.svg", "art/natterjack.svg", "data/nnr.geojson",
+const SHELL = ["./", "index.html", "app.js", "app.css", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html", "install.html", "qr.png", "osprey.svg", "art/waymark.svg", "art/wall.svg", "art/bogcotton.svg", "art/trailcam.svg", "data/nnr.geojson",
   "zip.js", "exif.js", "data/places.json", "data/postcodes.json",
   "vendor/leaflet/leaflet.css", "vendor/leaflet/leaflet.js"];
 // Aerial imagery isn't cached: Esri's terms don't allow keeping it offline
