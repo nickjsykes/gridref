@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "105"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "107"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1749,7 +1749,6 @@
   const WX = [[0, "Clear"], [1, "Mostly clear"], [2, "Partly cloudy"], [3, "Overcast"], [45, "Fog"], [51, "Drizzle"], [61, "Rain"], [66, "Freezing rain"],
     [71, "Snow"], [80, "Showers"], [85, "Snow showers"], [95, "Thunder"]];
   const wxWord = (c) => (WX.filter(([k]) => c >= k).pop() || [0, ""])[1];
-  const COMPASS8 = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
   const cardCache = new Map();
   const hhmm = (s) => s.slice(11, 16);
   async function reserveConditions(code, c) {
@@ -1757,27 +1756,36 @@
     if (hit && Date.now() - hit.at < 30 * 60000) return hit;
     const tz = "&timezone=Europe%2FLondon";
     const [w, t] = await Promise.all([
-      getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat.toFixed(3)}&longitude=${c.lng.toFixed(3)}&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m&daily=sunset&wind_speed_unit=mph&forecast_days=1${tz}`),
+      getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat.toFixed(3)}&longitude=${c.lng.toFixed(3)}&current=temperature_2m,weather_code,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=precipitation_probability&daily=sunset&forecast_hours=8&wind_speed_unit=mph&forecast_days=1${tz}`),
       TIDAL[code] ? getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${TIDAL[code][0]}&longitude=${TIDAL[code][1]}&minutely_15=sea_level_height_msl&forecast_days=2${tz}`).catch(() => null) : null,
     ]);
-    const cur = w.current;
-    const out = { at: Date.now(),
-      weather: `${Math.round(cur.temperature_2m)}° ${wxWord(cur.weather_code).toLowerCase()} · wind ${COMPASS8[Math.round(cur.wind_direction_10m / 45) % 8]} ${Math.round(cur.wind_speed_10m)} mph, gusts ${Math.round(cur.wind_gusts_10m)}`,
-      sunset: hhmm(w.daily.sunset[0]) };
-    // Next high and low water: the turning points of the sea level after now
+    const cur = w.current, now = cur.time;
+    // Sky: temperature and cloud, then rain only if it's raining or coming in the next few hours
+    let sky = `${Math.round(cur.temperature_2m)}°, ${wxWord(cur.weather_code).toLowerCase()}`;
+    const hours = (w.hourly && w.hourly.time) || [];
+    const wet = hours.findIndex((h, i) => h >= now.slice(0, 13) && w.hourly.precipitation_probability[i] >= 50);
+    if (cur.precipitation > 0.1) sky += ", raining";
+    else if (wet >= 0) sky += hours[wet].slice(0, 13) <= now.slice(0, 13) ? ", rain likely" : `, rain likely from ${hhmm(hours[wet])}`;
+    const sunset = w.daily.sunset[0];
+    const light = now < sunset ? `light until ${hhmm(sunset)}` : `sunset was ${hhmm(sunset)}`;
+    // Wind only when it matters: gusts that make trees, ladders, boats or the estuary risky
+    const g = Math.round(cur.wind_gusts_10m), dir = POINT_NAMES[Math.round(cur.wind_direction_10m / 45) % 8].toLowerCase();
+    const wind = g >= 35 || cur.wind_speed_10m >= 25 ? `gusts to ${g} mph from the ${dir}` : "";
+    // Tide: which way it's going and when it turns. Heights here are the model's, not the tide
+    // tables' (chart datum), so they're turned into big/small tide rather than shown as metres.
+    let tide = "";
     if (t && t.minutely_15) {
-      const ts = t.minutely_15.time, v = t.minutely_15.sea_level_height_msl, now = cur.time;
-      const next = { high: null, low: null };
+      const ts = t.minutely_15.time, v = t.minutely_15.sea_level_height_msl;
       for (let i = 1; i < v.length - 1; i++) {
         if (ts[i] < now || v[i] == null || v[i - 1] == null || v[i + 1] == null) continue;
-        if (!next.high && v[i] >= v[i - 1] && v[i] > v[i + 1]) next.high = [ts[i], v[i]];
-        if (!next.low && v[i] <= v[i - 1] && v[i] < v[i + 1]) next.low = [ts[i], v[i]];
+        const high = v[i] >= v[i - 1] && v[i] > v[i + 1], low = v[i] <= v[i - 1] && v[i] < v[i + 1];
+        if (!high && !low) continue;
+        const when = `${ts[i].slice(0, 10) === now.slice(0, 10) ? "" : "tomorrow "}${hhmm(ts[i])}`;
+        tide = high ? `Tide coming in · high at ${when}${v[i] >= 3.7 ? ", big tide" : v[i] <= 1.9 ? ", small tide" : ""}` : `Tide going out · low at ${when}`;
+        break;
       }
-      const fmt = ([s, h]) => `${s.slice(0, 10) === now.slice(0, 10) ? "" : "tomorrow "}${hhmm(s)} (${h > 0 ? "+" : ""}${h.toFixed(1)} m)`;
-      if (next.high || next.low)
-        out.tide = [next.high && `High ${fmt(next.high)}`, next.low && `Low ${fmt(next.low)}`].filter(Boolean)
-          .sort((a, b) => (a.includes("tomorrow") - b.includes("tomorrow")) || a.replace(/\D/g, "").localeCompare(b.replace(/\D/g, ""))).join(" · ");
     }
+    const out = { at: Date.now(), sky: `${sky} · ${light}`, wind, tide };
     cardCache.set(code, out);
     return out;
   }
@@ -1788,27 +1796,23 @@
     cardFor = code;
     fresh();
     const mine = points.filter((p) => { const c = centreOf(p); return reserveShort(L.latLng(c.lat, c.lon)) === name; });
-    const ha = f.properties.MEASURE ? `${Math.round(f.properties.MEASURE)} ha` : "";
     card.innerHTML = `<div class="rc-head"><b></b><span class="rc-ha"></span><button type="button" class="rc-x" aria-label="Close">×</button></div>
-      <div class="rc-row"><small>Weather</small><span class="rc-wx">…</span></div>
-      ${TIDAL[code] ? '<div class="rc-row"><small>Tides</small><span class="rc-tide">…</span></div>' : ""}
-      <button type="button" class="rc-row rc-mine"><small>Notebook</small><span></span></button>`;
+      <div class="rc-sky">…</div><div class="rc-tide"></div><div class="rc-wind"></div>
+      <button type="button" class="rc-mine"></button>`;
     card.querySelector("b").textContent = f.properties.LABEL.replace(/ \(NNR\)$/, "");
-    card.querySelector(".rc-ha").textContent = ha;
-    const latest = mine.slice(0, 2).map((p) => p.name).join(", ");
-    card.querySelector(".rc-mine span").textContent = mine.length ? `${mine.length} ${mine.length > 1 ? "entries" : "entry"} here${latest ? ": " + latest : ""} ›` : "Nothing saved here yet";
+    card.querySelector(".rc-ha").textContent = f.properties.MEASURE ? `${Math.round(f.properties.MEASURE)} ha` : "";
+    card.querySelector(".rc-mine").textContent = mine.length ? `${mine.length} ${mine.length > 1 ? "notes" : "note"} here ›` : "Nothing in your notebook here yet";
     card.querySelector(".rc-mine").onclick = () => { if (!mine.length) return; closeResCard(); folder = null; resF = name; openDrawer(); };
     card.querySelector(".rc-x").onclick = closeResCard;
     card.hidden = false;
     const c = L.geoJSON(f).getBounds().getCenter();
     reserveConditions(code, c).then((r) => {
       if (cardFor !== code) return;
-      card.querySelector(".rc-wx").textContent = `${r.weather} · sunset ${r.sunset}`;
-      if (card.querySelector(".rc-tide")) card.querySelector(".rc-tide").textContent = r.tide ? `${r.tide} · model, approx.` : "Not available";
+      card.querySelector(".rc-sky").textContent = r.sky;
+      card.querySelector(".rc-tide").textContent = r.tide;
+      card.querySelector(".rc-wind").innerHTML = r.wind ? `<b>Windy:</b> ${esc(r.wind)}` : "";
     }).catch(() => {
-      if (cardFor !== code) return;
-      card.querySelector(".rc-wx").textContent = "No signal";
-      if (card.querySelector(".rc-tide")) card.querySelector(".rc-tide").textContent = "No signal";
+      if (cardFor === code) card.querySelector(".rc-sky").textContent = "No signal for weather or tides";
     });
     return card.getBoundingClientRect().bottom;
   }

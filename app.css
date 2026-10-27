@@ -445,15 +445,18 @@ body.adding .chips { visibility: hidden; } /* the menu may need their room on a 
 .stampline { display: block; width: 100%; box-sizing: border-box; margin: 8px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font: 16px var(--sans); background: var(--panel); color: var(--ink); }
 .stampline[hidden] { display: none; }
 
-/* reserve card: under the chips when you tap a reserve */
-.rescard { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 104px); background: color-mix(in srgb, var(--panel) 92%, transparent);
-  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,.22); padding: 10px 12px 6px; max-width: 460px; }
+/* reserve card: a few plain lines under the chips when you tap a reserve */
+.rescard { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 102px); max-width: 440px; padding: 7px 10px 7px 12px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.2); font: 14px/1.35 var(--sans); color: var(--ink); }
 .rescard[hidden] { display: none; }
-.rc-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-.rc-head b { font-size: 16px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc-head { display: flex; align-items: baseline; gap: 6px; }
+.rc-head b { font-size: 15px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rc-ha { color: var(--muted); font-size: 12.5px; flex: none; }
-.rc-x { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 24px; line-height: 1; padding: 0 2px; flex: none; }
-.rc-row { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font: 14px/1.35 var(--sans); color: var(--ink); width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-bottom: 0; }
-.rc-row small { flex: none; width: 66px; font: 600 11px var(--sans); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-.rc-mine span { color: var(--green); font-weight: 600; }
+.rc-x { margin-left: auto; border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 0 2px; flex: none; }
+.rc-tide { font-weight: 600; }
+.rc-sky:empty, .rc-tide:empty, .rc-wind:empty { display: none; }
+.rc-wind { color: #9a3d06; }
+@media (prefers-color-scheme: dark) { .rc-wind { color: #f2a679; } }
+.rc-mine { display: block; border: 0; background: none; padding: 1px 0 0; font: 600 14px var(--sans); color: var(--green); text-align: left; }
 body.adding .rescard, body.measuring .rescard, body.navigating .rescard, body.moving .rescard { display: none; }
