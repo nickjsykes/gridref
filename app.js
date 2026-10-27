@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "109"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "111"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1801,7 +1801,10 @@
     // Just the next high water: when and how high, as rangers read it off the tide table
     const hi = next.find((e) => e.high);
     if (!hi) return "";
-    const when = `${day(hi.at)}${new Date(hi.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+    const when = `${new Date(hi.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${day(hi.at) ? " tomorrow" : ""}`;
+    // Some stations (Ulverston, for Roudsea) only publish high waters: then we can't tell
+    // which way it's going, so don't guess
+    if (!ev.some((e) => !e.high)) return `High tide at ${when} ${hi.m.toFixed(1)} m`;
     return `Tide ${next[0].high ? "coming in" : "going out"} · high at ${when} ${hi.m.toFixed(1)} m`;
   }
   let cardFor = null;
