@@ -67,18 +67,33 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "114"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "116"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
   map.createPane("shade").style.zIndex = 250;
   const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
     layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
+  // Round the team's reserves the ground detail is our own, sharper relief (walls, banks,
+  // ditches, drains), part of the offline pack so it works with no signal. Elsewhere it's
+  // the Environment Agency's online shading. One switch: whichever fits where you're looking.
+  const reliefLayer = L.tileLayer("maps/relief/{z}/{x}/{y}.webp", { minZoom: 14, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK, pane: "shade", attribution: "LiDAR © Environment Agency" });
   let shadeOn = false; // off at every launch
+  function nearReserve() {
+    const c = map.getCenter();
+    return nnr.some((f) => { const [w, s, e, n] = f.bbox; return c.lng > w - 0.008 && c.lng < e + 0.008 && c.lat > s - 0.005 && c.lat < n + 0.005; });
+  }
+  function drawShade() {
+    if (!shadeOn) { map.removeLayer(reliefLayer); map.removeLayer(lidarShade); return; }
+    const ours = map.getZoom() >= 14 && nearReserve();
+    if (ours) { if (!map.hasLayer(reliefLayer)) reliefLayer.addTo(map); map.removeLayer(lidarShade); }
+    else { if (!map.hasLayer(lidarShade)) lidarShade.addTo(map); map.removeLayer(reliefLayer); }
+  }
   function setShade(on) {
     shadeOn = on;
-    if (on) lidarShade.addTo(map); else map.removeLayer(lidarShade);
+    drawShade();
   }
+  map.on("moveend", () => { if (shadeOn) drawShade(); });
   function drawLayerMenu() {
     layersEl.innerHTML = "";
     for (const [k, v] of Object.entries(LAYERS)) {
@@ -93,7 +108,7 @@
       layersEl.appendChild(b);
     }
     const sh = document.createElement("button");
-    sh.textContent = (shadeOn ? "☑ " : "☐ ") + "LiDAR shading";
+    sh.textContent = (shadeOn ? "☑ " : "☐ ") + "LiDAR ground detail";
     sh.className = "tick" + (shadeOn ? " on" : "");
     sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
     layersEl.appendChild(sh);
@@ -2281,10 +2296,13 @@
   // Any browser (Edge and Chrome on iPhone have no service worker): ask GitHub which
   // version is current and, if this page is older, load the new one. The ?v= makes the
   // browser fetch a fresh page instead of reusing its cached copy.
+  // Only one reload per update, whichever notices first (two at once could freeze an iPhone app)
+  let reloading = false;
   async function checkVersion() {
     try {
       const j = await (await fetch("version.json", { cache: "no-store" })).json();
-      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v)) {
+      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v) && !reloading) {
+        reloading = true;
         const u = new URLSearchParams(location.search);
         u.set("v", j.v);
         location.replace(location.pathname + "?" + u);
@@ -2296,9 +2314,8 @@
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     const hadController = !!navigator.serviceWorker.controller;
-    let reloaded = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (hadController && !reloaded) { reloaded = true; location.reload(); }
+      if (hadController && !reloading) { reloading = true; location.reload(); }
     });
     navigator.serviceWorker.register("sw.js").then((r) => r.update()).catch(() => {});
     // Check for a new version whenever the app comes back to the front

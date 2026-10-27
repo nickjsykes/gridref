@@ -1,7 +1,7 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v114";
+const CACHE = "gridref-v116";
 const TILES = "gridref-tiles";
 const MAPS = "gridref-maps"; // the offline OS map pack and boundary data: kept across updates
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
@@ -19,18 +19,14 @@ self.addEventListener("install", (e) => {
     .then((c) => Promise.allSettled(SHELL.map((u) => c.add(new Request(u, { cache: "no-cache" })))))
     .then(() => self.skipWaiting()));
 });
-// On an upgrade, reload any open copy of the app. Old copies of the page have no
-// update code of their own, so without this they keep showing the previous version.
+// On an upgrade: clear the old files and take over. The page reloads itself (once): forcing
+// a reload from here as well made three reloads race on an iPhone home-screen app, which
+// could leave it frozen until it was closed and reopened.
 self.addEventListener("activate", (e) => {
   e.waitUntil((async () => {
     const old = (await caches.keys()).filter((k) => k !== CACHE && k !== TILES && k !== MAPS);
     await Promise.all(old.map((k) => caches.delete(k)));
     await self.clients.claim();
-    if (old.length) {
-      for (const c of await self.clients.matchAll({ type: "window" })) {
-        try { await c.navigate(c.url); } catch {}
-      }
-    }
   })());
 });
 

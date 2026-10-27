@@ -4,8 +4,9 @@ Source: OS OpenMap Local, Full Colour Raster (OGL v3), 5 km GeoTIFFs at 1 m on t
 National Grid, downloaded per 100 km square into build/src as omlras_gtfc_<sq>.zip.
 Reserves: Natural England NNR boundaries in data/nnr.geojson (build/README).
 
-Ground relief from the EA 1 m LiDAR (build/build_relief.py, run that first) is blended into
-zooms 14-17 around each reserve, so walls, banks, ditches and drains show on the map.
+Ground relief from the EA 1 m LiDAR (build/build_relief.py, run that first) is cut as its own
+greyscale layer, maps/relief/{z}/{x}/{y}.webp (zooms 14-17 round each reserve): darker where
+the ground dips, lighter where it rises, so walls, banks, ditches and drains show over any map.
 
 Output: maps/{z}/{x}/{y}.webp web-map tiles around each reserve, and maps/index.json, the
 list the app downloads. Needs rasterio and Pillow (the Terra venv has both):
@@ -18,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import rasterio
 from PIL import Image
-from rasterio.transform import from_bounds
+from rasterio.transform import Affine, from_bounds
 from rasterio.warp import Resampling, reproject, transform_bounds
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -119,16 +120,38 @@ def render(z, x, y):
             reproject(np.full((1,) + rgb.shape[1:], 255, np.uint8), alpha, resampling=Resampling.nearest, init_dest_nodata=False, **kw)
     if not found or not alpha.any():
         return None
-    if z >= RELIEF_FROM:
-        fac = np.ones((1, TILE, TILE), np.float32)
-        for arr, tr, bd in RELIEF.values():
-            if bd.right < w or bd.left > e or bd.top < s or bd.bottom > n:
-                continue
-            reproject(arr[None], fac, src_transform=tr, src_crs="EPSG:27700", dst_transform=dst_t, dst_crs="EPSG:3857",
-                      resampling=Resampling.bilinear if metres_per_px < 1.5 else Resampling.average, init_dest_nodata=False)
-        dst = np.clip(dst.astype(np.float32) * fac, 0, 255).astype(np.uint8)
     img = np.concatenate([dst, alpha]).transpose(1, 2, 0)
     return Image.fromarray(img, "RGBA") if alpha.min() < 255 else Image.fromarray(img[..., :3], "RGB")
+
+def render_relief(z, x, y):
+    """The relief alone, as a grey tile (see below)."""
+    b = tile_bounds_3857(z, x, y)
+    w, s, e, n = transform_bounds("EPSG:3857", "EPSG:27700", *b, densify_pts=21)
+    metres_per_px = (b[2] - b[0]) / TILE * math.cos(math.radians(54.3))
+    dst_t = from_bounds(*b, TILE, TILE)
+    fac = np.ones((1, TILE, TILE), np.float32)
+    hit = False
+    for arr, tr, bd in RELIEF.values():
+        if bd.right < w or bd.left > e or bd.top < s or bd.bottom > n:
+            continue
+        hit = True
+        # Only the patch under this tile (plus a margin): reprojecting the whole reserve for
+        # every tile made the cut take hours
+        c0 = max(0, int((w - tr.c) / tr.a) - 4); c1 = min(arr.shape[1], int((e - tr.c) / tr.a) + 5)
+        r0 = max(0, int((n - tr.f) / tr.e) - 4); r1 = min(arr.shape[0], int((s - tr.f) / tr.e) + 5)
+        if c1 <= c0 or r1 <= r0:
+            continue
+        sub = np.ascontiguousarray(arr[r0:r1, c0:c1])
+        reproject(sub[None], fac, src_transform=tr * Affine.translation(c0, r0), src_crs="EPSG:27700", dst_transform=dst_t, dst_crs="EPSG:3857",
+                  resampling=Resampling.bilinear if metres_per_px < 1.5 else Resampling.average, init_dest_nodata=False)
+    if not hit:
+        return None
+    # Grey 128 = no change; darker = the ground dips, lighter = it rises. The app blends it
+    # onto whatever map is showing (soft light), so one small grey tile works over all of them
+    d = fac[0] - 1
+    if np.abs(d).max() < 0.03:
+        return None
+    return Image.fromarray(np.clip(128 + d * 255 * 1.6, 0, 255).astype(np.uint8), "L")
 
 def main():
     gj = json.loads((ROOT / "data" / "nnr.geojson").read_text("utf-8"))
@@ -163,6 +186,16 @@ def main():
             img.save(path, "WEBP", quality=QUALITY, method=6)
         tiles.append(f"{z}/{x}/{y}.webp")
         total += path.stat().st_size
+        if z >= RELIEF_FROM:
+            rpath = OUT / "relief" / str(z) / str(x) / f"{y}.webp"
+            if not rpath.exists():
+                rimg = render_relief(z, x, y)
+                if rimg is not None:
+                    rpath.parent.mkdir(parents=True, exist_ok=True)
+                    rimg.save(rpath, "WEBP", quality=60, method=4)
+            if rpath.exists():
+                tiles.append(f"relief/{z}/{x}/{y}.webp")
+                total += rpath.stat().st_size
         if i % 500 == 0:
             print(f"  {i}/{len(wanted)}  {total / 1e6:.1f} MB")
     tiles.sort()
