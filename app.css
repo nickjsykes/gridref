@@ -349,7 +349,6 @@ body.large .results button .gr { font-size: 23px; }
 .layers { position: fixed; z-index: 1001; right: 76px; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
 .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
 .layers button.tick { border-top: 1px solid var(--line); }
-.lnote { padding: 7px 14px; font-size: 11.5px; line-height: 1.35; color: var(--muted); border-top: 1px solid var(--line); max-width: 230px; }
 /* LiDAR ground detail: grey tiles blended onto whatever map is below (mid-grey = no change,
    darker = a dip, lighter = a rise). Hard light, because soft light barely touches a pale map.
    The blend sits on the pane, so it reaches the map tiles. */
@@ -484,3 +483,7 @@ body.large { --ink: #000; --muted: #2b2b28; --panel: #fff; --line: #bdb8a8; }
 @media (prefers-color-scheme: dark) { body.large { --ink: #fff; --muted: #e4e2da; --panel: #000; --line: #55534a; } }
 body.large .row .k { font-weight: 700; }
 body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
+/* the grid ref sits centred in the panel */
+.refline .big { justify-content: center; }
+.ref { flex: none; text-align: center; }
+.more-hint { text-align: center; }

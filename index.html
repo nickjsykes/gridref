@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=119">
-<link rel="stylesheet" href="app.css?v=119">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=121">
+<link rel="stylesheet" href="app.css?v=121">
 </head>
 <body>
 <div id="map"></div>
@@ -76,7 +76,7 @@
   <div class="actions">
     <button id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button>
     <button id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z" fill="currentColor"/></svg>Navigate</button>
-  <button class="aa tool" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
+  <button class="aa" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
   </div>
   <div class="measure" id="measure">
     <div class="m-nums">
@@ -131,7 +131,7 @@
   <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
   <div class="chiprow res" id="resFilter" hidden></div>
   <div class="list" id="list"></div>
-  <p class="credit">Field Notes · Nick Sykes for Natural England</p>
+  <p class="credit">Field Notes 1.0 · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
   <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
   <footer>
@@ -215,13 +215,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=119"></script>
-<script src="config.js?v=119"></script>
-<script src="osgb.js?v=119"></script>
-<script src="parse.js?v=119"></script>
-<script src="zip.js?v=119"></script>
-<script src="exif.js?v=119"></script>
-<script src="local.js?v=119"></script>
-<script src="app.js?v=119"></script>
+<script src="vendor/leaflet/leaflet.js?v=121"></script>
+<script src="config.js?v=121"></script>
+<script src="osgb.js?v=121"></script>
+<script src="parse.js?v=121"></script>
+<script src="zip.js?v=121"></script>
+<script src="exif.js?v=121"></script>
+<script src="local.js?v=121"></script>
+<script src="app.js?v=121"></script>
 </body>
 </html>

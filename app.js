@@ -67,7 +67,8 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "119"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "121"; // bump with each release so a phone can show which copy it's running
+  const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -119,7 +120,7 @@
       layersEl.appendChild(off);
     }
     const ver = document.createElement("button");
-    ver.textContent = "Nick Sykes for Natural England · v" + VERSION;
+    ver.textContent = `Field Notes ${APP_VERSION} · build ${VERSION} · Nick Sykes for Natural England`;
     ver.disabled = true;
     ver.className = "ver";
     layersEl.appendChild(ver);
@@ -435,9 +436,9 @@
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
-    ["pic", "Current map", () => ""],
     ["apple", "Apple Maps", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
+    ["pic", "Current map", () => ""],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
   ];
@@ -876,8 +877,8 @@
   const keyOf = (p) => p.at + "|" + p.name;
   // ---------- the notebook: newest first under day headings, filter by type and reserve ----------
   // Imported files go into a folder of their own, shown as one row until you open it.
-  // Type filtering was dropped (27 Oct): the reserve chips are the useful filter
-  let tab = "all", resF = "", folder = null, menuPt = null;
+  // Filter by reserve (the chips); "" is Everything
+  let resF = "", folder = null, menuPt = null;
   const KIND_WORD = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" };
   // Tap a reserve to see only its entries; tap it again to see everything
   $("resFilter").onclick = (e) => { const b = e.target.closest("button"); if (b) { resF = resF === b.dataset.r ? "" : b.dataset.r; openDrawer(); } };
@@ -901,12 +902,6 @@
     for (const p of list) n[p.kind || "point"]++;
     return Object.entries(n).filter(([, v]) => v).map(([k, v]) => `${v} ${KIND_WORD[k].toLowerCase().replace(/s$/, v > 1 ? "s" : "")}`).join(", ");
   }
-  const EMPTY_TYPE = {
-    point: "No points yet.<br>Line up the crosshair and tap the <b>+</b> point button.<br><br>Got a list of grid refs? <b>Import</b> a CSV.",
-    line: "No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.",
-    area: "No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.",
-    photo: "No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It's pinned on the map where it was taken.",
-  };
   const empty = (html) => `<div class="empty"><i class="tex"></i><p>${html}</p></div>`;
   function openDrawer() {
     fresh();
@@ -920,7 +915,7 @@
     // Reserve filter (only offered when something is in a reserve)
     $("resFilter").innerHTML = [["", "Everything"], ...inRes.map((r) => [r, r])].map(([v, l]) => `<button data-r="${esc(v)}" class="${v === resF ? "on" : ""}">${esc(l)}</button>`).join("");
     $("resFilter").hidden = !inRes.length;
-    const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || resOf.get(p) === resF);
+    const match = (p) => !resF || resOf.get(p) === resF;
     // Header: the notebook, or the folder you're in
     $("dTitle").textContent = folder || "Notebook";
     $("dSub").textContent = folder ? `(${summary(scope)})` : "(on this phone only)";
@@ -929,8 +924,8 @@
     const list = $("list");
     list.innerHTML = "";
     const shown = scope.filter(match);
-    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair and tap the <b>+</b> point button, draw a line or an area, or take a photo.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
-    else if (!shown.length) list.innerHTML = empty(tab !== "all" && !resF && !folder ? EMPTY_TYPE[tab] : "Nothing here with these filters.");
+    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair, tap <b>+</b>, then pick a point, line, area or photo.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
+    else if (!shown.length) list.innerHTML = empty("Nothing here with these filters.");
     // Rows: in a folder just its entries (by name); otherwise loose entries and one row per
     // folder, newest first, under day headings
     let rows;
@@ -1091,7 +1086,7 @@
   $("imDel").onclick = () => { if (deleteSaved(menuPt)) { closeMenu(); openDrawer(); } };
   function closeDrawer() { if (selecting) { selecting = false; picked.clear(); $("drawer").classList.remove("selecting"); } $("drawer").classList.remove("open"); }
   $("closeDrawer").onclick = closeDrawer;
-  // ---------- export: everything, one tab, or picked entries; CSV or GeoJSON ----------
+  // ---------- export: everything or picked entries; CSV or GeoJSON ----------
   const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
   function toCSV(list) {
     const wkt = (p) => {
@@ -1172,7 +1167,7 @@
     fresh();
     exportPhotos = $("exPhotos").checked;
     if (scope === "all") return exportList(points, exportFmt, exportPhotos);
-    // Pick: tap entries to tick them (across any tab), then Export
+    // Pick: tap entries to tick them, then Export
     selecting = true;
     picked.clear();
     $("drawer").classList.add("selecting");
@@ -1830,7 +1825,9 @@
   // "Roudsea 10:42": the reserve you're in (or what it is) and the time
   function autoName(kind, lat, lon, when = new Date()) {
     const r = lat != null ? reserveShort(L.latLng(lat, lon)) : "";
-    return `${r || { line: "Line", area: "Area", photo: "Photo" }[kind] || "Point"} ${timeOf(when.toISOString())}`;
+    const what = { line: "line", area: "area", photo: "photo" }[kind] || "";
+    const head = r ? `${r}${what ? " " + what : ""}` : what ? what[0].toUpperCase() + what.slice(1) : "Point";
+    return `${head} ${timeOf(when.toISOString())}`;
   }
   // The team's short name for the reserve at a spot ("Roudsea"), or ""
   function reserveShort(ll) {

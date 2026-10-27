@@ -1,21 +1,19 @@
 # Field Notes
 
-A phone-first OS grid reference finder (a better gridreferencefinder.com for field use).
+A pocket map and notebook for rangers, built for the Natural England South Cumbria NNR team (iPhone first). Live at https://nickjsykes.github.io/gridref/ (install guide: `install.html`).
 
-- Drag the map under the crosshair, or tap GPS to read your own position (with ± accuracy).
-- Grid ref (6 or 8-figure: phone GPS can't honestly support 10), E/N, lat/long and what3words, each tap-to-copy. Swipe the panel down for just the grid ref, up for the rest.
-- Navigate: map with you, the flag and a line, plus a compass arrow to the target, distance and bearing (iPhone asks for compass permission on the first tap; screen kept awake).
-- Notebook: points, lines, areas and photos by day, filter by type and reserve; imported CSVs go into folders; export CSV or GeoJSON.
-- Search takes anything: grid refs, E/N, decimal or DMS lat/long (any order, letters or signs), postcodes and districts (postcodes.io), ///what3words, pasted Google/Apple/OSM/OS Maps links and geo: URIs, and place names as you type (Photon). `node test/parse.test.js` lists every format.
-- what3words: paste an API key into `config.js` to show the words in-app; without one the row and searches open what3words.
-- OS grid lines (100 km / 10 km / 1 km by zoom). Topo, street and aerial base maps.
-- Add to Home Screen on iPhone for a full-screen app.
-- Offline: the app, grid refs/E-N/lat-long, GPS, and place + postcode search for the SD and NY squares (OS Open Names and Code-Point Open, `data/`) all work with no signal. Map tiles you've viewed are kept (up to 5,000); "Save this area for offline" in the layers menu loads one reserve. Aerial photos and what3words need signal.
-- Large text (layers menu) for small phones; the grid ref always sizes itself to fit.
+- **Find and convert**: the crosshair reads out the OS grid ref (8 figures), lat/long, E/N and what3words; tap any to copy. Grid refs and E/N match OS's own OSTN15 conversion to within centimetres (`data/ostn15.json`).
+- **Search anything**: grid refs, E/N, lat/long (decimal or DMS), postcodes, plus codes, ///what3words, map links, place names (offline for SD/NY, online elsewhere), your own notebook and the reserves, with typo tolerance, and locations pulled out of a pasted message. `node test/parse.test.js`.
+- **Notebook** (on the phone only): points, lines, areas and photos by day, filtered by reserve, each tagged with its reserve; CSV imports go into folders; export CSV (E/N in EPSG:27700) or GeoJSON, with photos as a zip.
+- **Share**: grid ref, lat/long, E/N, Apple/Google Maps links, name and notes, and a picture of the current map. Photos are stamped with the location, date, reserve and your own line.
+- **Navigate** to anything with a compass arrow, distance and bearing; arriving turns the panel green with a buzz and a chime.
+- **Reserve chips** jump to each reserve and show a card: weather, sunset, official tides (ADMIRALTY, daily via `.github/workflows/tides.yml`) and your notes there.
+- **Maps**: OS Outdoor (OS Maps API, OpenData), aerial, and an offline OS map for the seven reserves; "LiDAR ground detail" adds a 1 m relief layer (offline near the reserves, EA shading elsewhere).
+- **Big text** (Aa): bigger, high contrast, nothing taken away.
 
 Offline data: download OS Open Names and Code-Point Open (CSV) into `build/src/` as `opname.zip` and `codepo.zip`, then `python build/build_offline.py`. Contains OS data © Crown copyright and database right 2026 (Open Government Licence v3.0).
 
-Accuracy: Helmert datum shift, good to ~3–5 m, and phone GPS is ~5 m in the open and worse under trees, so the app gives 6 or 8 figures. 10-figure refs can still be searched.
+Accuracy: OSTN15 (via a 5 km correction table over a Helmert shift), within a few cm of OS. Phone GPS is ~5 m in the open and worse under trees, so the app gives 8 figures; 10-figure refs can still be searched.
 
 Static files only, no build step: `index.html` (layout), `app.css` (styles, light/dark tokens), `app.js` (the app), `osgb.js` (grid conversions), `parse.js` (search parsing), `local.js` (offline place/postcode search), `zip.js` (backup zips), `sw.js` (offline).
 
@@ -23,7 +21,7 @@ Static files only, no build step: `index.html` (layout), `app.css` (styles, ligh
 
 ## Offline maps and reserve boundaries
 
-- **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the six reserves in `PACK` in `build/build_tiles.py` (Roudsea, Blelham Bog, Duddon Mosses, Hallsenna Moor, North Walney, Gait Barrows), zoom 11-17, about 9 MB. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
+- **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the seven reserves in `PACK` in `build/build_tiles.py`, zoom 11-17, plus the LiDAR relief layer (`maps/relief`, from `build/build_relief.py`), about 19 MB. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
   Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
 - **NNR boundaries**: live from Natural England's National Nature Reserves (England) feature service every time the app has signal; `data/nnr.geojson` is the copy shipped for first use offline (refresh it with the query URL in `index.html`, `NNR_LIVE`).
-- **Tools**: Measure (points at the crosshair; distance, perimeter, area on the OS grid) and Photo (stamps grid ref, time, GPS accuracy and reserve name; shares or saves the JPEG).
+- **Other build scripts**: `build_ostn15.py` (OSTN15 table), `fetch_tides.py` (tides, run by the workflow), `draw_icon.py` (home-screen icon), `draw_art.py` (empty-notebook contour texture).
