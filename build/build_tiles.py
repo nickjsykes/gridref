@@ -192,7 +192,7 @@ def main():
                 rimg = render_relief(z, x, y)
                 if rimg is not None:
                     rpath.parent.mkdir(parents=True, exist_ok=True)
-                    rimg.save(rpath, "WEBP", quality=60, method=4)
+                    rimg.save(rpath, "WEBP", quality=75, method=4)  # 60 left visible blocks close up
             if rpath.exists():
                 tiles.append(f"relief/{z}/{x}/{y}.webp")
                 total += rpath.stat().st_size

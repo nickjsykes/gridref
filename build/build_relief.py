@@ -67,14 +67,15 @@ def relief(dtm, valid):
     z = np.where(valid, dtm, np.nan)
     fill = np.nanmedian(z) if np.isfinite(z).any() else 0
     z = np.where(valid, dtm, fill)
-    # Shape of the land: four light directions averaged, so no side is lost in shadow
-    hs = np.mean([hillshade(z, az) for az in (315, 45, 135, 225)], axis=0)
-    hs = (hs - np.median(hs)) / (np.percentile(hs, 98) - np.percentile(hs, 2) + 1e-6)
-    # The small stuff: ground minus a smoothed copy of itself, at two sizes: 15 m for banks,
-    # tracks and wide ditches, 4 m for tumbled walls, grips and drains. Most of these are only
-    # 10-30 cm high, so they're stretched hard (tanh keeps the big ones from going solid)
-    lrm = 0.6 * (z - gaussian_filter(z, 15)) / 0.3 + 0.4 * (z - gaussian_filter(z, 5)) / 0.15
-    f = 1 + 0.12 * np.clip(hs, -1, 1) + 0.33 * np.tanh(lrm)
+    # Shape of the land: lit from the north-west, with a softer light from the north-east so
+    # banks running NW-SE don't vanish. Never opposite pairs: averaging light from both sides
+    # cancels the edges out and leaves only blotches (the mush seen close up in build 122).
+    # Measured from what flat ground looks like, so flat moss stays mid-grey, not stretched.
+    hs = 0.65 * hillshade(z, 315) + 0.35 * hillshade(z, 45) - math.sin(math.radians(40))
+    # The small stuff: ground minus a 10 m-smoothed copy of itself, so a bank or a ditch reads
+    # as raised or sunk even on a slope (tanh keeps the big ones from going solid)
+    lrm = (z - gaussian_filter(z, 10)) / 0.4
+    f = 1 + 0.36 * np.tanh(hs * 4) + 0.2 * np.tanh(lrm)
     # Fade out over the outer edge, and wherever there's no LiDAR (sea, gaps)
     dist = distance_transform_edt(valid)
     edge = np.ones_like(dist)
