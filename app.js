@@ -2175,7 +2175,7 @@
     $("stampOpts").hidden = false;
     $("stampOpts").innerHTML = STAMP_OPTS.filter(([k]) => k !== "reserve" || stampJob.reserve)
       .map(([k, l]) => `<button type="button" data-k="${k}" class="${stampOn.has(k) ? "on" : ""}">${l}</button>`).join("");
-    // "Add notes": a line each person types (a note, their team, their name) (their team, their name), kept on this phone
+    // "Add notes": a line each person types (a note, their team, their name), kept on this phone
     $("stampLine").hidden = !stampOn.has("line");
     $("stampLine").value = store.get("stampLine", "");
   }
