@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=43">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=45">
 <style>
   :root {
     --green: #2f5d3a;
@@ -111,7 +111,7 @@
   .prec { display: inline-flex; background: var(--green-soft); border-radius: 9px; padding: 2px; }
   .prec button { border: 0; background: none; color: var(--muted); font: 600 13px var(--sans); padding: 5px 10px; border-radius: 7px; }
   .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
-  .actions { display: grid; grid-template-columns: 32px repeat(4, 1fr); gap: 6px; margin-top: 10px; align-items: stretch; }
+  .actions { display: grid; grid-template-columns: 32px repeat(3, 1fr); gap: 6px; margin-top: 10px; align-items: stretch; }
   .tool { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 8px 2px 6px !important; }
   .tool svg { width: 24px; height: 24px; }
   .tool span { font: 600 11px var(--sans); white-space: nowrap; }
@@ -128,8 +128,8 @@
   .drawer h2 { margin: 0; font-size: 19px; }
   .drawer header button, .link { border: 0; background: none; color: var(--green); font: 600 16px var(--sans); padding: 6px 0; }
   .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-  .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-  .tabs button { border: 0; border-radius: 10px; padding: 9px 4px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--muted); }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; border-radius: 10px; padding: 8px 2px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
   .tabs button.on { background: var(--green); color: var(--panel); }
   .modal.sheetmenu { align-items: flex-end; padding-bottom: calc(var(--safe-b) + 10px); }
   .sheetmenu .card { gap: 6px; }
@@ -147,7 +147,7 @@
   .featmenu button.danger { color: var(--danger); }
   .featmenu .fm-title span:empty { display: none; }
   .featmenu .fm-title span { font: 13px var(--mono); color: var(--muted); }
-  .item .thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 6px; background: var(--green-soft); }
+  .item .thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; background: var(--green-soft); display: block; }
   .photopin { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #2d3436; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
   .photopin svg { width: 15px; height: 15px; }
   .shopts { display: grid; gap: 4px; }
@@ -333,6 +333,8 @@
   </button>
 </div>
 <div class="fabs left">
+  <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+  <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
   <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg></button>
   <button class="fab" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
   <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg></button>
@@ -351,16 +353,14 @@
       <span class="from-me" id="fromMe"></span>
     </div>
     <div class="rows">
-      <label class="row" for="hapticSw" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span></label>
       <label class="row" for="hapticSw" data-copy="ll"><span class="k">Lat / Long</span><span class="v" id="vLL"></span></label>
+      <label class="row" for="hapticSw" data-copy="en"><span class="k">E / N</span><span class="v" id="vEN"></span></label>
       <a class="row" id="w3wRow" href="https://what3words.com/" target="_blank" rel="noopener"><span class="k">what3words</span><span class="v" id="vW3W"></span><span class="c" id="w3wAct"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg><b>Open</b></span></a>
     </div>
     <div class="actions">
       <button class="tool small" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
       <button class="tool" id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Share</span></button>
       <button class="tool primary" id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg><span>Navigate</span></button>
-      <button class="tool" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Photo</span></button>
-      <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
       <button class="tool" id="listBtn" aria-label="Saved points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg><span>Saved</span></button>
     </div>
   </div>
@@ -488,11 +488,11 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=43"></script>
-<script src="config.js?v=43"></script>
-<script src="osgb.js?v=43"></script>
-<script src="parse.js?v=43"></script>
-<script src="local.js?v=43"></script>
+<script src="vendor/leaflet/leaflet.js?v=45"></script>
+<script src="config.js?v=45"></script>
+<script src="osgb.js?v=45"></script>
+<script src="parse.js?v=45"></script>
+<script src="local.js?v=45"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -545,7 +545,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "43"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "45"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1269,10 +1269,10 @@
       const c = p.pts.map(([a, b]) => `${b} ${a}`);
       return p.kind === "area" ? `POLYGON((${c.concat([c[0]]).join(", ")}))` : `LINESTRING(${c.join(", ")})`;
     };
-    const rows = [["Name", "Type", "Grid ref", "Easting", "Northing", "Latitude", "Longitude", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)"]]
+    const rows = [["Name", "Type", "Grid ref", "Latitude", "Longitude", "Easting", "Northing", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)"]]
       .concat(list.map((p) => {
         const st = p.pts ? shapeStats(p) : null;
-        return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.e, p.n, p.lat.toFixed(6), p.lon.toFixed(6), st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
+        return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.lat.toFixed(6), p.lon.toFixed(6), p.e, p.n, st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
           p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p))];
       }));
     return rows.map((r) => r.join(",")).join("\n");
@@ -1287,7 +1287,7 @@
         : { type: "Point", coordinates: [+p.lon.toFixed(6), +p.lat.toFixed(6)] };
       return { type: "Feature", geometry, properties: {
         name: p.name, type: p.kind || "point", notes: p.notes || "", grid_ref: OSGB.gridRef(c.e, c.n, 8),
-        easting: Math.round(c.e), northing: Math.round(c.n), length_m: st ? Math.round(st.length) : null,
+        latitude: +c.lat.toFixed(6), longitude: +c.lon.toFixed(6), easting: Math.round(c.e), northing: Math.round(c.n), length_m: st ? Math.round(st.length) : null,
         area_ha: st && st.area != null ? +(st.area / 10000).toFixed(4) : null, gps_accuracy_m: p.acc ?? null,
         saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle" } };
     });
