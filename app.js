@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "53"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "55"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -257,7 +257,7 @@
   }
   function w3wUpdate(p) {
 
-    if (!W3W_KEY) return w3wShow("Show the 3 words", false);
+    if (!W3W_KEY) return w3wShow("Press Open & paste in search", false);
     const at = spot(p);
     if (w3w.at === at && w3w.words) return w3wShow("///" + w3w.words, true);
     w3wShow("…", false);
@@ -270,7 +270,7 @@
         w3w = { at, words: j.words };
         if (last && spot(last) === at) w3wShow("///" + j.words, true);
       } catch {
-        if (last && spot(last) === at) w3wShow(navigator.onLine ? "Show the 3 words" : "Needs signal", false);
+        if (last && spot(last) === at) w3wShow(navigator.onLine ? "Press Open & paste in search" : "Needs signal", false);
       }
     }, 450);
   }
