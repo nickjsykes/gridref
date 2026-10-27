@@ -386,3 +386,7 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 .sheet.arrived .head { font-size: 15px; }
 .m-nums > div { min-width: 0; } /* let the number shrink to the box, not the box grow to the number */
 .empty p { margin: 0; }
+/* slid down: Share and Navigate stay, a little slimmer */
+.sheet.compact .actions { margin: 2px 0 0; }
+.sheet.compact .actions button { padding: 7px 8px; font-size: 14px; }
+.sheet.compact .actions svg { width: 18px; height: 18px; }
