@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "111"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "114"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -418,10 +418,10 @@
   // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
-    ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
-    ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
-    ["apple", "Apple Maps link", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
-    ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
+    ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
+    ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
+    ["apple", "Apple Maps", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
+    ["google", "Google Maps", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
   ];
@@ -435,11 +435,12 @@
     $("shOpts").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
       if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes)) continue;
-      const l = document.createElement("label");
-      l.innerHTML = `<input type="checkbox" ${shareOn.has(k) ? "checked" : ""}> <span></span>`;
-      l.querySelector("span").textContent = label;
-      l.querySelector("input").onchange = (e) => { e.target.checked ? shareOn.add(k) : shareOn.delete(k); store.set("shareOpts", [...shareOn]); $("shPrev").textContent = shareTextFor(shareItem); };
-      $("shOpts").appendChild(l);
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.className = shareOn.has(k) ? "on" : "";
+      b.onclick = () => { shareOn.has(k) ? shareOn.delete(k) : shareOn.add(k); store.set("shareOpts", [...shareOn]); b.classList.toggle("on", shareOn.has(k)); $("shPrev").textContent = shareTextFor(shareItem); };
+      $("shOpts").appendChild(b);
     }
     $("shPrev").textContent = shareTextFor(shareItem);
   }
@@ -1826,7 +1827,7 @@
     reserveConditions(code, c).then((r) => {
       if (cardFor !== code) return;
       card.querySelector(".rc-sky").textContent = r.sky;
-      if (!officialTide(code)) card.querySelector(".rc-tide").textContent = r.tide;
+      if (!officialTide(code) && r.tide) card.querySelector(".rc-tide").textContent = `${r.tide} (rough)`;
       card.querySelector(".rc-wind").innerHTML = r.wind ? `<b>Windy:</b> ${esc(r.wind)}` : "";
     }).catch(() => {
       if (cardFor === code) card.querySelector(".rc-sky").textContent = "No signal for weather or tides";
@@ -1989,7 +1990,7 @@
     const ex = fromPhone ? await EXIF.read(file) : {};
     const where = ex.lat != null ? { lat: ex.lat, lon: ex.lon, src: "Photo's location" }
       : here && !fromPhone ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` }
-      : { lat: last.lat, lon: last.lon, src: "Crosshair" };
+      : { lat: last.lat, lon: last.lon, src: "" };
     if (fromPhone && ex.lat == null) toast("No location in that photo: placed at the crosshair");
     const g = OSGB.wgs84ToGrid(where.lat, where.lon);
     const ref = OSGB.gridRef(g.e, g.n, digits) || `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`;
