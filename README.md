@@ -5,7 +5,7 @@ A phone-first OS grid reference finder (a better gridreferencefinder.com for fie
 - Drag the map under the crosshair, or tap GPS to read your own position (with ± accuracy).
 - Grid ref (6 or 8-figure: phone GPS can't honestly support 10), E/N, lat/long and what3words, each tap-to-copy. Swipe the panel down for just the grid ref, up for the rest.
 - Navigate: map with you, the flag and a line, plus a compass arrow to the target, distance and bearing (iPhone asks for compass permission on the first tap; screen kept awake).
-- Saved points list with names and timestamps, shared out as CSV.
+- Notebook: points, lines, areas and photos by day, filter by type and reserve; imported CSVs go into folders; export CSV or GeoJSON.
 - Search takes anything: grid refs, E/N, decimal or DMS lat/long (any order, letters or signs), postcodes and districts (postcodes.io), ///what3words, pasted Google/Apple/OSM/OS Maps links and geo: URIs, and place names as you type (Photon). `node test/parse.test.js` lists every format.
 - what3words: paste an API key into `config.js` to show the words in-app; without one the row and searches open what3words.
 - OS grid lines (100 km / 10 km / 1 km by zoom). Topo, street and aerial base maps.
