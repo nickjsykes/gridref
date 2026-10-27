@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "64"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "65"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -624,9 +624,10 @@
     const isShape = !!geom.kind && geom.kind !== "point"; // points saved before types existed have no kind
     $("ptKind").hidden = true;
     $("ptShape").hidden = isShape;
+    $("ptColour").hidden = geom.kind === "photo"; // photo markers are always the dark camera
     if (isShape) {
       for (const b of $("ptKind").children) {
-        b.disabled = b.dataset.k === "area" && geom.pts.length < 3;
+        b.disabled = b.dataset.k === "area" && (!geom.pts || geom.pts.length < 3);
         b.classList.toggle("on", b.dataset.k === geom.kind);
       }
     }
