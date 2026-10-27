@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "70"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "72"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -313,9 +313,9 @@
     clearTimeout(saveView);
     saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
   });
-  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
+  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; $("photoMenu").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
-  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
+  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; $("photoMenu").style.display = "none"; if (!nav) panTo(e.latlng); });
 
   // ---------- GPS ----------
   let watchId = null, following = false, meDot = null, meRing = null, gpsBlocked = false;
@@ -525,11 +525,25 @@
   }
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const nameLabel = (ll, name, dy) => L.marker(ll, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="pinlabel">${esc(name)}</div>`, iconSize: [0, 0], iconAnchor: [-14, dy] }) });
-  map.on("zoomend", () => map.getContainer().classList.toggle("close", map.getZoom() >= 16));
+  // How big your marks are: far out (whole reserves and beyond) they shrink so they don't
+  // swamp the map; from 15 they're full size, with corner dots
+  const zone = () => (map.getZoom() <= 12 ? "far" : map.getZoom() <= 14 ? "mid" : "near");
+  let lastZone = null;
+  map.on("zoomend", () => {
+    const el = map.getContainer();
+    el.classList.toggle("close", map.getZoom() >= 16);
+    el.classList.toggle("far", zone() === "far");
+    el.classList.toggle("mid", zone() === "mid");
+    if (zone() !== lastZone) drawPins();
+  });
   function drawPins() {
     pinLayer.clearLayers();
     const many = points.length > 300; // thousands of imported points: simple dots, drawn fast
     map.getContainer().classList.toggle("close", map.getZoom() >= 16);
+    lastZone = zone();
+    const W = { far: [4, 1.6, 1.6], mid: [5.5, 2.2, 2.2], near: [7, 3, 2.5] }[lastZone]; // casing, line, area edge
+    map.getContainer().classList.toggle("far", lastZone === "far");
+    map.getContainer().classList.toggle("mid", lastZone === "mid");
     for (const pt of points) try {
       if (!many) nameLabel(pt.kind === "area" ? L.latLngBounds(pt.pts).getCenter() : [pt.lat, pt.lon], pt.name, 8).addTo(pinLayer);
       if (pt.kind === "line" || pt.kind === "area") {
@@ -537,11 +551,11 @@
         // the wide casing is an easier target for a thumb. Small dots mark the corners.
         const c = COLOURS[pt.colour] || COLOURS.orange, area = pt.kind === "area";
         const Shape = area ? L.polygon : L.polyline, casing = pt.colour === "white" ? "#2b2b2b" : "#fff";
-        Shape(pt.pts, { color: casing, weight: 7, opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false })
+        Shape(pt.pts, { color: casing, weight: W[0], opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
-        Shape(pt.pts, { color: c, weight: area ? 2.5 : 3, opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
-        if (!many && pt.pts.length <= 80)
+        Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
+        if (!many && lastZone === "near" && pt.pts.length <= 80)
           for (const v of pt.pts) L.circleMarker(v, { radius: 3, color: c, weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(pinLayer);
         continue;
       }
@@ -901,18 +915,17 @@
     }
     if (done) { store.set("exported", new Date().toISOString()); openDrawer(); }
   }
-  let exportFmt = store.get("exportFmt", "csv"), exportPhotos = true, selecting = false;
+  let exportFmt = "csv", exportPhotos = false, selecting = false;
   const picked = new Set();
   const keyOf = (p) => p.at + "|" + p.name;
-  const TAB_NAMES = { point: "points", line: "lines", area: "areas", photo: "photos" };
   $("exportBtn").onclick = () => {
     fresh();
     if (!points.length) return toast("Nothing saved yet");
-    const inTab = points.filter((p) => (p.kind || "point") === tab).length;
+    // Same start every time: spreadsheet, everything, no photos
     $("exAll").textContent = `Everything (${points.length})`;
-    $("exTab").textContent = `Just ${TAB_NAMES[tab]} (${inTab})`;
     for (const r of document.querySelectorAll('#exportModal input[name="exs"]')) r.checked = r.value === "all";
-    for (const r of document.querySelectorAll('#exportModal input[name="exf"]')) r.checked = r.value === exportFmt;
+    for (const r of document.querySelectorAll('#exportModal input[name="exf"]')) r.checked = r.value === "csv";
+    $("exPhotos").checked = false;
     $("exportModal").hidden = false;
   };
   $("exCancel").onclick = () => { $("exportModal").hidden = true; };
@@ -920,12 +933,10 @@
   $("exGo").onclick = () => {
     const scope = document.querySelector('#exportModal input[name="exs"]:checked').value;
     exportFmt = document.querySelector('#exportModal input[name="exf"]:checked').value;
-    store.set("exportFmt", exportFmt);
     $("exportModal").hidden = true;
     fresh();
     exportPhotos = $("exPhotos").checked;
     if (scope === "all") return exportList(points, exportFmt, exportPhotos);
-    if (scope === "tab") return exportList(points.filter((p) => (p.kind || "point") === tab), exportFmt, exportPhotos);
     // Pick: tap entries to tick them (across any tab), then Export
     selecting = true;
     picked.clear();
@@ -1613,21 +1624,37 @@
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
     keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
   };
-  for (const id of ["mDist", "mArea", "mHa"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v); };
+  for (const id of ["mDist", "mArea", "mHa"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v, $(id).parentElement); };
   map.on("move", () => { if (measure) drawMeasure(); });
 
   // ---------- photo with the grid ref stamped on ----------
-  // Uses your GPS position if the blue dot is on, otherwise the crosshair.
-  $("photoBtn").onclick = () => $("photoIn").click();
-  $("photoIn").onchange = async (e) => {
+  // Take one: placed by GPS if the blue dot is on, otherwise the crosshair.
+  // Choose one from the phone: placed where the photo says it was taken, otherwise the crosshair.
+  const photoMenu = $("photoMenu");
+  $("photoBtn").onclick = () => {
+    if (photoMenu.style.display === "block") return (photoMenu.style.display = "none");
+    const b = $("photoBtn").getBoundingClientRect();
+    photoMenu.style.left = b.right + 10 + "px";
+    photoMenu.style.top = b.top + "px";
+    photoMenu.style.display = "block";
+  };
+  $("pmTake").onclick = () => { photoMenu.style.display = "none"; $("photoIn").click(); };
+  $("pmPick").onclick = () => { photoMenu.style.display = "none"; $("photoPick").click(); };
+  $("photoIn").onchange = (e) => stampPhoto(e, false);
+  $("photoPick").onchange = (e) => stampPhoto(e, true);
+  async function stampPhoto(e, fromPhone) {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file) return;
     toast("Stamping the photo…");
-    const where = here ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` } : { lat: last.lat, lon: last.lon, src: "Crosshair" };
+    const ex = fromPhone ? await EXIF.read(file) : {};
+    const where = ex.lat != null ? { lat: ex.lat, lon: ex.lon, src: "Photo's location" }
+      : here && !fromPhone ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` }
+      : { lat: last.lat, lon: last.lon, src: "Crosshair" };
+    if (fromPhone && ex.lat == null) toast("No location in that photo: placed at the crosshair");
     const g = OSGB.wgs84ToGrid(where.lat, where.lon);
     const ref = OSGB.gridRef(g.e, g.n, digits) || `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`;
-    const when = new Date();
+    const when = ex.when || (fromPhone && file.lastModified ? new Date(file.lastModified) : new Date());
     const reserve = nnr.length ? reserveAt(L.latLng(where.lat, where.lon)) : "";
     const img = new Image();
     img.src = URL.createObjectURL(file);
@@ -1662,13 +1689,13 @@
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
     // On iPhone the share sheet has "Save Image" for the Photos library.
     photoFile = out;
-    photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: here ? Math.round(here.acc) : null,
+    photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
       name: "Photo " + when.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
     $("photoSave").hidden = false;
     photoText = `${ref} · ${when.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${reserve ? " · " + reserve : ""}`;
     $("photoOut").src = URL.createObjectURL(out);
     $("photoModal").hidden = false;
-  };
+  }
   let photoFile = null, photoText = "", photoNew = null;
   $("photoSave").onclick = async () => {
     if (!photoFile || !photoNew) return;

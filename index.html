@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=70">
-<link rel="stylesheet" href="app.css?v=70">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=72">
+<link rel="stylesheet" href="app.css?v=72">
 </head>
 <body>
 <div id="map"></div>
@@ -41,12 +41,14 @@
 <div class="fabs left">
   <button class="fab add" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span class="plus" aria-hidden="true"></span></button>
   <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
+  <input type="file" id="photoPick" accept="image/*" hidden>
   <button class="fab add" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg><span class="plus" aria-hidden="true"></span></button>
   <button class="fab add" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg><span class="plus" aria-hidden="true"></span></button>
   <button class="fab add" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6"/></svg><span class="plus" aria-hidden="true"></span></button>
 </div>
 <div class="layers" id="layers"></div>
 <div class="layers featmenu" id="featMenu"></div>
+<div class="layers photomenu" id="photoMenu"><button type="button" id="pmTake">Take a photo</button><button type="button" id="pmPick">Choose from phone</button></div>
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
@@ -183,15 +185,14 @@
   <div class="card">
     <div class="im-title"><b>Export</b></div>
     <div class="shopts">
-      <label><input type="radio" name="exs" value="all"> <span id="exAll">Everything</span></label>
-      <label><input type="radio" name="exs" value="tab"> <span id="exTab">Just this tab</span></label>
-      <label><input type="radio" name="exs" value="pick"> <span>Pick which ones</span></label>
+      <label><input type="radio" name="exf" value="csv"> <span>Spreadsheet (CSV)</span></label>
+      <label><input type="radio" name="exf" value="geojson"> <span>ArcGIS (GeoJSON)</span></label>
     </div>
     <div class="shopts">
-      <label><input type="radio" name="exf" value="csv"> <span>CSV · spreadsheets, Excel</span></label>
-      <label><input type="radio" name="exf" value="geojson"> <span>GeoJSON · ArcGIS, QGIS</span></label>
+      <label><input type="radio" name="exs" value="all"> <span id="exAll">Everything</span></label>
+      <label><input type="radio" name="exs" value="pick"> <span>Pick which ones</span></label>
     </div>
-    <div class="shopts"><label><input type="checkbox" id="exPhotos" checked> <span>Include photos (one .zip file)</span></label></div>
+    <div class="shopts"><label><input type="checkbox" id="exPhotos"> <span>Include photos</span></label></div>
     <div class="btns"><button type="button" id="exCancel">Cancel</button><button type="button" class="primary" id="exGo">Export</button></div>
   </div>
 </div>
@@ -200,12 +201,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=70"></script>
-<script src="config.js?v=70"></script>
-<script src="osgb.js?v=70"></script>
-<script src="parse.js?v=70"></script>
-<script src="zip.js?v=70"></script>
-<script src="local.js?v=70"></script>
-<script src="app.js?v=70"></script>
+<script src="vendor/leaflet/leaflet.js?v=72"></script>
+<script src="config.js?v=72"></script>
+<script src="osgb.js?v=72"></script>
+<script src="parse.js?v=72"></script>
+<script src="zip.js?v=72"></script>
+<script src="exif.js?v=72"></script>
+<script src="local.js?v=72"></script>
+<script src="app.js?v=72"></script>
 </body>
 </html>

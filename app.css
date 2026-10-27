@@ -354,3 +354,13 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
   .fab, body.large .fab { width: 44px; height: 44px; }
   .fab svg, body.large .fab svg { width: 22px; height: 22px; }
 }
+
+/* your marks shrink when zoomed out (the icon stays centred on its spot) */
+.pin svg, .photopin { transition: transform .15s; }
+.leaflet-container.mid .pin svg, .leaflet-container.mid .photopin { transform: scale(.75); }
+.leaflet-container.far .pin svg, .leaflet-container.far .photopin { transform: scale(.5); }
+/* photo: take one or choose one, beside the camera button */
+.photomenu { right: auto; }
+/* measure numbers go green when copied, like everything else */
+.m-nums > div { border-radius: 10px; padding: 2px 6px; transition: background .15s; }
+.m-nums .copied small, .m-nums .copied b { color: var(--panel) !important; }
