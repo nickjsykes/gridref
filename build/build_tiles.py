@@ -25,6 +25,7 @@ OUT = ROOT / "maps"
 PACK = {
     "1006126": "Roudsea Wood and Mosses", "1006018": "Blelham Bog", "1006954": "Duddon Mosses",
     "1006067": "Hallsenna Moor", "1006114": "North Walney", "1006058": "Gait Barrows",
+    "1006111": "North Fen",
 }
 ZOOMS = range(11, 18)
 BUFFER_M = {11: 6000, 12: 4000, 13: 2500, 14: 1500, 15: 1000, 16: 700, 17: 500}  # map around each reserve

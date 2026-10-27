@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "52"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "53"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -83,7 +83,7 @@
     if (pack.names) {
       const note = document.createElement("div");
       note.className = "lnote";
-      note.textContent = "Offline maps: " + pack.names.map((n) => n.replace(/ Wood and Mosses| Mosses| Moor| Bog/g, "")).join(", ");
+      note.textContent = "Offline maps: " + pack.names.map((n) => n.replace(/ Wood and Mosses| Mosses| Moor/g, "").replace("North Walney", "Walney")).join(", ");
       layersEl.appendChild(note);
     }
     if (pack.state === "failed") {
@@ -1470,13 +1470,13 @@
     return "";
   }
   // The South Cumbria team's reserves (NE NNR REF_CODE -> short name)
-  // A Map keeps this order (a plain object would sort the number-like codes)
-  const TEAM = new Map([["1006126", "Roudsea"], ["1006954", "Duddon"], ["1006067", "Hallsenna"], ["1006114", "Walney"], ["1006058", "Gait Barrows"], ["1006018", "Blelham"]]);
+  // A Map keeps this order (a plain object would sort the number-like codes). These are the
+  // only reserves drawn: other NNRs are left off so the map shows the team's patch.
+  const TEAM = new Map([["1006114", "Walney"], ["1006954", "Duddon"], ["1006126", "Roudsea"], ["1006058", "Gait Barrows"], ["1006067", "Hallsenna"], ["1006018", "Blelham Bog"], ["1006111", "North Fen"]]);
   const isTeam = (f) => TEAM.has(f.properties && f.properties.REF_CODE);
-  const heather = () => "#7d4b75"; // on the map: tiles stay light in dark mode, so always the strong heather
-  nnrLayer.options.style = (f) => isTeam(f)
-    ? { color: heather(), weight: 2.5, opacity: 0.9, dashArray: null, fillColor: heather(), fillOpacity: map.getZoom() < 14 ? 0.18 : 0.05 }
-    : { color: "#0b7a3b", weight: 2, opacity: 0.7, dashArray: "8 5", fillColor: "#0b7a3b", fillOpacity: 0.04 };
+  // Burnt orange: nothing on the topo map uses it, and tiles stay light in dark mode
+  const RESERVE = "#d9480f";
+  nnrLayer.options.style = () => ({ color: RESERVE, weight: 3, opacity: 0.95, fillColor: RESERVE, fillOpacity: map.getZoom() < 14 ? 0.14 : 0.04 });
   const resLabels = L.layerGroup().addTo(map);
   function drawResLabels() {
     resLabels.clearLayers();
@@ -1508,6 +1508,8 @@
   }
   function useNNR(gj) {
     if (!gj || !gj.features || !gj.features.length) return false;
+    gj = { ...gj, features: gj.features.filter(isTeam) };
+    if (!gj.features.length) return false;
     nnr = gj.features.map((f) => {
       const b = L.geoJSON(f).getBounds();
       return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] };
