@@ -4,5 +4,5 @@
 window.GRIDREF_CONFIG = {
   what3wordsKey: "",
   // OS Data Hub key (free OpenData plan, osdatahub.os.uk): turns on the OS Outdoor map
-  osKey: "",
+  osKey: "L7yA8JJqGy9G0qIVctJdkNlca6ashTzg",
 };
