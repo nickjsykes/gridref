@@ -332,8 +332,7 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 /* the team's reserves named on the map when zoomed out */
 /* map tiles stay light in dark mode, so labels on the map keep dark text and a white halo */
 /* reserve names: a soft map tag (white, fine orange edge, orange dot) rather than a bold box */
-.reslabel { display: inline-flex; width: max-content; align-items: center; gap: 5px; font: 600 11.5px/1 var(--sans); letter-spacing: .01em; color: #6b2a06; background: rgba(255,255,255,.94); border-radius: 6px; padding: 4px 8px 4px 6px; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(217,72,15,.45), 0 1px 3px rgba(0,0,0,.22); }
-.reslabel::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #d9480f; flex: none; }
+.reslabel { display: inline-flex; width: max-content; align-items: center; font: 600 11.5px/1 var(--sans); letter-spacing: .01em; color: #6b2a06; background: rgba(255,255,255,.94); border-radius: 6px; padding: 4px 8px; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(217,72,15,.45), 0 1px 3px rgba(0,0,0,.22); }
 /* names beside your own points, lines and areas when zoomed right in: a notebook, not a pin map */
 .pinlabel { font: 600 12px var(--sans); color: #26261f; white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; display: none; }
 .leaflet-container.close .pinlabel { display: block; }
