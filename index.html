@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=101">
-<link rel="stylesheet" href="app.css?v=101">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=102">
+<link rel="stylesheet" href="app.css?v=102">
 </head>
 <body>
 <div id="map"></div>
@@ -30,13 +30,14 @@
 <div class="results" id="results"></div>
 
 <div class="fabs">
+  <div class="pill">
   <button class="fab" id="locBtn" aria-label="Show my location"><span class="acc" id="accBadge" hidden></span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 3.5 3 11l7.6 2.4L13 21Z"/></svg>
   </button>
-  <button class="fab" id="listBtn" aria-label="Notebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
   <button class="fab" id="layersBtn" aria-label="Map style">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
+  </div>
 </div>
 <div class="fabs left">
   <div class="addmenu" id="addMenu">
@@ -47,7 +48,10 @@
   <button class="fab" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
   <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><circle cx="12" cy="10" r="2.6"/></svg></button>
   </div>
+  <div class="pill">
+  <button class="fab" id="listBtn" aria-label="Notebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
   <button class="fab addbtn" id="addBtn" aria-label="Add a point, line, area or photo" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
 </div>
 <div class="layers" id="layers"></div>
 <div class="layers featmenu" id="featMenu"></div>
@@ -208,13 +212,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=101"></script>
-<script src="config.js?v=101"></script>
-<script src="osgb.js?v=101"></script>
-<script src="parse.js?v=101"></script>
-<script src="zip.js?v=101"></script>
-<script src="exif.js?v=101"></script>
-<script src="local.js?v=101"></script>
-<script src="app.js?v=101"></script>
+<script src="vendor/leaflet/leaflet.js?v=102"></script>
+<script src="config.js?v=102"></script>
+<script src="osgb.js?v=102"></script>
+<script src="parse.js?v=102"></script>
+<script src="zip.js?v=102"></script>
+<script src="exif.js?v=102"></script>
+<script src="local.js?v=102"></script>
+<script src="app.js?v=102"></script>
 </body>
 </html>
