@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "57"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "58"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -406,11 +406,10 @@
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
-    ["app", "Grid Ref link (opens this app)", (x) => `${location.origin}${location.pathname}?q=${encodeURIComponent(x.ref)}`],
     ["apple", "Apple Maps link", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
   ];
-  let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "app", "apple"]));
+  let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]).filter((k) => k !== "app"));
   function shareTextFor(x) {
     return [x.head, ...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), x.notes].filter(Boolean).join("\n");
   }
