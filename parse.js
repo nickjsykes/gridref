@@ -129,6 +129,12 @@
     if (!text) return [];
     const link = fromLink(text);
     if (link) return [link];
+    // Looks like a grid ref but isn't one ("SD 123", "ZZ 12 34"): say what's wrong
+    const gr = text.toUpperCase().replace(/\s+/g, "").match(/^([A-Z]{2})(\d{1,10})$/);
+    if (gr && !fromGridRef(text) && !fromPostcode(text)) {
+      const valid = OSGB.parseGridRef(gr[1] + "00") !== null;
+      return [{ kind: "bad-ref", message: !valid ? `${gr[1]} isn't an OS grid square. Check the two letters.` : `Grid refs need an even number of digits, e.g. ${gr[1]} 12 34 or ${gr[1]} 123 456.` }];
+    }
     return [fromW3W(text), fromGridRef(text), fromPostcode(text), fromEastingNorthing(text), fromLatLon(text)].filter(Boolean);
   }
 

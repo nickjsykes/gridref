@@ -19,7 +19,7 @@ Accuracy: Helmert datum shift, good to ~3–5 m, and phone GPS is ~5 m in the op
 
 Static files only — no build step. `osgb.js` holds the conversions.
 
-**Releasing:** bump `VERSION` in index.html, `version.json` and `CACHE` in sw.js together. Open copies (any browser) see the new version.json and reload onto it.
+**Releasing:** `python build/release.py` bumps VERSION, the script ?v= tags, version.json and the sw.js CACHE together. Open copies (any browser) see the new version.json and reload onto it.
 
 ## Offline maps and reserve boundaries
 

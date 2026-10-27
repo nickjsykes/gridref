@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=37">
 <style>
   :root {
     --green: #2f5d3a;
@@ -154,14 +154,14 @@
   .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
   .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
   .credit { margin: 0; padding: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
-  .backup { margin: 0; padding: 10px 16px 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .backup { margin: 0; padding: 4px 16px 0; color: var(--muted); font-size: 12px; line-height: 1.4; text-align: center; }
   .backup:empty { display: none; }
   .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 
   /* Aa: a big, simple readout. Just the location, centred; everything else hidden. */
-  body.large .actions { display: none; }
-  #textBtnBig { display: none; }
-  body.large #textBtnBig { display: flex; border: 0; background: none; position: absolute; top: 6px; left: 10px; width: 40px; height: 36px; color: var(--green) !important; z-index: 2; }
+  /* the bar stays where it is (only Aa visible), so Aa is in exactly the same place to get back */
+  body.large .actions > :not(#textBtn) { visibility: hidden; }
+  body.large .sheet.compact .more { display: flex; }
   body.large #w3wRow, body.large .meta { display: none !important; }
   body.large .refline { flex-direction: column; gap: 8px; margin-top: 6px; }
   body.large .refline .big { justify-content: center; width: 100%; }
@@ -176,8 +176,6 @@
   body.large .c svg { width: 22px; height: 22px; }
   body.large .row .v.dim { font-size: 18px; }
   body.large .prec button { font-size: 16px; padding: 8px 11px; }
-  body.large .tool svg { width: 28px; height: 28px; }
-  body.large .tool span { font-size: 13px; }
   body.large .from-me { font-size: 17px; }
   body.large .search input { font-size: 18px; }
   body.large .results button { font-size: 18px; padding: 15px 14px; }
@@ -200,6 +198,7 @@
   .m-nums { margin-bottom: 8px; }
   body.measuring:not(.area-mode) .m-area { display: none; }
   body.measuring:not(.area-mode) .m-nums { grid-template-columns: 1fr; }
+  body.area-mode .m-len { display: none; }
   .m-btns { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 6px; }
   .m-btns button { border: 0; border-radius: 12px; padding: 10px 4px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .m-btns button svg { width: 22px; height: 22px; }
@@ -261,9 +260,17 @@
   .card .btns .primary { background: var(--green); color: var(--panel); }
   .w3wcard { height: calc(100% - 10px); padding: 8px; }
   .w3wcard iframe { flex: 1; width: 100%; border: 0; border-radius: 10px; background: #fff; }
+  .w3wnote { margin: 0; color: var(--muted); font-size: 12.5px; text-align: center; }
+  .card .btns.one { grid-template-columns: 1fr; }
   .btnlink { display: grid; place-items: center; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); text-decoration: none; background: var(--green); color: var(--panel); }
   .pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
+  /* install nudge, iPhone only, until it's installed */
+  .install { position: fixed; z-index: 1150; left: 12px; right: 12px; top: calc(var(--safe-t) + 64px); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 40px 12px 14px; font: 14px/1.4 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+  .install[hidden] { display: none; }
+  .install b { display: block; font-size: 15px; margin-bottom: 2px; }
+  .instlink { color: #9fd4ab; font-weight: 700; white-space: nowrap; }
+  .install button { position: absolute; top: 6px; right: 6px; border: 0; background: none; color: var(--panel); font-size: 18px; padding: 6px 10px; }
   .toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
   .toast.show { opacity: 1; }
 
@@ -272,7 +279,7 @@
   .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
   .layers { position: fixed; z-index: 1001; right: 76px; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
   .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
-  .lhead { padding: 8px 14px 2px; font: 700 11px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .layers button.tick { border-top: 1px solid var(--line); }
   .lidar { mix-blend-mode: multiply; }
   .layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; }
   .layers button.on { color: var(--green); font-weight: 700; }
@@ -308,7 +315,6 @@
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span></button>
-  <button class="tool small" id="textBtnBig" aria-label="Normal text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
   <div class="refline">
     <label class="big" for="hapticSw" data-copy="ref" aria-label="Copy grid reference"><span class="ref" id="ref">—</span></label>
     <span class="prec" id="prec" role="group" aria-label="Grid ref figures"><button data-d="6">6 fig</button><button data-d="8">8 fig</button></span>
@@ -332,8 +338,9 @@
   </div>
   <div class="measure" id="measure">
     <div class="m-nums">
-      <div><small id="mDistK">Length</small><b id="mDist">0 m</b></div>
-      <div class="m-area"><small>Area</small><b id="mArea">—</b></div>
+      <div class="m-len"><small>Length</small><b id="mDist">0 m</b></div>
+      <div class="m-area"><small>Square metres</small><b id="mArea">—</b></div>
+      <div class="m-area"><small>Hectares</small><b id="mHa">—</b></div>
     </div>
     <div class="m-btns">
       <button class="primary" id="mAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add point</button>
@@ -402,7 +409,8 @@
 <div class="modal" id="w3wModal" hidden>
   <div class="card w3wcard">
     <iframe id="w3wFrame" title="what3words" referrerpolicy="no-referrer"></iframe>
-    <div class="btns"><button type="button" id="w3wClose">Close</button><a class="primary btnlink" id="w3wPaste" href="https://what3words.com/" target="_blank" rel="noopener">Open &amp; paste</a></div>
+    <p class="w3wnote">If it doesn't show your spot, the lat/long is copied: paste it into the what3words search.</p>
+    <div class="btns one"><button type="button" class="primary" id="w3wClose">Close</button></div>
   </div>
 </div>
 <div class="modal sheetmenu" id="itemMenu" hidden>
@@ -415,15 +423,20 @@
     <button type="button" id="imCancel" class="cancel">Cancel</button>
   </div>
 </div>
+<div class="install" id="install" hidden>
+  <b id="instTitle">Install Grid Ref</b>
+  <span id="instText"></span> <a href="install.html" class="instlink">Step by step ›</a>
+  <button type="button" id="instClose" aria-label="Dismiss">✕</button>
+</div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js"></script>
-<script src="config.js"></script>
-<script src="osgb.js"></script>
-<script src="parse.js"></script>
-<script src="local.js"></script>
+<script src="vendor/leaflet/leaflet.js?v=37"></script>
+<script src="config.js?v=37"></script>
+<script src="osgb.js?v=37"></script>
+<script src="parse.js?v=37"></script>
+<script src="local.js?v=37"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -435,15 +448,14 @@
   // ---------- map ----------
   const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   const LAYERS = {
-    topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
-    os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
-    lidar: { name: "LiDAR (ground shape)", layer: L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", { layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", maxZoom: 19, attribution: "LiDAR © Environment Agency" }) },
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
+    topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
+    os: { name: "OS map", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
-  let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo";
+  let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo"; // Topo by default
   LAYERS[current].layer.addTo(map);
   function setBase(k) {
     if (k === current) return;
@@ -471,40 +483,23 @@
   }
   document.body.classList.toggle("large", large);
   $("textBtn").classList.toggle("on", large);
-  $("textBtn").onclick = $("textBtnBig").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
+  $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "36"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "37"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
-  // Overlays: switch on over any map. NE data comes live for what's on screen (zoom 12+).
-  const NE = "https://services.arcgis.com/JJzESW51TqeY9uat/arcgis/rest/services/";
-  const OVERLAYS = {
-    lidar: { name: "LiDAR shading", layer: L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", { layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxZoom: 19, attribution: "LiDAR © Environment Agency", className: "lidar" }) },
-    sssi: { name: "SSSI units", url: NE + "SSSI_Units_England/FeatureServer/0", style: { color: "#7b3fa0", weight: 2, fillColor: "#7b3fa0", fillOpacity: 0.06 } },
-    aw: { name: "Ancient woodland", url: NE + "Ancient_Woodland_England/FeatureServer/0", style: { color: "#8a5a1f", weight: 1.5, fillColor: "#a0702a", fillOpacity: 0.22 } },
-    crow: { name: "Open access land", url: NE + "CRoW_Act_2000_Access_Layer/FeatureServer/0", style: { color: "#c98a00", weight: 1.5, fillColor: "#f1c40f", fillOpacity: 0.18 } },
-  };
-  for (const o of Object.values(OVERLAYS)) if (o.url) o.layer = L.geoJSON(null, { interactive: false, style: o.style });
-  let overlaysOn = store.get("overlays", []);
-  async function loadOverlay(k) {
-    const o = OVERLAYS[k];
-    if (!o.url || !map.hasLayer(o.layer)) return;
-    if (map.getZoom() < 12) { o.layer.clearLayers(); return; }
-    const b = map.getBounds();
-    const tol = (b.getEast() - b.getWest()) / 1500; // simplify to about a pixel
-    const q = `${o.url}/query?where=1%3D1&geometry=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}&geometryType=esriGeometryEnvelope&inSR=4326&spatialRel=esriSpatialRelIntersects&outFields=&outSR=4326&maxAllowableOffset=${tol.toFixed(6)}&geometryPrecision=6&f=geojson`;
-    try { const gj = await (await fetch(q)).json(); o.layer.clearLayers().addData(gj); } catch {}
+  // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
+  // showing. Its own pane sits above the maps, so switching map never covers it.
+  map.createPane("shade").style.zIndex = 250;
+  const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
+    layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
+  let shadeOn = store.get("shade", (store.get("overlays", []) || []).includes("lidar"));
+  function setShade(on) {
+    shadeOn = on;
+    store.set("shade", on);
+    if (on) lidarShade.addTo(map); else map.removeLayer(lidarShade);
   }
-  function setOverlay(k, on) {
-    const o = OVERLAYS[k];
-    if (on) { o.layer.addTo(map); loadOverlay(k); } else map.removeLayer(o.layer);
-    overlaysOn = Object.keys(OVERLAYS).filter((x) => map.hasLayer(OVERLAYS[x].layer));
-    store.set("overlays", overlaysOn);
-  }
-  map.on("moveend", () => { for (const k of overlaysOn) loadOverlay(k); });
   function drawLayerMenu() {
     layersEl.innerHTML = "";
-    const head = (t) => { const h = document.createElement("div"); h.className = "lhead"; h.textContent = t; layersEl.appendChild(h); };
-    head("Map");
     for (const [k, v] of Object.entries(LAYERS)) {
       const b = document.createElement("button");
       b.textContent = (k === current ? "● " : "○ ") + v.name;
@@ -516,15 +511,11 @@
       };
       layersEl.appendChild(b);
     }
-    head("On top");
-    for (const [k, v] of Object.entries(OVERLAYS)) {
-      const on = map.hasLayer(v.layer);
-      const b = document.createElement("button");
-      b.textContent = (on ? "☑ " : "☐ ") + v.name;
-      b.className = on ? "on" : "";
-      b.onclick = () => { setOverlay(k, !on); drawLayerMenu(); placeLayerMenu(); };
-      layersEl.appendChild(b);
-    }
+    const sh = document.createElement("button");
+    sh.textContent = (shadeOn ? "☑ " : "☐ ") + "LiDAR shading";
+    sh.className = "tick" + (shadeOn ? " on" : "");
+    sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
+    layersEl.appendChild(sh);
     if (pack.state === "failed") {
       const off = document.createElement("button");
       off.textContent = "Offline maps paused: tap to retry";
@@ -552,7 +543,7 @@
     layersEl.style.display = open ? "none" : "block";
     if (!open) placeLayerMenu();
   };
-  setTimeout(() => { for (const k of overlaysOn) if (OVERLAYS[k]) setOverlay(k, true); }, 0);
+  if (shadeOn) setShade(true);
 
   // Keep the crosshair in the middle of the visible map (above the sheet)
   const sheet = $("sheet");
@@ -739,16 +730,13 @@
     e.preventDefault();
     if (w3w.words && w3w.at === spot(last)) return copy("///" + w3w.words, $("w3wRow"));
     w3wAt = `${last.lat.toFixed(6)}, ${last.lon.toFixed(6)}`;
+    copy(w3wAt, null, true);
     $("w3wFrame").src = `https://what3words.com/${last.lat.toFixed(6)},${last.lon.toFixed(6)}`;
     $("w3wModal").hidden = false;
   });
   let w3wAt = "";
   $("w3wClose").onclick = () => { $("w3wModal").hidden = true; $("w3wFrame").src = "about:blank"; };
-  $("w3wPaste").addEventListener("click", () => {
-    copy(w3wAt);
-    setTimeout(() => toast("Lat/long copied: paste it into the what3words search"), 50);
-    $("w3wModal").hidden = true;
-  });
+
 
   let saveView;
   map.on("move", update);
@@ -762,7 +750,7 @@
   map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
 
   // ---------- GPS ----------
-  let watchId = null, following = false, meDot = null, meRing = null;
+  let watchId = null, following = false, meDot = null, meRing = null, gpsBlocked = false;
   function startGps(follow = true) {
     if (!navigator.geolocation) { toast("Location isn't available on this device"); return; }
     if (follow) {
@@ -775,6 +763,7 @@
     let first = true;
     watchId = navigator.geolocation.watchPosition((pos) => {
       here = { lat: pos.coords.latitude, lon: pos.coords.longitude, acc: pos.coords.accuracy };
+      gpsBlocked = false;
       course = pos.coords.speed > 0.6 && pos.coords.heading >= 0 ? pos.coords.heading : null;
       // Walking briskly with the phone held ahead: compass and GPS direction should roughly agree
       if (course != null && heading != null && pos.coords.speed > 1) disagree = Math.abs(diff(heading, course)) > 60 ? disagree + 1 : 0;
@@ -799,7 +788,9 @@
       $("locBtn").classList.remove("on");
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
-      toast(err.code === 1 ? "Location blocked — allow it in Settings › Safari" : "Couldn't get a GPS fix");
+      gpsBlocked = err.code === 1;
+      toast(gpsBlocked ? "Location is blocked. Settings › Privacy & Security › Location Services › Safari Websites › While Using" : "Couldn't get a GPS fix. Try again in the open");
+      if (nav) drawNav();
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
   }
   $("locBtn").onclick = () => {
@@ -815,7 +806,7 @@
     clearTimeout(toast.t);
     toast.t = setTimeout(() => t.classList.remove("show"), 1800);
   }
-  async function copy(text, el) {
+  async function copy(text, el, quiet) {
     let ok = false;
     try { await navigator.clipboard.writeText(text); ok = true; }
     catch {
@@ -831,7 +822,7 @@
       ta.remove();
     }
     if (!ok) return toast("Couldn't copy on this phone");
-    toast("✓ Copied " + (text.length > 30 ? "" : text));
+    if (!quiet) toast("✓ Copied " + (text.length > 30 ? "" : text));
     try { navigator.vibrate && navigator.vibrate(30); } catch {}
     if (!el) return;
     el.classList.add("copied");
@@ -842,7 +833,7 @@
     el.onclick = () => {
       if (!last) return;
       const what = el.dataset.copy;
-      if ((what === "ref" || what === "en") && !last.ref) return;
+      if ((what === "ref" || what === "en") && !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
       copy(last[what], el);
     };
   }
@@ -853,7 +844,7 @@
     return lines.join("\n");
   }
   $("shareBtn").onclick = async () => {
-    if (!last || !last.ref) return;
+    if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     const text = shareText(last);
     if (navigator.share) { try { await navigator.share({ text }); } catch {} }
     else copy(text);
@@ -862,9 +853,24 @@
   // ---------- saved points ----------
   // Kept in this browser's localStorage. Re-read before every change so two open
   // copies of the app can't overwrite each other's points.
-  let points = store.get("points", []);
-  const fresh = () => (points = store.get("points", points));
+  // Every saved thing must make sense before it's kept or drawn: one broken entry (say from
+  // a bad CSV) used to stop the whole app starting.
+  const okLL = (lat, lon) => Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+  function sane(p) {
+    if (!p || typeof p !== "object" || !okLL(p.lat, p.lon)) return false;
+    if (p.kind === "line" || p.kind === "area") {
+      return Array.isArray(p.pts) && p.pts.length >= (p.kind === "area" ? 3 : 2) && p.pts.every((q) => Array.isArray(q) && okLL(q[0], q[1]));
+    }
+    return true;
+  }
+  const loadPoints = () => {
+    const raw = store.get("points", []);
+    return Array.isArray(raw) ? raw.filter(sane).map((p) => ({ ...p, name: String(p.name ?? "Unnamed"), notes: p.notes == null ? "" : String(p.notes) })) : [];
+  };
+  let points = loadPoints();
+  const fresh = () => (points = loadPoints());
   function savePoints() {
+    points = points.filter(sane);
     const ok = store.set("points", points);
     drawPins();
     if (!ok) alert("This phone wouldn't let Grid Ref save. Share your points as CSV now so nothing is lost.");
@@ -884,6 +890,7 @@
     star: '<path d="m12 2.5 2.9 6.2 6.6.8-4.9 4.6 1.3 6.6L12 17.4l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8Z"/>',
   };
   const shapeSvg = (shape, colour, size = 22) => {
+    if (!SHAPES[shape]) shape = "circle";
     const fill = COLOURS[colour] || COLOURS.orange, stroke = colour === "white" ? "#2d3436" : "#fff";
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round">${SHAPES[shape] || SHAPES.circle}</svg>`;
   };
@@ -892,22 +899,27 @@
     const st = mStats(pt.kind === "area" ? ll.concat([ll[0]]) : ll);
     return { length: st.d, area: pt.kind === "area" ? mStats(ll).area : null };
   }
+  const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   function drawPins() {
     pinLayer.clearLayers();
-    for (const pt of points) {
+    const many = points.length > 300; // thousands of imported points: simple dots, drawn fast
+    for (const pt of points) try {
       if (pt.kind === "line" || pt.kind === "area") {
         const c = COLOURS[pt.colour] || COLOURS.orange, st = shapeStats(pt);
         const style = { color: c, weight: 4, opacity: 0.9, fillColor: c, fillOpacity: 0.18 };
         (pt.kind === "area" ? L.polygon(pt.pts, style) : L.polyline(pt.pts, style))
-          .bindTooltip(`${pt.name} · ${pt.kind === "area" ? fmtArea(st.area) : fmtDist(st.length)}`, { sticky: true })
+          .bindTooltip(`${esc(pt.name)} · ${pt.kind === "area" ? fmtArea(st.area) : fmtDist(st.length)}`, { sticky: true })
           .addTo(pinLayer);
         continue;
       }
-      L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) })
-        .bindTooltip(pt.name, { direction: "top", offset: [0, -10] })
+      (many
+        ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas })
+        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) }))
+        .bindTooltip(esc(pt.name), { direction: "top", offset: [0, -10] })
         .addTo(pinLayer);
-    }
+    } catch {}
   }
+  const pinCanvas = L.canvas({ padding: 0.3 });
 
   // One popup for name, notes, colour and shape (the last colour/shape is remembered)
   let pick = { colour: store.get("ptColour", "orange"), shape: store.get("ptShape", "circle") };
@@ -919,7 +931,7 @@
   $("ptShape").onclick = (e) => { const b = e.target.closest("button"); if (b) { pick.shape = b.dataset.s; drawPickers(); } };
   let saving = null;
   $("saveBtn").onclick = () => {
-    if (!last || !last.ref) return;
+    if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
@@ -961,8 +973,10 @@
     store.set("ptColour", pick.colour);
     store.set("ptShape", pick.shape);
     persist();
+    const wasShape = saving.kind && saving.kind !== "point";
     closeSave();
     if (savePoints()) toast("✓ Saved " + name);
+    if (wasShape && measure) $("mDone").click(); // back to the map
   };
   $("listBtn").onclick = () => openDrawer();
 
@@ -1092,6 +1106,9 @@
   // Import: our own CSV back in, or any CSV with a name column and a grid ref,
   // E/N or lat/long column (e.g. a list of dormouse boxes)
   function parseCSV(text) {
+    // Excel on some settings writes semicolons; some tools write tabs
+    const first = text.split(/\r?\n/)[0] || "";
+    const sep = [",", ";", "\t"].sort((a, b) => first.split(b).length - first.split(a).length)[0];
     const rows = [];
     let row = [], cell = "", quoted = false;
     for (let i = 0; i < text.length; i++) {
@@ -1101,7 +1118,7 @@
         else if (ch === '"') quoted = false;
         else cell += ch;
       } else if (ch === '"') quoted = true;
-      else if (ch === ",") { row.push(cell); cell = ""; }
+      else if (ch === sep) { row.push(cell); cell = ""; }
       else if (ch === "\n" || ch === "\r") {
         if (ch === "\r" && text[i + 1] === "\n") i++;
         row.push(cell); rows.push(row); row = []; cell = "";
@@ -1129,6 +1146,7 @@
       if (geom) {
         const pts = geom[2].split(",").map((xy) => xy.trim().split(/\s+/).map(Number)).map(([lon, lat]) => [lat, lon]);
         if (/POLYGON/i.test(geom[1]) && pts.length > 1) pts.pop();
+        if (!pts.length || !pts.every((q) => okLL(q[0], q[1])) || pts.length < (/POLYGON/i.test(geom[1]) ? 3 : 2)) { skipped++; continue; }
         const g0 = OSGB.wgs84ToGrid(pts[0][0], pts[0][1]);
         const shp = { name: get(iName) || "Imported " + (added + 1), kind: /POLYGON/i.test(geom[1]) ? "area" : "line", pts, lat: pts[0][0], lon: pts[0][1], e: Math.round(g0.e), n: Math.round(g0.n),
           at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
@@ -1144,7 +1162,7 @@
       if (get(iLat) && get(iLon) && !isNaN(+get(iLat)) && !isNaN(+get(iLon))) ll = { lat: +get(iLat), lon: +get(iLon) };
       else if (get(iRef)) ll = GridSearch.parse(get(iRef)).find((x) => x.lat != null) || null;
       else if (get(iE) && get(iN) && OSGB.inGrid(+get(iE), +get(iN))) ll = OSGB.gridToWgs84(+get(iE), +get(iN));
-      if (!ll) { skipped++; continue; }
+      if (!ll || !okLL(ll.lat, ll.lon)) { skipped++; continue; }
       const g = OSGB.wgs84ToGrid(ll.lat, ll.lon);
       const at = get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString();
       const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null,
@@ -1262,6 +1280,8 @@
     text = text.trim();
     if (!text) return showResults([]);
     const readings = GridSearch.parse(text);
+    const bad = readings.find((r) => r.kind === "bad-ref");
+    if (bad) return showResults([], bad.message);
     if (readings.some((r) => r.kind === "link-unknown")) {
       return showResults([], "Can't read a location from that link. Short links (maps.app.goo.gl) hide it: open the link, then copy the coordinates in.");
     }
@@ -1402,8 +1422,9 @@
     const to = L.latLng(nav.lat, nav.lon);
     if (!here) {
       $("navDist").textContent = "—";
-      $("navBrg").textContent = "Finding you…";
-      $("navAcc").textContent = "";
+      $("navBrg").textContent = gpsBlocked ? "Location is blocked" : "Finding you…";
+      $("navDeg").textContent = "";
+      $("navAcc").textContent = gpsBlocked ? "Settings › Privacy & Security › Location Services › Safari Websites › While Using" : "";
       return;
     }
     const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
@@ -1437,7 +1458,7 @@
     map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [40, 90], paddingBottomRight: [70, sheet.offsetHeight + 30], maxZoom: 17, animate: false });
   }
   $("navBtn").onclick = async () => {
-    if (!last || !last.ref) return;
+    if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     if (following) return toast("Move the crosshair to where you want to go, then tap Navigate");
     nav = { lat: last.lat, lon: last.lon, view: { c: map.getCenter(), z: map.getZoom() } };
     $("navRef").textContent = last.ref;
@@ -1618,7 +1639,7 @@
     }
     return { d, area };
   }
-  const fmtArea = (m2) => (m2 < 10000 ? `${Math.round(m2)} m²` : `${(m2 / 10000).toFixed(m2 < 100000 ? 2 : 1)} ha`);
+  const fmtArea = (m2) => `${(m2 / 10000).toFixed(m2 < 100000 ? 2 : 1)} ha (${Math.round(m2).toLocaleString("en-GB")} m²)`;
   // Two tools: the ruler measures a line (walls, fences, hedges), the area tool measures an
   // area (bracken, scrub). Numbers are for the points added; the dotted line is the next one.
   function drawMeasure() {
@@ -1629,9 +1650,10 @@
     mDots.clearLayers();
     pts.forEach((p) => L.circleMarker(p, { radius: 5, color: "#fff", weight: 2, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
-    $("mDistK").textContent = isArea ? "Edge" : "Length";
     $("mDist").textContent = fmtDist(st.d);
-    $("mArea").textContent = isArea && pts.length >= 3 ? fmtArea(mStats(pts).area) : "—";
+    const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
+    $("mArea").textContent = a != null ? `${Math.round(a).toLocaleString("en-GB")} m²` : "—";
+    $("mHa").textContent = a != null ? `${(a / 10000).toFixed(a < 100000 ? 2 : 1)} ha` : "—";
   }
   function startMeasure(kind) {
     measure = { kind, pts: [] };
@@ -1663,7 +1685,7 @@
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
     keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
   };
-  for (const id of ["mDist", "mArea"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v); };
+  for (const id of ["mDist", "mArea", "mHa"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v); };
   map.on("move", () => { if (measure) drawMeasure(); });
 
   // ---------- photo with the grid ref stamped on ----------
@@ -1730,13 +1752,28 @@
   };
   $("photoClose").onclick = () => { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; };
 
+  // ---------- install nudge ----------
+  // Offline maps and saved points only work properly from the Home Screen icon, and only
+  // Safari can add one on iPhone. So: in Edge/Chrome, say "open in Safari"; in Safari, say
+  // how to add it. Never shown once installed; dismissing hides it for a fortnight.
+  (function installNudge() {
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    const installed = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+    const snoozed = Date.now() - store.get("instSnooze", 0) < 14 * 86400000;
+    if (!ios || installed || snoozed) return;
+    const otherBrowser = /CriOS|EdgiOS|FxiOS|OPiOS|GSA\//.test(navigator.userAgent);
+    $("instText").textContent = otherBrowser
+      ? "Open this page in Safari to install it. Offline maps and your saved points need the Safari version."
+      : "Tap the Share button, then “Add to Home Screen”. Always open it from that icon: it works offline and keeps your saved points.";
+    $("install").hidden = false;
+    $("instClose").onclick = () => { $("install").hidden = true; store.set("instSnooze", Date.now()); };
+  })();
+
   // ---------- go ----------
   window.addEventListener("resize", () => { layout(); fitRef(); update(); });
-  setPrec(digits);
-  drawPins();
-  drawGrid();
-  loadNNR();
-  if (!navigator.onLine) goOffline();
+  for (const step of [() => setPrec(digits), drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
+    try { step(); } catch (e) { console.error(e); }
+  }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
   layout();
   update();

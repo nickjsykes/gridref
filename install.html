@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Grid Ref</title>
+<meta name="description" content="Put Grid Ref on your iPhone in two minutes.">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { --green: #2f5d3a; --soft: #e3ece4; --ink: #1c211d; --muted: #5f6b62; --bg: #ffffff; --line: #dde3de; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --green: #7fbf8c; --soft: #22332a; --ink: #eef2ee; --muted: #a3ada6; --bg: #161a17; --line: #2c332e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; }
+  header { display: flex; gap: 14px; align-items: center; }
+  header img { width: 56px; height: 56px; border-radius: 13px; }
+  h1 { font-size: 26px; line-height: 1.2; margin: 0; }
+  .sub { color: var(--muted); margin: 2px 0 0; font-size: 15px; }
+  .qr { display: flex; gap: 16px; align-items: center; background: var(--soft); border-radius: 16px; padding: 14px; margin: 22px 0; }
+  .qr img { width: 120px; height: 120px; background: #fff; border-radius: 8px; padding: 4px; flex: none; }
+  .qr p { margin: 0; font-size: 15px; }
+  .qr a { color: var(--green); font-weight: 700; word-break: break-all; }
+  ol { padding: 0; margin: 0; list-style: none; counter-reset: s; }
+  ol li { counter-increment: s; position: relative; padding: 0 0 18px 48px; }
+  ol li::before { content: counter(s); position: absolute; left: 0; top: -2px; width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: var(--bg); font-weight: 700; display: grid; place-items: center; }
+  ol li b { display: block; }
+  .ico { display: inline-block; vertical-align: -4px; width: 20px; height: 20px; }
+  h2 { font-size: 19px; margin: 26px 0 8px; }
+  ul { margin: 0; padding-left: 20px; }
+  ul li { margin-bottom: 8px; }
+  .fix { border-top: 1px solid var(--line); padding-top: 4px; }
+  .fix p { margin: 10px 0; }
+  .fix b { color: var(--green); }
+  footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 30px; }
+  @media print { .qr { break-inside: avoid; } body { font-size: 14px; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon-180.png" alt="">
+    <div><h1>Install Grid Ref</h1><p class="sub">On your iPhone, about two minutes. Free, no account.</p></div>
+  </header>
+
+  <div class="qr">
+    <img src="qr.png" alt="QR code for the Grid Ref app">
+    <p>Scan with the iPhone camera, or open this link <b>in Safari</b>:<br><a href="./">nickjsykes.github.io/gridref</a></p>
+  </div>
+
+  <ol>
+    <li><b>Open it in Safari</b>Not Chrome or Edge: only Safari can install it, and only the installed version works offline.</li>
+    <li><b>Tap the Share button</b>The square with an arrow <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg> at the bottom of the screen.</li>
+    <li><b>Tap "Add to Home Screen", then "Add"</b>Scroll down the list if you can't see it.</li>
+    <li><b>Open Grid Ref from the new icon</b>With signal (WiFi is best), leave it open for about a minute the first time. It downloads the offline OS maps for Roudsea, Duddon Mosses, Hallsenna Moor, North Walney, Gait Barrows and Blelham Bog.</li>
+    <li><b>Say Allow</b>To location when you tap the GPS button, and to "Motion &amp; Orientation" the first time you tap Navigate (that's the compass).</li>
+  </ol>
+
+  <h2>Good to know</h2>
+  <ul>
+    <li><b>Always open it from the icon.</b> Safari and the icon keep separate saved points.</li>
+    <li><b>Saved points live on your phone only.</b> Back them up now and then: Saved › Share as CSV › email it to yourself.</li>
+    <li><b>Tap anything to copy it:</b> the grid ref, E/N or lat/long. It goes green when it's copied.</li>
+    <li>It updates itself. No App Store, nothing to do.</li>
+  </ul>
+
+  <h2>If something's not right</h2>
+  <div class="fix">
+    <p><b>"Location blocked"</b>: Settings › Privacy &amp; Security › Location Services › Safari Websites › While Using the App.</p>
+    <p><b>Compass arrow stays grey</b>: hold the phone flat and wave it in a figure-of-8. Keep it away from magnets: phone cases, the car, metal gates.</p>
+    <p><b>Looks out of date</b>: swipe Grid Ref away in the app switcher and open it again.</p>
+    <p><b>No "Add to Home Screen"</b>: you're not in Safari. Copy the link into Safari.</p>
+  </div>
+
+  <footer>Grid Ref · Nick Sykes for Natural England</footer>
+</main>
+</body>
+</html>
