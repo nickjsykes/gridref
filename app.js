@@ -11,7 +11,7 @@
   const LAYERS = {
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
     topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
-    os: { name: "OS map", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
+    os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "55"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "57"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -406,10 +406,11 @@
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
+    ["app", "Grid Ref link (opens this app)", (x) => `${location.origin}${location.pathname}?q=${encodeURIComponent(x.ref)}`],
     ["apple", "Apple Maps link", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
   ];
-  let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]));
+  let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "app", "apple"]));
   function shareTextFor(x) {
     return [x.head, ...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), x.notes].filter(Boolean).join("\n");
   }
@@ -1082,7 +1083,8 @@
     following = false;
     $("locBtn").classList.remove("on");
     setCompact(true); // just the grid ref; swipe up for the other formats
-    panTo(L.latLng(it.lat, it.lon), it.zoom || 15);
+    // Jump, don't glide: lands at once even if the phone has paused animation (Low Power Mode)
+    panTo(L.latLng(it.lat, it.lon), it.zoom || 15, false);
   }
   const fmtRef = (lat, lon) => { const g = OSGB.wgs84ToGrid(lat, lon); return OSGB.gridRef(g.e, g.n, digits); };
   async function getJSON(url) { const r = await fetch(url); return r.json(); }
@@ -1500,7 +1502,7 @@
         store.set("lastReserve", code);
         following = false;
         $("locBtn").classList.remove("on");
-        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [30, 110], paddingBottomRight: [70, sheet.offsetHeight + 20], maxZoom: 16 });
+        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [30, 110], paddingBottomRight: [70, sheet.offsetHeight + 20], maxZoom: 16, animate: false });
         drawChips();
       };
       $("chips").appendChild(b);
@@ -1790,6 +1792,21 @@
     if (e.target.closest("button, a, .item .main, .shopts label, .leaflet-marker-icon")) haptic();
   }, true);
 
+  // ---------- opened from a shared link: …/gridref/?q=SD 3390 8360 ----------
+  // Anything the search box understands works: grid ref, lat/long, E/N, postcode, place.
+  (function openShared() {
+    const params = new URLSearchParams(location.search), q = params.get("q");
+    if (!q) return;
+    params.delete("q");
+    history.replaceState(null, "", location.pathname + (params.toString() ? "?" + params : ""));
+    setTimeout(async () => {
+      $("q").value = q;
+      await search(q, true);
+      $("q").value = "";
+      toast("Shared location: " + q);
+    }, 400);
+  })();
+
   // ---------- install nudge ----------
   // Offline maps and saved points only work properly from the Home Screen icon, and only
   // Safari can add one on iPhone. So: in Edge/Chrome, say "open in Safari"; in Safari, say
@@ -1821,7 +1838,11 @@
   async function checkVersion() {
     try {
       const j = await (await fetch("version.json", { cache: "no-store" })).json();
-      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v)) location.replace(location.pathname + "?v=" + j.v);
+      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v)) {
+        const u = new URLSearchParams(location.search);
+        u.set("v", j.v);
+        location.replace(location.pathname + "?" + u);
+      }
     } catch {}
   }
   checkVersion();
