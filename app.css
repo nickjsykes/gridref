@@ -127,14 +127,14 @@ body.measuring #listBtn, body.navigating #listBtn, body.moving #listBtn { displa
 .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 /* notebook header and filters */
 .drawer header { gap: 10px; }
-.drawer h2.dtitle { flex: 1; min-width: 0; font-size: 26px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.dtitle small { color: var(--muted); font: 400 13px var(--sans); letter-spacing: 0; }
+.drawer h2.dtitle { flex: 1; min-width: 0; font-size: clamp(21px, 7vw, 26px); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dtitle small { color: var(--muted); font: 400 clamp(11.5px, 3.5vw, 13px) var(--sans); letter-spacing: 0; }
 .drawer header .back { font-size: 30px; line-height: 1; padding: 0 6px 4px 0; }
 .chiprow { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; scrollbar-width: none; flex: none; }
 .chiprow::-webkit-scrollbar { display: none; }
 .chiprow:last-of-type, .chiprow + .chiprow { padding-bottom: 8px; }
-#tabs { padding-bottom: 8px; }
-#tabs:has(+ .chiprow:not([hidden])) { padding-bottom: 0; }
+#resFilter { flex-wrap: wrap; gap: 6px 5px; padding-bottom: 10px; } /* every reserve in view, no sideways scrolling */
+#resFilter button { padding: 6px 10px; font-size: 13px; }
 .chiprow[hidden] { display: none; }
 .chiprow button { flex: none; border: 0; border-radius: 16px; padding: 7px 13px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
 .chiprow button small { font-weight: 500; opacity: .75; margin-left: 2px; }

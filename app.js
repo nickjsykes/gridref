@@ -68,7 +68,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "95"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "100"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -742,10 +742,11 @@
   const keyOf = (p) => p.at + "|" + p.name;
   // ---------- the notebook: newest first under day headings, filter by type and reserve ----------
   // Imported files go into a folder of their own, shown as one row until you open it.
-  let tab = store.get("ntab", "all"), resF = "", folder = null, menuPt = null;
+  // Type filtering was dropped (27 Oct): the reserve chips are the useful filter
+  let tab = "all", resF = "", folder = null, menuPt = null;
   const KIND_WORD = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" };
-  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.k; store.set("ntab", tab); openDrawer(); } };
-  $("resFilter").onclick = (e) => { const b = e.target.closest("button"); if (b) { resF = b.dataset.r; openDrawer(); } };
+  // Tap a reserve to see only its entries; tap it again to see everything
+  $("resFilter").onclick = (e) => { const b = e.target.closest("button"); if (b) { resF = resF === b.dataset.r ? "" : b.dataset.r; openDrawer(); } };
   function showOnMap(pt) {
     closeDrawer();
     following = false;
@@ -781,17 +782,11 @@
     // Which reserve each entry is in (worked out now, so imports and old entries get it too)
     const resOf = new Map(scope.map((p) => { const c = centreOf(p); return [p, reserveShort(L.latLng(c.lat, c.lon))]; }));
     const inRes = [...TEAM.values()].filter((r) => [...resOf.values()].includes(r));
-    if (resF && resF !== "-" && !inRes.includes(resF)) resF = "";
-    // Filters: type, then reserve (only offered when something is in a reserve)
-    const counts = { all: scope.length, point: 0, line: 0, area: 0, photo: 0 };
-    for (const p of scope) counts[p.kind || "point"]++;
-    $("tabs").innerHTML = ["all", "point", "line", "area", "photo"].filter((k) => k === "all" || counts[k] || k === tab)
-      .map((k) => `<button data-k="${k}" class="${k === tab ? "on" : ""}">${k === "all" ? "All" : KIND_WORD[k]}${counts[k] ? ` <small>${counts[k]}</small>` : ""}</button>`).join("");
-    const elsewhere = [...resOf.values()].some((r) => !r);
-    $("resFilter").innerHTML = inRes.length ? [["", "Everywhere"], ...inRes.map((r) => [r, r]), ...(elsewhere ? [["-", "Elsewhere"]] : [])]
-      .map(([v, l]) => `<button data-r="${v}" class="${v === resF ? "on" : ""}">${esc(l)}</button>`).join("") : "";
+    if (resF && !inRes.includes(resF)) resF = "";
+    // Reserve filter (only offered when something is in a reserve)
+    $("resFilter").innerHTML = inRes.map((r) => `<button data-r="${esc(r)}" class="${r === resF ? "on" : ""}">${esc(r)}</button>`).join("");
     $("resFilter").hidden = !inRes.length;
-    const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || (resF === "-" ? !resOf.get(p) : resOf.get(p) === resF));
+    const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || resOf.get(p) === resF);
     // Header: the notebook, or the folder you're in
     $("dTitle").textContent = folder || "Notebook";
     $("dSub").textContent = folder ? `(${summary(scope)})` : "(on this phone only)";
