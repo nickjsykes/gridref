@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=45">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=46">
 <style>
   :root {
     --green: #2f5d3a;
@@ -53,6 +53,7 @@
   .results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 13px 14px; }
   .results button small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
   .results button .tag { float: right; font: 600 11px var(--sans); color: var(--green); background: var(--green-soft); border-radius: 6px; padding: 2px 6px; margin-left: 8px; }
+  .results button.clearrow { color: var(--muted); text-align: center; font-size: 14px; }
   .results .msg { padding: 13px 14px; color: var(--muted); font-size: 14px; }
 
   /* crosshair */
@@ -446,10 +447,9 @@
   <div class="card">
     <div class="im-title"><b id="imName"></b><span id="imRef"></span></div>
     <p class="im-notes" id="imNotes"></p>
-    <button type="button" id="imView">View photo</button>
+    <button type="button" id="imView">View</button>
     <button type="button" id="imShow">Show on map</button>
-    <button type="button" id="imNav">Navigate here</button>
-    <button type="button" id="imCopy">Copy grid ref</button>
+    <button type="button" id="imNav">Navigate</button>
     <button type="button" id="imShare">Share</button>
     <button type="button" id="imEdit">Edit</button>
     <button type="button" id="imDel" class="danger">Delete</button>
@@ -488,11 +488,11 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=45"></script>
-<script src="config.js?v=45"></script>
-<script src="osgb.js?v=45"></script>
-<script src="parse.js?v=45"></script>
-<script src="local.js?v=45"></script>
+<script src="vendor/leaflet/leaflet.js?v=46"></script>
+<script src="config.js?v=46"></script>
+<script src="osgb.js?v=46"></script>
+<script src="parse.js?v=46"></script>
+<script src="local.js?v=46"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -545,7 +545,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "45"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "46"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1240,7 +1240,6 @@
   $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
-  $("imCopy").onclick = () => { const c = centreOf(menuPt); copy(OSGB.gridRef(c.e, c.n, digits)); closeMenu(); };
   function shareSaved(pt) {
     const c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
@@ -1463,13 +1462,32 @@
       if (gr && it.title !== gr) b.querySelector(".t").textContent = it.title;
       else b.querySelector(".t").remove();
       b.querySelector("small").textContent = it.sub || "";
+      if (it.clear) b.classList.add("clearrow");
       b.onclick = () => go(it);
       resultsEl.appendChild(b);
     }
     resultsEl.style.display = items.length || msg ? "block" : "none";
   }
+  // Recent searches: the last 12 places you went to from the search box
+  const HISTORY_MAX = 12;
+  function remember(it) {
+    const q = $("q").value.trim() || it.title;
+    const key = (x) => x.lat.toFixed(5) + "," + x.lon.toFixed(5);
+    const list = store.get("history", []).filter((h) => key(h) !== key(it));
+    list.unshift({ q, title: it.title, sub: it.sub || "", lat: it.lat, lon: it.lon, zoom: it.zoom || 15, at: Date.now() });
+    store.set("history", list.slice(0, HISTORY_MAX));
+  }
+  function showHistory() {
+    const list = store.get("history", []);
+    if (!list.length) return showResults([]);
+    const items = list.map((h) => ({ title: h.q, sub: h.title !== h.q ? h.title + (h.sub ? " · " + h.sub : "") : h.sub, tag: "Recent", lat: h.lat, lon: h.lon, zoom: h.zoom, fromHistory: true }));
+    items.push({ title: "Clear search history", clear: true });
+    showResults(items);
+  }
   function go(it) {
+    if (it.clear) { store.set("history", []); resultsEl.style.display = "none"; return toast("Search history cleared"); }
     if (it.url) return openLink(it.w3w ? w3wHref(it.w3w) : it.url);
+    if (!it.fromHistory) remember(it);
     resultsEl.style.display = "none";
     $("q").blur();
     following = false;
@@ -1571,10 +1589,10 @@
   $("q").addEventListener("input", () => {
     clearTimeout(typing);
     const v = $("q").value;
-    if (!v.trim()) return showResults([]);
+    if (!v.trim()) return showHistory();
     typing = setTimeout(() => search(v, false), 280);
   });
-  $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); });
+  $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); else showHistory(); });
 
   // Tap "340 m from you, NE (047°) ›" to navigate there
   $("fromMe").onclick = () => { if ($("fromMe").textContent && !following) $("navBtn").click(); };
