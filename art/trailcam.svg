@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Trail camera on a tree">
+  <title>Trail camera on a tree</title>
+  <path d="M8 104Q100 100 192 104"/>
+  <path d="M82 104Q86 96 86 84V12M118 104Q114 96 114 84V12"/>
+  <path d="M76 104Q82 100 86 98M124 104Q118 100 114 98" stroke-width="1.2" opacity=".5"/>
+  <path d="M90 20V34M108 28V40M92 86V98M110 84V96M96 44V48" stroke-width="1.2" opacity=".5"/>
+  <path d="M86 56Q100 60 114 56M86 63Q100 67 114 63"/>
+  <rect x="88" y="48" width="24" height="32" rx="4"/>
+  <circle cx="100" cy="59" r="5.5"/>
+  <circle cx="100" cy="59" r="2" fill="currentColor" stroke="none"/>
+  <rect x="94" y="69" width="12" height="5" rx="1.5"/>
+  <circle cx="106" cy="52" r="1" fill="currentColor" stroke="none"/>
+  <path d="M114 30Q130 26 146 18M132 25q8-8 16-4q-6 8-16 4ZM140 21q4-10 12-10q-2 9-12 10Z"/>
+  <path d="M40 104q1-6-3-10M43 104q2-8 6-11M46 104q0-5 3-7M56 104q1-6-3-10M59 104q2-8 6-11M62 104q0-5 3-7M140 104q1-6-3-10M143 104q2-8 6-11M146 104q0-5 3-7M156 104q1-6-3-10M159 104q2-8 6-11M162 104q0-5 3-7" stroke-width="1.2" opacity=".5"/>
+</svg>

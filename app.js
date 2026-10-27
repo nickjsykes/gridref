@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "72"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "78"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -745,10 +745,10 @@
     list.innerHTML = "";
     const items = points.filter((p) => (p.kind || "point") === tab);
     if (!items.length) list.innerHTML = {
-      point: '<div class="empty">No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>',
-      line: '<div class="empty">No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</div>',
-      area: '<div class="empty">No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</div>',
-      photo: '<div class="empty">No photos yet.<br>Tap <b>Photo</b>, take a picture, then <b>Save</b>. It\'s pinned on the map where you took it.</div>',
+      point: '<div class="empty"><img class="emptyart" src="art/waymark.svg" alt="A waymark post">No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>',
+      line: '<div class="empty"><img class="emptyart" src="art/wall.svg" alt="A dry stone wall">No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</div>',
+      area: '<div class="empty"><img class="emptyart" src="art/bogcotton.svg" alt="Bog cotton on a moss">No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</div>',
+      photo: '<div class="empty"><img class="emptyart" src="art/trailcam.svg" alt="A trail camera on a tree">No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It\'s pinned on the map where it was taken.</div>',
     }[tab];
     for (const pt of items) {
       const row = document.createElement("div");
@@ -1322,7 +1322,14 @@
     }
     const me = L.latLng(here.lat, here.lon), d = me.distanceTo(to), brg = bearing(me, to);
     const arrived = d <= Math.max(8, here.acc);
-    $("navDist").textContent = arrived ? "Here" : fmtDist(d);
+    if (arrived && !nav.arrived) {
+      const res = reserveAt(to) || "";
+      $("navArt").src = /Roudsea/.test(res) ? "osprey.svg" : /Walney/.test(res) ? "art/natterjack.svg" : "art/cairn.svg";
+      haptic();
+    }
+    nav.arrived = arrived;
+    document.querySelector(".nav-body").classList.toggle("arrived", arrived);
+    $("navDist").textContent = arrived ? "You're here" : fmtDist(d);
     $("navBrg").textContent = arrived ? `Within GPS accuracy` : `Head ${POINT_NAMES[Math.round(brg / 45) % 8]}`;
     $("navDeg").textContent = arrived ? "" : `${String(Math.round(brg) % 360).padStart(3, "0")}°`;
     $("navAcc").textContent = `You: ${OSGB.gridRef(OSGB.wgs84ToGrid(here.lat, here.lon).e, OSGB.wgs84ToGrid(here.lat, here.lon).n, digits)} · ±${Math.round(here.acc)} m`;
@@ -1368,6 +1375,7 @@
   $("navEnd").onclick = () => {
     const to = nav;
     nav = null;
+    document.querySelector(".nav-body").classList.remove("arrived");
     compassOff();
     if (navLine) { map.removeLayer(navLine); navLine = null; }
     if (navFlag) { map.removeLayer(navFlag); navFlag = null; }
@@ -1590,6 +1598,14 @@
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
     $("mArea").textContent = a != null ? `${Math.round(a).toLocaleString("en-GB")} m²` : "—";
     $("mHa").textContent = a != null ? `${(a / 10000).toFixed(a < 100000 ? 2 : 1)} ha` : "—";
+    for (const id of ["mDist", "mArea", "mHa"]) fitNum($(id));
+  }
+  // Big numbers shrink to stay on one line in their box (no "m²" dropping to a new line)
+  function fitNum(el) {
+    el.style.fontSize = "";
+    if (!el.offsetWidth) return;
+    let s = parseFloat(getComputedStyle(el).fontSize);
+    while (el.scrollWidth > el.clientWidth && s > 14) el.style.fontSize = --s + "px";
   }
   function startMeasure(kind) {
     measure = { kind, pts: [] };

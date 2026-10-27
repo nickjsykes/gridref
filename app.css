@@ -346,7 +346,7 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 
 /* the osprey */
 .osprey { display: block; margin: 6px auto 0; width: 92px; opacity: .55; }
-@media (prefers-color-scheme: dark) { .osprey { filter: invert(1); } } /* the drawing is black lines */
+@media (prefers-color-scheme: dark) { .osprey, .emptyart, .arrive { filter: invert(1); } } /* the drawings are black lines */
 
 /* short phones (SE, mini): four left buttons + the reserve chips need the room */
 @media (max-height: 620px) {
@@ -364,3 +364,13 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 /* measure numbers go green when copied, like everything else */
 .m-nums > div { border-radius: 10px; padding: 2px 6px; transition: background .15s; }
 .m-nums .copied small, .m-nums .copied b { color: var(--panel) !important; }
+.m-nums b { display: block; white-space: nowrap; overflow: hidden; }
+
+/* drawings: empty saved tabs, and the reward for arriving */
+.emptyart { display: block; width: min(220px, 70vw); margin: 0 auto 14px; opacity: .55; }
+.arrive { display: none; width: min(40vw, 150px); flex: none; opacity: .8; }
+.nav-body.arrived .dial { display: none; }
+.nav-body.arrived .arrive { display: block; }
+.nav-body.arrived .dist { font-size: clamp(22px, 7vw, 28px); white-space: nowrap; }
+.nav-body.arrived .head { font-size: 15px; }
+.m-nums > div { min-width: 0; } /* let the number shrink to the box, not the box grow to the number */
