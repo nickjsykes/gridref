@@ -17,7 +17,7 @@ Offline data: download OS Open Names and Code-Point Open (CSV) into `build/src/`
 
 Accuracy: Helmert datum shift, good to ~3–5 m, and phone GPS is ~5 m in the open and worse under trees, so the app gives 6 or 8 figures. 10-figure refs can still be searched.
 
-Static files only — no build step. `osgb.js` holds the conversions.
+Static files only, no build step: `index.html` (layout), `app.css` (styles, light/dark tokens), `app.js` (the app), `osgb.js` (grid conversions), `parse.js` (search parsing), `local.js` (offline place/postcode search), `zip.js` (backup zips), `sw.js` (offline).
 
 **Releasing:** `python build/release.py` bumps VERSION, the script ?v= tags, version.json and the sw.js CACHE together. Open copies (any browser) see the new version.json and reload onto it.
 
