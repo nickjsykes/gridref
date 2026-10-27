@@ -467,23 +467,20 @@ body.adding .rescard, body.measuring .rescard, body.navigating .rescard, body.mo
 .sheet.compact .more-hint { display: block; }
 body.large .more-hint { display: none !important; }
 /* share: options as chips, and room to read the whole message */
-.shchips { flex-wrap: wrap; padding: 4px 0 2px; }
+.shchips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 0 2px; }
 .shprev { max-height: 38vh !important; font-size: 13px !important; }
 /* photo preview leaves room for the stamp options */
 #photoOut { max-height: 46vh; object-fit: contain; background: #000; }
 #photoModal .card { max-height: calc(100vh - var(--safe-t) - 28px); overflow-y: auto; }
 .stampopts button { padding: 6px 11px; font-size: 13px; }
 body.large .row .v.dim { font-size: 17px !important; }
-.sheetmenu .shchips button { padding: 6px 12px; font-size: 13.5px; border-radius: 16px; background: var(--green-soft); color: var(--muted); }
+.sheetmenu .shchips button { padding: 8px 4px; font-size: 13.5px; border-radius: 12px; background: var(--green-soft); color: var(--muted); white-space: nowrap; }
 .sheetmenu .shchips button.on { background: var(--green); color: var(--panel); }
 .shpic { display: block; width: 100%; max-height: 26vh; object-fit: cover; object-position: center 40%; border-radius: 10px; }
 .shpic[hidden] { display: none; }
 
-/* Big text (John mode): also high contrast, a read-aloud button, and a big "Copied" */
+/* Big text (John mode): also high contrast and a big "Copied" */
 body.large { --ink: #000; --muted: #2b2b28; --panel: #fff; --line: #bdb8a8; }
 @media (prefers-color-scheme: dark) { body.large { --ink: #fff; --muted: #e4e2da; --panel: #000; --line: #55534a; } }
 body.large .row .k { font-weight: 700; }
-.say { display: none; }
-body.large .say { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 22px; padding: 8px 16px; font: 700 17px var(--sans); background: var(--green-soft); color: var(--green); }
-body.large .say svg { width: 24px; height: 24px; }
 body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }

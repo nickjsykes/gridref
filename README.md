@@ -1,4 +1,4 @@
-# Grid Ref
+# Field Notes
 
 A phone-first OS grid reference finder (a better gridreferencefinder.com for field use).
 

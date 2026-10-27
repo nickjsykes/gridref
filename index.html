@@ -3,18 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-<title>Grid Ref</title>
+<title>Field Notes</title>
 <meta name="description" content="Find and share Ordnance Survey grid references on your phone.">
-<meta name="theme-color" content="#2f5d3a">
+<meta name="theme-color" content="#2e6560">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Grid Ref">
+<meta name="apple-mobile-web-app-title" content="Field Notes">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=118">
-<link rel="stylesheet" href="app.css?v=118">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=119">
+<link rel="stylesheet" href="app.css?v=119">
 </head>
 <body>
 <div id="map"></div>
@@ -62,7 +62,6 @@
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span><small class="more-hint">Lat/long · E/N · what3words</small></button>
   <div class="refline">
     <label class="big" for="hapticSw" data-copy="ref" aria-label="Copy grid reference"><span class="ref" id="ref">—</span></label>
-    <button class="say" id="sayBtn" aria-label="Read the grid ref out loud"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4Z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12"/></svg>Read it out</button>
   </div>
   <div class="more">
     <div class="meta">
@@ -132,7 +131,7 @@
   <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
   <div class="chiprow res" id="resFilter" hidden></div>
   <div class="list" id="list"></div>
-  <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
+  <p class="credit">Field Notes · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
   <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
   <footer>
@@ -182,7 +181,7 @@
   </div>
 </div>
 <div class="install" id="install" hidden>
-  <b id="instTitle">Install Grid Ref</b>
+  <b id="instTitle">Install Field Notes</b>
   <span id="instText"></span> <a href="install.html" class="instlink">Step by step ›</a>
   <button type="button" id="instClose" aria-label="Dismiss">✕</button>
 </div>
@@ -216,13 +215,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=118"></script>
-<script src="config.js?v=118"></script>
-<script src="osgb.js?v=118"></script>
-<script src="parse.js?v=118"></script>
-<script src="zip.js?v=118"></script>
-<script src="exif.js?v=118"></script>
-<script src="local.js?v=118"></script>
-<script src="app.js?v=118"></script>
+<script src="vendor/leaflet/leaflet.js?v=119"></script>
+<script src="config.js?v=119"></script>
+<script src="osgb.js?v=119"></script>
+<script src="parse.js?v=119"></script>
+<script src="zip.js?v=119"></script>
+<script src="exif.js?v=119"></script>
+<script src="local.js?v=119"></script>
+<script src="app.js?v=119"></script>
 </body>
 </html>

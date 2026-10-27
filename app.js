@@ -1,4 +1,4 @@
-// Grid Ref: the app. Loaded after Leaflet, osgb.js, parse.js, zip.js and local.js.
+// Field Notes: the app. Loaded after Leaflet, osgb.js, parse.js, zip.js and local.js.
 (function () {
   const $ = (id) => document.getElementById(id);
   const store = {
@@ -67,19 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  // Big text, read aloud: the grid ref spoken letter by letter and digit by digit ("S D,
-  // three four zero zero, eight one nine nine"), for reading it over the radio or phone
-  $("sayBtn").onclick = () => {
-    if (!last || !last.ref || !("speechSynthesis" in window)) return toast("This phone can't read aloud");
-    const said = last.ref.split(" ").map((p) => p.split("").join(" ")).join(", ");
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(said);
-    u.lang = "en-GB";
-    u.rate = 0.8;
-    speechSynthesis.speak(u);
-  };
-
-  const VERSION = "118"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "119"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -444,17 +432,18 @@
   // blank line, then the name and notes, so it's easy to read.
   // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
-    ["pic", "Map picture", () => ""],
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
+    ["pic", "Current map", () => ""],
     ["apple", "Apple Maps", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
   ];
   let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]).filter((k) => k !== "app"));
-  if (!store.get("sharePic", false)) { shareOn.add("pic"); store.set("shareOpts", [...shareOn]); store.set("sharePic", true); }
+  // 27 Oct: start everyone on just the grid ref and Apple Maps (name and notes ride along on saved things)
+  if (!store.get("shareReset3", false)) { shareOn = new Set(["ref", "apple", "name", "notes"]); store.set("shareOpts", [...shareOn]); store.set("shareReset3", true); }
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
   function shareTextFor(x) {
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
@@ -637,7 +626,7 @@
     points = points.filter(sane);
     const ok = store.set("points", points);
     drawPins();
-    if (!ok) alert("This phone wouldn't let Grid Ref save. Share your points as CSV now so nothing is lost.");
+    if (!ok) alert("This phone wouldn't let Field Notes save. Share your points as CSV now so nothing is lost.");
     return ok;
   }
   window.addEventListener("storage", (e) => { if (e.key === "gridref.points") { fresh(); drawPins(); } });
@@ -1747,7 +1736,11 @@
     pack.reserves = idx.reserves.length;
     pack.names = idx.reserves;
     pack.mb = Math.round(idx.bytes / 1e6);
+    // Once: throw away tiles stored before 27 Oct. v116 only fetched the files phones didn't
+    // have, so the old OS tiles with LiDAR baked in stayed (same names) under the new pack.
+    if (!store.get("packClean2", false)) { await caches.delete("gridref-maps"); store.set("pack", ""); store.set("packClean2", true); }
     if (store.get("pack", "") === idx.version) { pack.state = "ready"; return; }
+    // A new pack replaces the old one outright, for the same reason
     if (store.get("pack", "")) { await caches.delete("gridref-maps"); store.set("pack", ""); }
     const cache = await caches.open("gridref-maps");
     const missing = async () => {
