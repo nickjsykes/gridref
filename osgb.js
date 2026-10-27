@@ -96,13 +96,31 @@
     };
   }
 
-  function wgs84ToGrid(lat, lon) {
+  // OSTN15 correction (data/ostn15.json, loaded by the app): the Helmert alone is about a
+  // metre out; adding OS's own correction, interpolated from a 5 km table, brings eastings,
+  // northings and grid refs to within a few centimetres of OSTN15. Without it, the Helmert.
+  let corr = null;
+  function setCorrection(table) { corr = table && table.de && table.de.length === table.cols * table.rows ? table : null; }
+  function shift(e, n) {
+    if (!corr) return [0, 0];
+    const x = e / corr.step, y = n / corr.step, i = Math.floor(x), j = Math.floor(y);
+    if (i < 0 || j < 0 || i >= corr.cols - 1 || j >= corr.rows - 1) return [0, 0];
+    const fx = x - i, fy = y - j, k = j * corr.cols + i;
+    const at = (a) => ((a[k] * (1 - fx) + a[k + 1] * fx) * (1 - fy) + (a[k + corr.cols] * (1 - fx) + a[k + corr.cols + 1] * fx) * fy) / 100;
+    return [at(corr.de), at(corr.dn)];
+  }
+
+  function wgs84ToGrid(lat, lon, helmertOnly) {
     const osgb = fromCartesian(helmert(toCartesian(lat, lon, WGS84), HELMERT, 1), AIRY);
-    return project(osgb.lat, osgb.lon);
+    const g = project(osgb.lat, osgb.lon);
+    if (helmertOnly) return g;
+    const [de, dn] = shift(g.e, g.n);
+    return { ...g, e: g.e + de, n: g.n + dn };
   }
 
   function gridToWgs84(e, n) {
-    const osgb = unproject(e, n);
+    const [de, dn] = shift(e, n);
+    const osgb = unproject(e - de, n - dn);
     return fromCartesian(helmert(toCartesian(osgb.lat, osgb.lon, AIRY), HELMERT, -1), WGS84);
   }
 
@@ -140,5 +158,5 @@
     return { e: e100k * 100000 + de + size / 2, n: n100k * 100000 + dn + size / 2, size };
   }
 
-  root.OSGB = { wgs84ToGrid, gridToWgs84, gridRef, parseGridRef, inGrid, project, unproject };
+  root.OSGB = { wgs84ToGrid, gridToWgs84, gridRef, parseGridRef, inGrid, project, unproject, setCorrection };
 })(typeof window !== "undefined" ? window : globalThis);

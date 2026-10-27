@@ -67,6 +67,13 @@
     <li><b>Tap anything to copy it:</b> location, lengths, areas and more. It highlights green when copied.</li>
   </ul>
 
+  <h2>Opening exports in QGIS or ArcGIS</h2>
+  <ul>
+    <li><b>Spreadsheet (CSV) into QGIS:</b> Layer › Add Delimited Text Layer. Pick <b>Easting</b> as X and <b>Northing</b> as Y, and set the coordinate system to <b>EPSG:27700</b> (British National Grid). These are OS grid numbers already, so nothing gets converted and nothing can shift.</li>
+    <li><b>ArcGIS (GeoJSON):</b> drag it straight into ArcGIS Online, Field Maps or QGIS. It's in GPS lat/long and they know that.</li>
+    <li><b>If points look a few metres off in a British National Grid project:</b> QGIS is converting lat/long with a rough method. When it asks how to convert, pick the one that mentions <b>OSTN15</b> (download it if offered).</li>
+  </ul>
+
   <h2>If something's not right</h2>
   <div class="fix">
     <p><b>"Location blocked"</b>: Settings › Privacy &amp; Security › Location Services › Safari Websites › While Using the App.</p>

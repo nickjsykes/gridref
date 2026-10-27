@@ -68,7 +68,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "100"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "101"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -512,6 +512,22 @@
     return ok;
   }
   window.addEventListener("storage", (e) => { if (e.key === "gridref.points") { fresh(); drawPins(); } });
+  // OS's own grid conversion (OSTN15): makes grid refs and eastings/northings match OS, QGIS
+  // and ArcGIS to within centimetres (the formula alone is about a metre out). Entries saved
+  // before it had their eastings/northings worked out the old way, so redo those once.
+  async function loadOSTN() {
+    try {
+      OSGB.setCorrection(await (await fetch("data/ostn15.json")).json());
+      if (!store.get("ostn15", false)) {
+        fresh();
+        for (const p of points) { const g = OSGB.wgs84ToGrid(p.lat, p.lon); p.e = Math.round(g.e); p.n = Math.round(g.n); }
+        if (points.length) savePoints();
+        store.set("ostn15", true);
+      }
+      drawGrid();
+      update();
+    } catch {}
+  }
   // Ask the browser not to clear our storage when space runs low
   const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
   const pinLayer = L.layerGroup().addTo(map);
@@ -965,7 +981,7 @@
       const c = p.pts.map(([a, b]) => `${b} ${a}`);
       return p.kind === "area" ? `POLYGON((${c.concat([c[0]]).join(", ")}))` : `LINESTRING(${c.join(", ")})`;
     };
-    const rows = [["Name", "Type", "Grid ref", "Latitude", "Longitude", "Easting", "Northing", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)", "Photo file", "Folder"]]
+    const rows = [["Name", "Type", "Grid ref", "Latitude (WGS84)", "Longitude (WGS84)", "Easting (OSGB36 EPSG:27700)", "Northing (OSGB36 EPSG:27700)", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)", "Photo file", "Folder"]]
       .concat(list.map((p) => {
         const st = p.pts ? shapeStats(p) : null;
         return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.lat.toFixed(6), p.lon.toFixed(6), p.e, p.n, st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
@@ -2148,7 +2164,7 @@
     map.fitBounds([[54.118, -3.292], [54.198, -2.785]], {
       paddingTopLeft: [68, 104], paddingBottomRight: [68, sheet.offsetHeight + 10], animate: false });
   };
-  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
+  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadOSTN, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
