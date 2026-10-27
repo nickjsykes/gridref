@@ -35,9 +35,13 @@
     const t = target();
     change();
     layout();
+    const h = sheet.offsetHeight;
     panTo(t, map.getZoom(), false);
     fitRef();
     update();
+    // fitRef() and update() resize and refill the grid ref, which can change the panel's
+    // height again (coming back from line/area it grew ~20px): re-centre on the same place
+    if (sheet.offsetHeight !== h) { layout(); panTo(t, map.getZoom(), false); update(); }
   }
   function setLarge(on) {
     keepTarget(() => {
@@ -50,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "67"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "70"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1581,9 +1585,12 @@
     mLine = L.polyline([], { color: "#c0392b", weight: 3, interactive: false }).addTo(map);
     mLive = L.polyline([], { color: "#c0392b", weight: 2, dashArray: "4 6", interactive: false }).addTo(map);
     mDots = L.layerGroup().addTo(map);
-    document.body.classList.toggle("area-mode", kind === "area");
-    document.body.classList.add("measuring");
-    keepTarget(() => {});
+    // Switch the panel inside keepTarget, so the place under the crosshair is read before
+    // the panel changes height (reading it after made the crosshair land somewhere else)
+    keepTarget(() => {
+      document.body.classList.toggle("area-mode", kind === "area");
+      document.body.classList.add("measuring");
+    });
     drawMeasure();
   }
   $("measureBtn").onclick = () => startMeasure("line");
