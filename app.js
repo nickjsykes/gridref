@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "107"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "108"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -788,7 +788,6 @@
   const empty = (html) => `<div class="empty"><i class="tex"></i><p>${html}</p></div>`;
   function openDrawer() {
     fresh();
-    closeResCard();
     $("keepBar").hidden = true;
     if (folder && !points.some((p) => p.folder === folder)) folder = null;
     const scope = folder ? points.filter((p) => p.folder === folder) : points;
@@ -1767,7 +1766,7 @@
     if (cur.precipitation > 0.1) sky += ", raining";
     else if (wet >= 0) sky += hours[wet].slice(0, 13) <= now.slice(0, 13) ? ", rain likely" : `, rain likely from ${hhmm(hours[wet])}`;
     const sunset = w.daily.sunset[0];
-    const light = now < sunset ? `light until ${hhmm(sunset)}` : `sunset was ${hhmm(sunset)}`;
+    const light = `Sunset ${hhmm(sunset)}`;
     // Wind only when it matters: gusts that make trees, ladders, boats or the estuary risky
     const g = Math.round(cur.wind_gusts_10m), dir = POINT_NAMES[Math.round(cur.wind_direction_10m / 45) % 8].toLowerCase();
     const wind = g >= 35 || cur.wind_speed_10m >= 25 ? `gusts to ${g} mph from the ${dir}` : "";
@@ -1789,6 +1788,21 @@
     cardCache.set(code, out);
     return out;
   }
+  // Official tides (ADMIRALTY, heights above chart datum like the tide tables), fetched daily
+  // by a GitHub job into data/tides.json; a copy is kept so they work offline for a week
+  let tides = store.get("tides", null);
+  fetch("data/tides.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.reserves) { tides = j; store.set("tides", j); } }).catch(() => {});
+  function officialTide(code) {
+    const ev = tides && tides.reserves && tides.reserves[code] && tides.reserves[code].events;
+    if (!ev) return "";
+    const now = Date.now(), next = ev.filter((e) => Date.parse(e.at) > now);
+    if (!next.length) return "";
+    const day = (d) => (new Date(d).toDateString() === new Date().toDateString() ? "" : "tomorrow ");
+    const at = (e) => `${day(e.at)}${new Date(e.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} (${e.m.toFixed(1)} m)`;
+    const hi = next.find((e) => e.high);
+    return next[0].high ? `Tide coming in · high at ${at(next[0])}`
+      : `Tide going out · low at ${at(next[0])}${hi ? ` · next high ${at(hi)}` : ""}`;
+  }
   let cardFor = null;
   function closeResCard() { $("resCard").hidden = true; cardFor = null; }
   function showResCard(code, f) {
@@ -1796,20 +1810,19 @@
     cardFor = code;
     fresh();
     const mine = points.filter((p) => { const c = centreOf(p); return reserveShort(L.latLng(c.lat, c.lon)) === name; });
-    card.innerHTML = `<div class="rc-head"><b></b><span class="rc-ha"></span><button type="button" class="rc-x" aria-label="Close">×</button></div>
+    card.innerHTML = `<button type="button" class="rc-x" aria-label="Close">×</button>
       <div class="rc-sky">…</div><div class="rc-tide"></div><div class="rc-wind"></div>
       <button type="button" class="rc-mine"></button>`;
-    card.querySelector("b").textContent = f.properties.LABEL.replace(/ \(NNR\)$/, "");
-    card.querySelector(".rc-ha").textContent = f.properties.MEASURE ? `${Math.round(f.properties.MEASURE)} ha` : "";
     card.querySelector(".rc-mine").textContent = mine.length ? `${mine.length} ${mine.length > 1 ? "notes" : "note"} here ›` : "Nothing in your notebook here yet";
-    card.querySelector(".rc-mine").onclick = () => { if (!mine.length) return; closeResCard(); folder = null; resF = name; openDrawer(); };
+    card.querySelector(".rc-mine").onclick = () => { if (!mine.length) return; folder = null; resF = name; openDrawer(); };
     card.querySelector(".rc-x").onclick = closeResCard;
+    card.querySelector(".rc-tide").textContent = officialTide(code); // straight away, even with no signal
     card.hidden = false;
     const c = L.geoJSON(f).getBounds().getCenter();
     reserveConditions(code, c).then((r) => {
       if (cardFor !== code) return;
       card.querySelector(".rc-sky").textContent = r.sky;
-      card.querySelector(".rc-tide").textContent = r.tide;
+      if (!officialTide(code)) card.querySelector(".rc-tide").textContent = r.tide;
       card.querySelector(".rc-wind").innerHTML = r.wind ? `<b>Windy:</b> ${esc(r.wind)}` : "";
     }).catch(() => {
       if (cardFor === code) card.querySelector(".rc-sky").textContent = "No signal for weather or tides";
