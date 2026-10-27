@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "80"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "82"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -745,10 +745,10 @@
     list.innerHTML = "";
     const items = points.filter((p) => (p.kind || "point") === tab);
     if (!items.length) list.innerHTML = {
-      point: '<div class="empty"><img class="emptyart" src="art/waymark.svg" alt="A waymark post">No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</div>',
-      line: '<div class="empty"><img class="emptyart" src="art/wall.svg" alt="A dry stone wall">No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</div>',
-      area: '<div class="empty"><img class="emptyart" src="art/bogcotton.svg" alt="Bog cotton on a moss">No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</div>',
-      photo: '<div class="empty"><img class="emptyart" src="art/trailcam.svg" alt="A trail camera on a tree">No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It\'s pinned on the map where it was taken.</div>',
+      point: '<div class="empty"><i class="tex"></i><p>No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</p></div>',
+      line: '<div class="empty"><i class="tex"></i><p>No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</p></div>',
+      area: '<div class="empty"><i class="tex"></i><p>No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</p></div>',
+      photo: '<div class="empty"><i class="tex"></i><p>No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It\'s pinned on the map where it was taken.</p></div>',
     }[tab];
     for (const pt of items) {
       const row = document.createElement("div");
