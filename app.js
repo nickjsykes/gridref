@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "86"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "87"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -780,7 +780,7 @@
     const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || (resF === "-" ? !resOf.get(p) : resOf.get(p) === resF));
     // Header: the notebook, or the folder you're in
     $("dTitle").textContent = folder || "Notebook";
-    $("dSub").textContent = folder ? summary(scope) + " · imported " + new Date(scope[0].at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "On this phone";
+    $("dSub").textContent = folder ? `(${summary(scope)})` : "(on this phone only)";
     $("folderBack").hidden = !folder;
     $("folderActs").hidden = !folder;
     const list = $("list");
@@ -837,7 +837,7 @@
     const mk = kind === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
     const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : kind === "area" ? fmtArea(st.area) : fmtDist(st.length);
-    row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z" fill="currentColor"/></svg></button>`;
+    row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div>`;
     row.querySelector(".name").textContent = pt.name;
     row.querySelector(".gr").textContent = what;
     if (kind === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
@@ -848,9 +848,8 @@
     if (res) { const t = document.createElement("span"); t.className = "rtag"; t.textContent = res; meta.appendChild(t); }
     meta.append([withTime ? timeOf(pt.at) : "", pt.acc ? `±${pt.acc} m` : ""].filter(Boolean).join(" · "));
     const c = centreOf(pt);
-    row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
     if (picked.has(keyOf(pt))) row.classList.add("picked");
-    row.querySelector(".main").onclick = () => {
+    row.onclick = () => {
       if (selecting) {
         const k = keyOf(pt);
         picked.has(k) ? picked.delete(k) : picked.add(k);

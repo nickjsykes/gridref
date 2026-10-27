@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=86">
-<link rel="stylesheet" href="app.css?v=86">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=87">
+<link rel="stylesheet" href="app.css?v=87">
 </head>
 <body>
 <div id="map"></div>
@@ -117,7 +117,7 @@
 <div class="drawer" id="drawer">
   <header>
     <button class="back" id="folderBack" hidden aria-label="Back to the notebook">‹</button>
-    <div class="dtitle"><h2 id="dTitle">Notebook</h2><small id="dSub">On this phone</small></div>
+    <h2 class="dtitle"><span id="dTitle">Notebook</span> <small id="dSub">(on this phone only)</small></h2>
     <button id="closeDrawer">Done</button>
   </header>
   <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
@@ -205,13 +205,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=86"></script>
-<script src="config.js?v=86"></script>
-<script src="osgb.js?v=86"></script>
-<script src="parse.js?v=86"></script>
-<script src="zip.js?v=86"></script>
-<script src="exif.js?v=86"></script>
-<script src="local.js?v=86"></script>
-<script src="app.js?v=86"></script>
+<script src="vendor/leaflet/leaflet.js?v=87"></script>
+<script src="config.js?v=87"></script>
+<script src="osgb.js?v=87"></script>
+<script src="parse.js?v=87"></script>
+<script src="zip.js?v=87"></script>
+<script src="exif.js?v=87"></script>
+<script src="local.js?v=87"></script>
+<script src="app.js?v=87"></script>
 </body>
 </html>
