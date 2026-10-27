@@ -20,6 +20,16 @@
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
+  // The credits fold into a small © beside the + button (tap to read them; they fold away
+  // again after a few seconds), so a full-width line of small print doesn't fight the map
+  map.attributionControl.setPosition("bottomleft");
+  map.attributionControl.getContainer().addEventListener("click", (e) => {
+    const c = e.currentTarget;
+    if (e.target.closest("a")) return;
+    c.classList.toggle("open");
+    clearTimeout(c._t);
+    if (c.classList.contains("open")) c._t = setTimeout(() => c.classList.remove("open"), 6000);
+  });
   let current = OS_KEY ? "outdoor" : "topo"; // every launch starts on OS Outdoor (or Topo without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
@@ -58,7 +68,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "92"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "94"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -1262,6 +1272,14 @@
       const x = j.result;
       return [{ title: x.outcode, sub: (x.admin_district || []).slice(0, 2).join(", "), tag: "Postcode area", lat: x.latitude, lon: x.longitude, zoom: 13 }];
     }
+    if (r.kind === "pluscode") {
+      let ref = map.getCenter(), where = "";
+      if (r.locality) {
+        try { const hit = (await LocalSearch.searchPlaces(r.locality, ref, 1))[0]; if (hit) { ref = L.latLng(hit.lat, hit.lon); where = hit.title; } } catch {}
+      }
+      const p = GridSearch.plusRecover(r.code, ref.lat, ref.lng);
+      return [{ title: fmtRef(p.lat, p.lon) || r.code, sub: `${r.code}${where ? " " + where : " (near the map)"}`, tag: "Plus code", lat: p.lat, lon: p.lon, zoom: 18 }];
+    }
     if (r.kind === "w3w") {
       if (W3W_KEY) {
         const j = await getJSON(`https://api.what3words.com/v3/convert-to-coordinates?words=${encodeURIComponent(r.words)}&key=${W3W_KEY}`);
@@ -1290,12 +1308,37 @@
     });
   }
 
+  // Your notebook (names, notes, folders) and the team's reserves, matched like place names
+  // (typos allowed), so "fallen oak", "post 10" or "gait" find yours first
+  function mine(text) {
+    const q = LocalSearch.norm(text);
+    if (q.length < 2) return [];
+    const words = q.split(" ");
+    const hit = (s) => s && LocalSearch.fuzzyMatch(words, LocalSearch.norm(s).split(" "));
+    const out = [];
+    for (const [code, name] of TEAM) {
+      const f = nnr.find((x) => x.properties.REF_CODE === code);
+      if (!f || !(hit(name) || hit(f.properties.LABEL))) continue;
+      const b = L.geoJSON(f).getBounds(), c = b.getCenter();
+      out.push({ title: f.properties.LABEL.replace(/ \(NNR\)$/, ""), sub: "National Nature Reserve", tag: "Reserve", lat: c.lat, lon: c.lng, zoom: Math.min(16, map.getBoundsZoom(b)) });
+    }
+    for (const p of points) {
+      if (out.length >= 8) break;
+      if (!(hit(p.name) || hit(p.notes) || hit(p.folder))) continue;
+      const c = centreOf(p);
+      out.push({ title: p.name, sub: [KIND_WORD[p.kind || "point"].replace(/s$/, ""), p.folder, dayLabel(p.at)].filter(Boolean).join(" · "), tag: "Notebook", lat: c.lat, lon: c.lon, zoom: 17 });
+    }
+    return out;
+  }
   let seq = 0, typing;
   async function search(text, submit) {
     const my = ++seq;
     text = text.trim();
     if (!text) return showResults([]);
     const readings = GridSearch.parse(text);
+    // A whole message pasted in: look for a grid ref, lat/long, plus code, postcode or
+    // what3words inside it
+    if (!readings.length && /\s\S+\s/.test(text)) readings.push(...GridSearch.findIn(text));
     const bad = readings.find((r) => r.kind === "bad-ref");
     if (bad) return showResults([], bad.message);
     if (readings.some((r) => r.kind === "link-unknown")) {
@@ -1305,7 +1348,8 @@
     // Grid refs, E/N, lat/long and map links work offline and show at once
     for (const r of readings) if (r.lat != null) items.push(...(await resolve(r)));
     if (items.length && !submit) showResults(items);
-    const exact = readings.some((r) => r.lat != null || r.kind === "postcode" || r.kind === "w3w");
+    const exact = readings.some((r) => r.lat != null || r.kind === "postcode" || r.kind === "w3w" || r.kind === "pluscode");
+    if (!exact) items.push(...mine(text));
     // Places from the offline OS data (Cumbria and north Lancashire) show at once
     if (!exact && text.length >= 2) {
       try { items.push(...(await LocalSearch.searchPlaces(text, map.getCenter(), 6))); } catch {}
@@ -1327,7 +1371,7 @@
     if (offline && !items.length) return showResults([], "No signal, and not in the offline place list. Grid refs, E/N and lat/long always work.");
     if (my !== seq) return;
     if (submit && items.length) return go(items[0]);
-    showResults(items, items.length ? "" : text.length >= 3 ? "Nothing found. Try a grid ref (SD 339 836), postcode, lat/long or place." : "");
+    showResults(items, items.length ? "" : text.length >= 3 ? "Nothing found by that name. Try fewer letters, or a grid ref (SD 339 836), postcode, lat/long or plus code." : "");
   }
   $("searchForm").onsubmit = (ev) => { ev.preventDefault(); clearTimeout(typing); search($("q").value, true); };
   $("q").addEventListener("input", () => {

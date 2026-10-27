@@ -124,6 +124,71 @@
     return null;
   }
 
+  // Plus codes (Open Location Code): what Google Maps shares, e.g. "9C6WPXQ7+5F" or the short
+  // "PXQ7+5F Ulverston", which needs a place (or where the map is) to say which one.
+  const OLC = "23456789CFGHJMPQRVWX", PAIR_RES = [20, 1, 0.05, 0.0025, 0.000125];
+  function olcDecode(code) {
+    const c = code.toUpperCase().replace("+", "").replace(/0+$/, "");
+    let lat = -90, lng = -180, rLat = 0, rLng = 0;
+    for (let i = 0; i < Math.min(c.length, 10); i += 2) {
+      rLat = rLng = PAIR_RES[i / 2];
+      lat += OLC.indexOf(c[i]) * rLat;
+      lng += OLC.indexOf(c[i + 1]) * rLng;
+    }
+    for (let i = 10; i < c.length; i++) { // finer grid digits: 5 rows x 4 columns
+      rLat /= 5; rLng /= 4;
+      const d = OLC.indexOf(c[i]);
+      lat += Math.floor(d / 4) * rLat;
+      lng += (d % 4) * rLng;
+    }
+    return { lat: lat + rLat / 2, lon: lng + rLng / 2 };
+  }
+  function olcEncode(lat, lng, pairs) {
+    let a = Math.min(Math.max(lat, -90), 89.9999999) + 90, b = ((lng + 180) % 360 + 360) % 360, s = "";
+    for (let i = 0; i < pairs; i++) {
+      const r = PAIR_RES[i], da = Math.floor(a / r), db = Math.floor(b / r);
+      s += OLC[da] + OLC[db];
+      a -= da * r; b -= db * r;
+    }
+    return s;
+  }
+  // A short code is the end of a full one: borrow the start from a nearby place
+  function olcRecover(code, refLat, refLng) {
+    const pad = 8 - code.indexOf("+"), res = Math.pow(20, 2 - pad / 2), half = res / 2;
+    const p = olcDecode(olcEncode(refLat, refLng, 4).slice(0, pad) + code);
+    if (refLat + half < p.lat && p.lat - res >= -90) p.lat -= res; else if (refLat - half > p.lat && p.lat + res <= 90) p.lat += res;
+    if (refLng + half < p.lon) p.lon -= res; else if (refLng - half > p.lon) p.lon += res;
+    return p;
+  }
+  function fromPlusCode(text) {
+    const m = text.trim().match(new RegExp(`^([${OLC}]{2,8}\\+[${OLC}]{0,7})(?:[\\s,]+(.+))?$`, "i"));
+    if (!m) return null;
+    const code = m[1].toUpperCase(), lead = code.indexOf("+");
+    if (lead === 8) { const p = olcDecode(code); return { kind: "latlon", label: "Plus code", lat: p.lat, lon: p.lon, zoom: 18 }; }
+    if (lead % 2 || lead < 2) return null;
+    return { kind: "pluscode", code, locality: (m[2] || "").trim() };
+  }
+
+  // A location somewhere inside a longer message ("meet at SD 342 815 by the gate"): try the
+  // bits that look like one. Returns readings with a lat/long, each marked "Found in text".
+  function findIn(text) {
+    const looks = [
+      /\b[A-HJ-Z]{2}\s?\d{2,5}\s?\d{2,5}\b/gi,                                   // grid ref
+      /-?\d{1,2}\.\d{3,}\s*[,\s]\s*-?\d{1,3}\.\d{3,}/g,                          // lat, long
+      new RegExp(`\\b[${OLC}]{4,8}\\+[${OLC}]{2,7}\\b`, "gi"),                   // plus code
+      /\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b/gi,                                 // postcode
+      /(?:\/\/\/)?\b[a-z]+\.[a-z]+\.[a-z]+\b/gi,                                 // what3words
+    ];
+    const out = [], seen = new Set();
+    for (const re of looks) for (const m of text.matchAll(re)) {
+      const bit = m[0].trim();
+      if (seen.has(bit.toUpperCase())) continue;
+      seen.add(bit.toUpperCase());
+      for (const r of parse(bit)) if (r.kind !== "bad-ref" && r.kind !== "link-unknown") out.push({ ...r, label: "Found in text", found: bit });
+    }
+    return out;
+  }
+
   function parse(raw) {
     const text = String(raw || "").trim();
     if (!text) return [];
@@ -135,8 +200,8 @@
       const valid = OSGB.parseGridRef(gr[1] + "00") !== null;
       return [{ kind: "bad-ref", message: !valid ? `${gr[1]} isn't an OS grid square. Check the two letters.` : `Grid refs need an even number of digits, e.g. ${gr[1]} 12 34 or ${gr[1]} 123 456.` }];
     }
-    return [fromW3W(text), fromGridRef(text), fromPostcode(text), fromEastingNorthing(text), fromLatLon(text)].filter(Boolean);
+    return [fromW3W(text), fromGridRef(text), fromPostcode(text), fromPlusCode(text), fromEastingNorthing(text), fromLatLon(text)].filter(Boolean);
   }
 
-  root.GridSearch = { parse };
+  root.GridSearch = { parse, findIn, plusRecover: olcRecover };
 })(typeof window !== "undefined" ? window : globalThis);
