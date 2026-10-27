@@ -3,4 +3,6 @@
 // Left blank, the what3words row opens what3words at the crosshair instead.
 window.GRIDREF_CONFIG = {
   what3wordsKey: "",
+  // OS Data Hub key (free OpenData plan, osdatahub.os.uk): turns on the OS Outdoor map
+  osKey: "",
 };

@@ -79,7 +79,7 @@ body.large .acc { font-size: 13px; }
 .more { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
 .meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
 .meta { flex-wrap: wrap; column-gap: 10px; row-gap: 0; }
-.meta:has(.from-me:empty):has(.where:empty) { display: none; }
+.meta:has(.from-me:empty) { display: none; }
 .big { display: flex; align-items: center; width: 100%; gap: 10px; border: 0; background: none; color: var(--ink); padding: 4px 8px 2px; text-align: left; }
 .ref { flex: 1; font: 700 clamp(26px, 8.6vw, 36px)/1.15 var(--mono); letter-spacing: .01em; white-space: nowrap; }
 .ref.off { font-size: 20px; color: var(--muted); font-family: var(--sans); font-weight: 500; }
@@ -420,12 +420,5 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 .undo { width: max-content; }
 .undo span { min-width: 0; }
 
-/* where you are: SSSI unit and condition, under the grid ref */
-.where { font: 500 13px var(--sans); color: var(--muted); padding: 0 8px 2px; min-width: 0; }
-.where:empty, .from-me:empty { display: none; }
-/* on-the-ground overlays */
-.unitlabel { transform: translate(-50%, -50%); display: inline-block; width: max-content; font: 700 11px/1 var(--sans); color: #fff; background: #5b4a8a; border-radius: 9px; padding: 3px 6px; box-shadow: 0 0 0 1.5px #fff; pointer-events: none; }
-.gsym { color: #26261f; background: rgba(255, 255, 255, .92); border-radius: 4px; box-shadow: 0 0 0 1px rgba(0, 0, 0, .25); display: grid !important; place-items: center; pointer-events: none; }
-.gsym svg { width: 13px; height: 13px; }
-.gsym.parking { background: #1d5fb4; box-shadow: 0 0 0 1px #fff; }
-.layers button.tick2 { border-top: 0; }
+/* photo stamp: what goes on it */
+.stampopts { flex-wrap: wrap; padding: 10px 0 2px; }

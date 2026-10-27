@@ -8,15 +8,19 @@
 
   // ---------- map ----------
   const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+  const OS_KEY = (window.GRIDREF_CONFIG || {}).osKey || "";
   const LAYERS = {
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
+    // OS Outdoor: proper OS cartography (contours, paths, woods). Open data up to zoom 16 on
+    // OS's free plan; needs a free OS Data Hub key in config.js, and only appears once there is one.
+    ...(OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
     topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
-  let current = "topo"; // every launch starts on Topo; a map picked in the layers menu lasts until the app is closed
+  let current = OS_KEY ? "outdoor" : "topo"; // every launch starts on OS Outdoor (or Topo without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
   const fitZoom = () => { map.setMaxZoom(LAYERS[current].layer.options.maxZoom || 19); if (map.getZoom() > map.getMaxZoom()) map.setZoom(map.getMaxZoom()); };
@@ -54,7 +58,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "88"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "90"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -65,72 +69,6 @@
   function setShade(on) {
     shadeOn = on;
     if (on) lidarShade.addTo(map); else map.removeLayer(lidarShade);
-  }
-  // ---------- on-the-ground overlays (baked for the team's reserves, so they work offline) ----------
-  // SSSI condition units (Natural England): thin dashed edges, unit numbers when zoomed in, and
-  // "unit 14 · Unfavourable recovering" in the panel. Paths, gates, stiles, walls and fences
-  // (OpenStreetMap), styled like the OS Explorer map rangers know: green dashes for public
-  // rights of way, red dashes for other paths, solid for walls, dotted for fences.
-  map.createPane("ground").style.zIndex = 380;
-  const groundCanvas = L.canvas({ pane: "ground", padding: 0.3 });
-  let units = [], ovUnits = store.get("ovUnits", true), ovOsm = store.get("ovOsm", true);
-  const unitLines = L.geoJSON(null, { renderer: groundCanvas, interactive: false, attribution: "SSSI units © Natural England",
-    style: () => ({ color: "#5b4a8a", weight: 1.6, opacity: 0.85, dashArray: "5 4", fill: false }) });
-  const unitLabels = L.layerGroup();
-  const OSM_STYLE = {
-    path: { color: "#c2391b", weight: 2, dashArray: "5 4" },
-    prow: { color: "#2a8a3e", weight: 2.6, dashArray: "7 4" },
-    track: { color: "#7a5432", weight: 2.4, opacity: 0.85 },
-    wall: { color: "#45413a", weight: 2.4 },
-    fence: { color: "#45413a", weight: 1.4, dashArray: "1 4", lineCap: "round" },
-    bridge: { color: "#26261f", weight: 5 },
-  };
-  const osmLines = L.geoJSON(null, { renderer: groundCanvas, interactive: false, attribution: "© OpenStreetMap contributors",
-    filter: (f) => f.geometry.type !== "Point",
-    style: (f) => ({ opacity: 0.95, ...(OSM_STYLE[f.properties.prow && f.properties.kind === "path" ? "prow" : f.properties.kind] || OSM_STYLE.path) }) });
-  const SYM = {
-    gate: '<path d="M2.5 3v8M11.5 3v8M2.5 5.2h9M2.5 8.8h9M2.5 8.8l9-3.6"/>',
-    stile: '<path d="M2.5 11.5h3v-3h3v-3h3v-3"/>',
-    grid: '<path d="M2 4h10M2 7h10M2 10h10"/>',
-    bridge: '<path d="M2 4.5q5 2.5 10 0M2 9.5q5-2.5 10 0"/>',
-    hide: '<path d="M2.5 11.5V6l4.5-3 4.5 3v5.5ZM5 7.5h4"/>',
-    board: '<path d="M3 3h8v5H3ZM7 8v4"/>',
-    parking: '<text x="7" y="10.6" text-anchor="middle" font-size="9.5" font-weight="800" font-family="-apple-system,sans-serif" fill="#fff" stroke="none">P</text>',
-  };
-  const symIcon = (k) => L.divIcon({ className: "gsym " + k, iconSize: [16, 16], iconAnchor: [8, 8],
-    html: `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${SYM[k] || SYM.gate}</svg>` });
-  const osmPoints = L.geoJSON(null, { filter: (f) => f.geometry.type === "Point" && SYM[f.properties.kind],
-    pointToLayer: (f, ll) => L.marker(ll, { icon: symIcon(f.properties.kind), interactive: false, keyboard: false }) });
-  // Show each when it's useful: units from 13, paths and walls from 15, gate symbols from 16
-  function drawGround() {
-    const z = map.getZoom(), show = (layer, on) => (on ? map.hasLayer(layer) || layer.addTo(map) : map.removeLayer(layer));
-    show(unitLines, ovUnits && z >= 13);
-    show(unitLabels, ovUnits && z >= 14);
-    show(osmLines, ovOsm && z >= 15);
-    show(osmPoints, ovOsm && z >= 16);
-  }
-  map.on("zoomend", drawGround);
-  async function loadGround() {
-    try {
-      const [u, o] = await Promise.all(["data/units.geojson", "data/osm.geojson"].map((f) => fetch(f).then((r) => r.json())));
-      unitLines.addData(u);
-      units = u.features.map((f) => { const b = L.geoJSON(f).getBounds(); return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], mid: b.getCenter() }; });
-      for (const f of units) L.marker(f.mid, { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<div class="unitlabel">${esc(String(f.properties.unit))}</div>` }) }).addTo(unitLabels);
-      osmLines.addData(o);
-      osmPoints.addData(o);
-      drawGround();
-      update();
-    } catch {}
-  }
-  // Which SSSI unit a spot is in
-  function unitAt(ll) {
-    for (const f of units) {
-      const [w, s, e, n] = f.bbox;
-      if (ll.lng < w || ll.lng > e || ll.lat < s || ll.lat > n) continue;
-      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-      for (const poly of polys) if (inRing(ll.lng, ll.lat, poly[0]) && !poly.slice(1).some((h) => inRing(ll.lng, ll.lat, h))) return f.properties;
-    }
-    return null;
   }
   function drawLayerMenu() {
     layersEl.innerHTML = "";
@@ -150,14 +88,6 @@
     sh.className = "tick" + (shadeOn ? " on" : "");
     sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
     layersEl.appendChild(sh);
-    for (const [label, get, set] of [["SSSI units", () => ovUnits, (v) => { ovUnits = v; store.set("ovUnits", v); }],
-                                     ["Paths, gates & walls", () => ovOsm, (v) => { ovOsm = v; store.set("ovOsm", v); }]]) {
-      const b = document.createElement("button");
-      b.textContent = (get() ? "☑ " : "☐ ") + label;
-      b.className = "tick2" + (get() ? " on" : "");
-      b.onclick = () => { set(!get()); drawGround(); update(); drawLayerMenu(); placeLayerMenu(); };
-      layersEl.appendChild(b);
-    }
     if (pack.names) {
       const note = document.createElement("div");
       note.className = "lnote";
@@ -310,9 +240,6 @@
     } else {
       $("fromMe").textContent = "";
     }
-    // Where you are on the reserve: its SSSI unit and that unit's condition
-    const u = ovUnits ? unitAt(t) : null;
-    $("whereNow").textContent = u ? `${u.sssi} · unit ${u.unit}${u.condition ? " · " + u.condition : ""}` : "";
     layout();
   }
 
@@ -375,7 +302,7 @@
     e.preventDefault();
     if (w3w.words && w3w.at === spot(last)) return copy("///" + w3w.words, $("w3wRow"));
     w3wAt = `${last.lat.toFixed(6)}, ${last.lon.toFixed(6)}`;
-    copy(w3wAt, null, true);
+    copy(w3wAt, document.querySelector('[data-copy="ll"]'));
     $("w3wFrame").src = `https://what3words.com/${last.lat.toFixed(6)},${last.lon.toFixed(6)}`;
     $("w3wModal").hidden = false;
   });
@@ -1912,42 +1839,75 @@
     try { await img.decode(); } catch { return toast("Couldn't read that photo"); }
     // Big phone photos are scaled to 2400 px on the long side: plenty, and quick to share
     const k = Math.min(1, 2400 / Math.max(img.naturalWidth, img.naturalHeight));
-    const c = document.createElement("canvas");
-    c.width = Math.round(img.naturalWidth * k);
-    c.height = Math.round(img.naturalHeight * k);
-    const ctx = c.getContext("2d");
-    ctx.drawImage(img, 0, 0, c.width, c.height);
+    const base = document.createElement("canvas");
+    base.width = Math.round(img.naturalWidth * k);
+    base.height = Math.round(img.naturalHeight * k);
+    base.getContext("2d").drawImage(img, 0, 0, base.width, base.height);
     URL.revokeObjectURL(img.src);
-    const u = Math.round(c.width / 28); // text size scales with the photo
-    const lines = [
-      { t: ref, f: `700 ${Math.round(u * 1.5)}px ui-monospace, Menlo, monospace` },
-      { t: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${when.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} · ${where.src}`, f: `600 ${u}px -apple-system, sans-serif` },
-    ];
-    if (reserve) lines.push({ t: reserve, f: `600 ${u}px -apple-system, sans-serif` });
-    const pad = Math.round(u * 0.7), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.3;
-    const boxH = lines.reduce((h, l) => h + lh(l), 0) + pad * 2;
-    ctx.fillStyle = "rgba(0,0,0,.55)";
-    ctx.fillRect(0, c.height - boxH, c.width, boxH);
-    ctx.fillStyle = "#fff";
-    ctx.textBaseline = "top";
-    let y = c.height - boxH + pad;
-    for (const l of lines) { ctx.font = l.f; ctx.fillText(l.t, pad, y); y += lh(l); }
-    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
     const pad2 = (v) => String(v).padStart(2, "0");
     const stamp = `${when.getFullYear()}${pad2(when.getMonth() + 1)}${pad2(when.getDate())}_${pad2(when.getHours())}${pad2(when.getMinutes())}`; // local time
-    const name = `${ref.replace(/\s+/g, "")}_${stamp}.jpg`;
-    const out = new File([blob], name, { type: "image/jpeg" });
-    // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
-    // On iPhone the share sheet has "Save Image" for the Photos library.
-    photoFile = out;
+    stampJob = { base, name: `${ref.replace(/\s+/g, "")}_${stamp}.jpg`, ref, ll: `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`,
+      when: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${timeOf(when.toISOString())}`,
+      reserve: reserve.replace(/ \(NNR\)$/, ""), src: where.src };
     photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
       name: autoName("photo", where.lat, where.lon, when) };
     $("photoSave").hidden = false;
-    photoText = `${ref} · ${when.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${reserve ? " · " + reserve : ""}`;
-    $("photoOut").src = URL.createObjectURL(out);
+    drawStampOpts();
+    await restamp();
+    // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
+    // On iPhone the share sheet has "Save Image" for the Photos library.
     $("photoModal").hidden = false;
   }
-  let photoFile = null, photoText = "", photoNew = null;
+  // What goes on the stamp: tick and it redraws. Remembered for next time.
+  const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["src", "GPS / crosshair"]];
+  let stampJob = null, stampOn = new Set(store.get("stampOpts", ["ref", "when", "reserve"]));
+  function drawStampOpts() {
+    $("stampOpts").hidden = false;
+    $("stampOpts").innerHTML = STAMP_OPTS.filter(([k]) => k !== "reserve" || stampJob.reserve)
+      .map(([k, l]) => `<button type="button" data-k="${k}" class="${stampOn.has(k) ? "on" : ""}">${l}</button>`).join("");
+  }
+  $("stampOpts").onclick = async (e) => {
+    const b = e.target.closest("button");
+    if (!b || !stampJob) return;
+    stampOn.has(b.dataset.k) ? stampOn.delete(b.dataset.k) : stampOn.add(b.dataset.k);
+    store.set("stampOpts", [...stampOn]);
+    drawStampOpts();
+    await restamp();
+  };
+  // A compact label in the bottom-left corner, only as wide as its words
+  async function restamp() {
+    const j = stampJob, c = document.createElement("canvas");
+    c.width = j.base.width;
+    c.height = j.base.height;
+    const ctx = c.getContext("2d");
+    ctx.drawImage(j.base, 0, 0);
+    const u = Math.round(Math.min(c.width, c.height * 1.4) / 42); // text size scales with the photo
+    const small = `600 ${u}px -apple-system, sans-serif`, big = `700 ${Math.round(u * 1.35)}px ui-monospace, Menlo, monospace`;
+    const lines = [];
+    const head = stampOn.has("ref") ? j.ref : stampOn.has("ll") ? j.ll : "";
+    if (head) lines.push({ t: head, f: big });
+    const sub = [stampOn.has("ll") && stampOn.has("ref") ? j.ll : "", stampOn.has("when") ? j.when : "", stampOn.has("src") ? j.src : ""].filter(Boolean).join(" · ");
+    if (sub) lines.push({ t: sub, f: small });
+    if (stampOn.has("reserve") && j.reserve) lines.push({ t: j.reserve, f: small });
+    if (lines.length) {
+      const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
+      const w = Math.max(...lines.map((l) => { ctx.font = l.f; return ctx.measureText(l.t).width; })) + pad * 2;
+      const h = lines.reduce((s, l) => s + lh(l), 0) + pad * 2 - u * 0.2;
+      ctx.fillStyle = "rgba(0,0,0,.5)";
+      ctx.beginPath();
+      ctx.roundRect ? ctx.roundRect(m, c.height - m - h, w, h, u * 0.5) : ctx.rect(m, c.height - m - h, w, h);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.textBaseline = "top";
+      let y = c.height - m - h + pad;
+      for (const l of lines) { ctx.font = l.f; ctx.fillText(l.t, m + pad, y); y += lh(l); }
+    }
+    const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
+    photoFile = new File([blob], j.name, { type: "image/jpeg" });
+    if ($("photoOut").src.startsWith("blob:")) URL.revokeObjectURL($("photoOut").src);
+    $("photoOut").src = URL.createObjectURL(photoFile);
+  }
+  let photoFile = null, photoNew = null;
   $("photoSave").onclick = async () => {
     if (!photoFile || !photoNew) return;
     const id = "ph" + Date.now();
@@ -1965,6 +1925,8 @@
     if (!blob) return toast("That photo isn't on this phone any more");
     photoFile = new File([blob], `${pt.name.replace(/[^\w-]+/g, "_")}.jpg`, { type: "image/jpeg" });
     photoNew = null;
+    stampJob = null;
+    $("stampOpts").hidden = true;
     $("photoSave").hidden = true;
     $("photoOut").src = URL.createObjectURL(blob);
     $("photoModal").hidden = false;
@@ -2133,7 +2095,7 @@
     map.fitBounds([[54.118, -3.292], [54.198, -2.785]], {
       paddingTopLeft: [68, 104], paddingBottomRight: [68, sheet.offsetHeight + 10], animate: false });
   };
-  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, loadGround, () => { if (!navigator.onLine) goOffline(); }]) {
+  for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
