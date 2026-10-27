@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "60"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "63"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -401,8 +401,11 @@
       copy(last[what], el);
     };
   }
-  // Share: tick what goes in. Remembered for next time; grid ref + Apple Maps to start with.
+  // Share: tick what goes in. Remembered for next time; name, notes, grid ref + Apple Maps to start with.
+  // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
+    ["name", "Name", (x) => x.head],
+    ["notes", "Notes", () => ""], // added last, below the links
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
@@ -410,12 +413,14 @@
     ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
   ];
   let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]).filter((k) => k !== "app"));
+  if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
   function shareTextFor(x) {
-    return [x.head, ...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), x.notes].filter(Boolean).join("\n");
+    return [...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), shareOn.has("notes") && x.notes].filter(Boolean).join("\n");
   }
   function drawShare() {
     $("shOpts").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
+      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes)) continue;
       const l = document.createElement("label");
       l.innerHTML = `<input type="checkbox" ${shareOn.has(k) ? "checked" : ""}> <span></span>`;
       l.querySelector("span").textContent = label;
@@ -493,7 +498,10 @@
   const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
   const pinLayer = L.layerGroup().addTo(map);
   // Point markers: a colour and a shape, so different jobs can be told apart on the map
-  const COLOURS = { orange: "#e67e22", red: "#d63031", blue: "#0984e3", green: "#00a86b", purple: "#8e44ad", yellow: "#f1c40f", black: "#2d3436", white: "#ffffff" };
+  // Your marks: one family, tuned to sit on topo and aerial. Magenta first and the default:
+  // nothing on the map or the reserve boundaries (burnt orange) uses it. Orange is amber so
+  // it can't be mistaken for a reserve edge. Old keys are kept so saved colours still match.
+  const COLOURS = { magenta: "#c2255c", red: "#e03131", orange: "#f08c00", yellow: "#fcc419", green: "#2f9e44", blue: "#1c7ed6", purple: "#7048e8", black: "#2b2b2b", white: "#ffffff" };
   const SHAPES = {
     circle: '<circle cx="12" cy="12" r="8"/>',
     square: '<rect x="4.5" y="4.5" width="15" height="15" rx="2"/>',
@@ -503,8 +511,8 @@
   };
   const shapeSvg = (shape, colour, size = 22) => {
     if (!SHAPES[shape]) shape = "circle";
-    const fill = COLOURS[colour] || COLOURS.orange, stroke = colour === "white" ? "#2d3436" : "#fff";
-    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2" stroke-linejoin="round">${SHAPES[shape] || SHAPES.circle}</svg>`;
+    const fill = COLOURS[colour] || COLOURS.orange, stroke = colour === "white" ? "#2b2b2b" : "#fff";
+    return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="${fill}" stroke="${stroke}" stroke-width="2.6" stroke-linejoin="round">${SHAPES[shape] || SHAPES.circle}</svg>`;
   };
   function shapeStats(pt) {
     const ll = pt.pts.map(([a, b]) => L.latLng(a, b));
@@ -521,15 +529,20 @@
     for (const pt of points) try {
       if (!many) nameLabel(pt.kind === "area" ? L.latLngBounds(pt.pts).getCenter() : [pt.lat, pt.lon], pt.name, 8).addTo(pinLayer);
       if (pt.kind === "line" || pt.kind === "area") {
-        const c = COLOURS[pt.colour] || COLOURS.orange, st = shapeStats(pt);
-        const style = { color: c, weight: 4, opacity: 0.9, fillColor: c, fillOpacity: 0.18 };
-        (pt.kind === "area" ? L.polygon(pt.pts, { ...style, bubblingMouseEvents: false }) : L.polyline(pt.pts, { ...style, bubblingMouseEvents: false }))
+        // A white casing under a thinner coloured line: reads on topo and aerial alike, and
+        // the wide casing is an easier target for a thumb. Small dots mark the corners.
+        const c = COLOURS[pt.colour] || COLOURS.orange, area = pt.kind === "area";
+        const Shape = area ? L.polygon : L.polyline, casing = pt.colour === "white" ? "#2b2b2b" : "#fff";
+        Shape(pt.pts, { color: casing, weight: 7, opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
+        Shape(pt.pts, { color: c, weight: area ? 2.5 : 3, opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
+        if (!many && pt.pts.length <= 80)
+          for (const v of pt.pts) L.circleMarker(v, { radius: 3, color: c, weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(pinLayer);
         continue;
       }
       if (pt.kind === "photo") {
-        L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "", html: `<div class="photopin">${CAMERA_SVG}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
+        L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "", html: `<div class="photopin">${CAMERA_SVG}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] }) })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
         continue;
@@ -541,7 +554,7 @@
         .addTo(pinLayer);
     } catch {}
   }
-  const CAMERA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#2d3436" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
+  const CAMERA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 
   // ---------- tap something on the map: snap to it, then a small menu ----------
   function openFeature(pt) {
@@ -581,9 +594,11 @@
   const pinCanvas = L.canvas({ padding: 0.3 });
 
   // One popup for name, notes, colour and shape (the last colour/shape is remembered)
-  let pick = { colour: store.get("ptColour", "orange"), shape: store.get("ptShape", "circle") };
+  let pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") };
   function drawPickers() {
-    $("ptColour").innerHTML = Object.keys(COLOURS).map((c) => `<button type="button" data-c="${c}" aria-label="${c}" class="${c === pick.colour ? "on" : ""}">${shapeSvg("circle", c, 24)}</button>`).join("");
+    // Purple sits too close to magenta, and eight swatches keep the buttons thumb-sized; it's
+    // still drawn (and offered) for anything already saved in it
+    $("ptColour").innerHTML = Object.keys(COLOURS).filter((c) => c !== "purple" || pick.colour === "purple").map((c) => `<button type="button" data-c="${c}" aria-label="${c}" class="${c === pick.colour ? "on" : ""}">${shapeSvg("circle", c, 24)}</button>`).join("");
     $("ptShape").innerHTML = Object.keys(SHAPES).map((sh) => `<button type="button" data-s="${sh}" aria-label="${sh}" class="${sh === pick.shape ? "on" : ""}">${shapeSvg(sh, pick.colour, 24)}</button>`).join("");
   }
   $("ptColour").onclick = (e) => { const b = e.target.closest("button"); if (b) { pick.colour = b.dataset.c; drawPickers(); } };
@@ -594,7 +609,7 @@
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
-  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "orange"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
+  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
   $("ptCancel").onclick = closeSave;
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
   let editing = null;

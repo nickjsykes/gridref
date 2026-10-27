@@ -142,8 +142,8 @@ a.row { text-decoration: none; }
 .featmenu .fm-title span:empty { display: none; }
 .featmenu .fm-title span { font: 13px var(--mono); color: var(--muted); }
 .item .thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; background: var(--green-soft); display: block; }
-.photopin { width: 26px; height: 26px; border-radius: 50%; background: #fff; border: 2px solid #2d3436; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
-.photopin svg { width: 15px; height: 15px; }
+.photopin { width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; background: #2b2b2b; border: 3px solid #fff; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.photopin svg { width: 14px; height: 14px; }
 .shopts { display: grid; gap: 4px; }
 .selbar { display: none; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
 .drawer.selecting .selbar { display: flex; }
