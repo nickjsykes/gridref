@@ -1,11 +1,18 @@
-/* Grid Ref styles. Colours are tokens on :root; dark mode redefines them. */
+/* Grid Ref styles. Colours are tokens on :root; dark mode redefines them.
+   Palette taken from the South Cumbria reserves: moss green (actions), bog-cotton white
+   (panels), limestone grey (lines), peat (text), heather (yours: selected, your reserves),
+   Walney sand (the map's background while tiles load). The old palette is in git tag
+   v49-before-style. */
 :root {
-  --green: #2f5d3a;
-  --green-soft: #e3ece4;
-  --ink: #1c211d;
-  --muted: #5f6b62;
-  --panel: #ffffff;
-  --line: #dde3de;
+  --green: #3d6a35;        /* moss */
+  --green-soft: #e8eedd;   /* lichen */
+  --ink: #26261f;          /* peat */
+  --muted: #6b695c;
+  --panel: #fbf9f3;        /* bog cotton */
+  --line: #e3dfd1;         /* limestone */
+  --heather: #7d4b75;
+  --heather-soft: #f2e7ef;
+  --sand: #ece4d0;         /* Walney sand */
   --danger: #a33a2a;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -15,12 +22,15 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --green: #7fbf8c;
-    --green-soft: #22332a;
-    --ink: #eef2ee;
-    --muted: #a3ada6;
-    --panel: #161a17;
-    --line: #2c332e;
+    --green: #9ac77f;
+    --green-soft: #27311f;
+    --ink: #f1efe6;
+    --muted: #b0ad9d;
+    --panel: #1b1a15;        /* peat */
+    --line: #35332b;
+    --heather: #d3a3c9;
+    --heather-soft: #3a2a37;
+    --sand: #2c2a22;
     --danger: #ff8a75;
     --on-ink-link: #2f5d3a;
   }
@@ -28,7 +38,7 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, button, a, input, .sheet, .drawer, .top, .fabs, .layers, .results { touch-action: manipulation; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel); color: var(--ink); font-family: var(--sans); }
-#map { position: fixed; inset: 0; background: #dfe6df; }
+#map { position: fixed; inset: 0; background: var(--sand); }
 
 /* search */
 .top { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 10px); display: flex; gap: 8px; }
@@ -117,7 +127,7 @@ a.row { text-decoration: none; }
 .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .tabs button { border: 0; border-radius: 10px; padding: 8px 2px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
-.tabs button.on { background: var(--green); color: var(--panel); }
+.tabs button.on { background: var(--heather); color: var(--panel); }
 .modal.sheetmenu { align-items: flex-end; padding-bottom: calc(var(--safe-b) + 10px); }
 .sheetmenu .card { gap: 6px; }
 .im-title { display: flex; flex-direction: column; padding: 2px 4px 6px; }
@@ -292,16 +302,16 @@ body.large .results button .gr { font-size: 23px; }
 .pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
 /* install nudge, iPhone only, until it's installed */
-.install { position: fixed; z-index: 1150; left: 12px; right: 12px; top: calc(var(--safe-t) + 64px); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 40px 12px 14px; font: 14px/1.4 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.install { position: fixed; z-index: 1150; left: 12px; right: 12px; top: calc(var(--safe-t) + 104px); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 40px 12px 14px; font: 14px/1.4 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 .install[hidden] { display: none; }
 .install b { display: block; font-size: 15px; margin-bottom: 2px; }
 .instlink { color: var(--on-ink-link); font-weight: 700; white-space: nowrap; }
 .install button { position: absolute; top: 6px; right: 6px; border: 0; background: none; color: var(--panel); font-size: 18px; padding: 6px 10px; }
-.undo { position: fixed; z-index: 1250; left: 50%; transform: translateX(-50%); top: calc(var(--safe-t) + 70px); display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--panel); padding: 8px 8px 8px 16px; border-radius: 22px; font: 600 15px var(--sans); max-width: calc(100vw - 32px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.undo { position: fixed; z-index: 1250; left: 50%; transform: translateX(-50%); top: calc(var(--safe-t) + 104px); display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--panel); padding: 8px 8px 8px 16px; border-radius: 22px; font: 600 15px var(--sans); max-width: calc(100vw - 32px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 .undo[hidden] { display: none; }
 .undo span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .undo button { border: 0; border-radius: 16px; padding: 8px 14px; font: 700 15px var(--sans); background: var(--green); color: var(--panel); flex: none; }
-.toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 70px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
+.toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 104px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
 .toast.show { opacity: 1; }
 
 .leaflet-control-attribution { font-size: 9px; }
@@ -313,4 +323,22 @@ body.large .results button .gr { font-size: 23px; }
 .lnote { padding: 7px 14px; font-size: 11.5px; line-height: 1.35; color: var(--muted); border-top: 1px solid var(--line); max-width: 230px; }
 .lidar { mix-blend-mode: multiply; }
 .layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; }
-.layers button.on { color: var(--green); font-weight: 700; }
+.layers button.on { color: var(--heather); font-weight: 700; }
+
+/* reserve chips: one tap to each of the team's reserves */
+.chips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + 60px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; border: 0; border-radius: 16px; padding: 6px 12px; font: 600 13.5px var(--sans); background: var(--panel); color: var(--ink); box-shadow: 0 1px 5px rgba(0,0,0,.18); }
+.chips button.on { background: var(--heather); color: var(--panel); }
+body.measuring .chips, body.navigating .chips, body.moving .chips { display: none; }
+
+/* the team's reserves named on the map when zoomed out */
+/* map tiles stay light in dark mode, so labels on the map keep dark text and a white halo */
+.reslabel { font: 700 13px var(--sans); color: #6e3f67; white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; transform: translate(-50%, -50%); }
+/* names beside your own points, lines and areas when zoomed right in: a notebook, not a pin map */
+.pinlabel { font: 600 12px var(--sans); color: #26261f; white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; display: none; }
+.leaflet-container.close .pinlabel { display: block; }
+
+/* the osprey */
+.osprey { display: block; margin: 6px auto 0; width: 92px; opacity: .55; }
+@media (prefers-color-scheme: dark) { .osprey { filter: invert(1); } } /* the drawing is black lines */

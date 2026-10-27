@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="Osprey in flight carrying a fish">
+  <title>Osprey</title>
+  <!-- Left wing: long and narrow, sharply crooked at the wrist (the osprey's "M" from below) -->
+  <path d="M111 55C101 46 88 36 74 31C60 39 38 55 13 75"/>
+  <path d="M13 75L22 76L16 81L27 80L22 86L33 83L30 89L41 84"/>
+  <path d="M41 84C50 79 60 69 69 58C80 60 96 63 111 67"/>
+  <path d="M22 76C35 66 50 56 64 48M30 83C42 74 54 64 66 54M79 50C90 53 100 56 110 60" stroke-width="1.1" opacity=".5"/>
+  <!-- Right wing (mirror) -->
+  <path d="M129 55C139 46 152 36 166 31C180 39 202 55 227 75"/>
+  <path d="M227 75L218 76L224 81L213 80L218 86L207 83L210 89L199 84"/>
+  <path d="M199 84C190 79 180 69 171 58C160 60 144 63 129 67"/>
+  <path d="M218 76C205 66 190 56 176 48M210 83C198 74 186 64 174 54M161 50C150 53 140 56 130 60" stroke-width="1.1" opacity=".5"/>
+  <!-- Dark wrist (carpal) patches: the giveaway from below -->
+  <path d="M66 39C71 35 78 35 81 40C76 44 70 44 66 39Z" fill="currentColor" stroke="none"/>
+  <path d="M174 39C169 35 162 35 159 40C164 44 170 44 174 39Z" fill="currentColor" stroke="none"/>
+  <!-- Head: rounded, hooked beak, dark eye-stripe -->
+  <path d="M112 47C111 39 115 33 120 33C125 33 129 39 128 47"/>
+  <path d="M118 33C118.5 29.5 121.5 29.5 122 33L120 35.5Z" fill="currentColor"/>
+  <path d="M113 40.5L116 42.5M127 40.5L124 42.5" stroke-width="1.6"/>
+  <!-- White underparts and a short barred tail -->
+  <path d="M112 47C108 58 109 70 113 79H127C131 70 132 58 128 47"/>
+  <path d="M113 79L111.5 94H128.5L127 79"/>
+  <path d="M112.4 84.5H127.6M112 89.5H128" stroke-width="1.1" opacity=".5"/>
+  <!-- Legs down to the fish, carried head-first along the body -->
+  <path d="M116 77L115 99M124 77L125 99"/>
+  <path d="M112.5 99C113.5 101.5 116.5 102 118 100.5M122 100.5C123.5 102 126.5 101.5 127.5 99"/>
+  <path d="M120 96C126 101 127 115 120 126C113 115 114 101 120 96Z"/>
+  <path d="M120 126L114 136L120 133L126 136Z"/>
+  <path d="M120.6 101.5A0.9 0.9 0 1 0 120.6 101.6" stroke-width="2.6"/>
+  <path d="M117.5 108C119 113 121 117 122.5 119" stroke-width="1.1" opacity=".5"/>
+</svg>

@@ -50,7 +50,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "49"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "52"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -104,7 +104,7 @@
     layersEl.style.right = window.innerWidth - r.left + 8 + "px";
     layersEl.style.top = "auto";
     layersEl.style.bottom = Math.max(8, window.innerHeight - r.bottom) + "px";
-    const top = layersEl.getBoundingClientRect().top, minTop = 64;
+    const top = layersEl.getBoundingClientRect().top, minTop = 100;
     if (top < minTop) { layersEl.style.bottom = "auto"; layersEl.style.top = minTop + "px"; }
   }
   $("layersBtn").onclick = () => {
@@ -512,10 +512,14 @@
     return { length: st.d, area: pt.kind === "area" ? mStats(ll).area : null };
   }
   const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const nameLabel = (ll, name, dy) => L.marker(ll, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="pinlabel">${esc(name)}</div>`, iconSize: [0, 0], iconAnchor: [-14, dy] }) });
+  map.on("zoomend", () => map.getContainer().classList.toggle("close", map.getZoom() >= 16));
   function drawPins() {
     pinLayer.clearLayers();
     const many = points.length > 300; // thousands of imported points: simple dots, drawn fast
+    map.getContainer().classList.toggle("close", map.getZoom() >= 16);
     for (const pt of points) try {
+      if (!many) nameLabel(pt.kind === "area" ? L.latLngBounds(pt.pts).getCenter() : [pt.lat, pt.lon], pt.name, 8).addTo(pinLayer);
       if (pt.kind === "line" || pt.kind === "area") {
         const c = COLOURS[pt.colour] || COLOURS.orange, st = shapeStats(pt);
         const style = { color: c, weight: 4, opacity: 0.9, fillColor: c, fillOpacity: 0.18 };
@@ -550,6 +554,7 @@
     panTo(to, Math.max(map.getZoom(), 15));
   }
   function showFeatMenu(pt) {
+    preloadPhoto(pt);
     const m = $("featMenu"), c = centreOf(pt);
     m.innerHTML = "";
     const head = document.createElement("div");
@@ -571,7 +576,7 @@
     // Beside the crosshair, never on top of the thing you tapped
     const w = m.offsetWidth, h = m.offsetHeight, crossY = (window.innerHeight - sheet.offsetHeight) / 2, cx = window.innerWidth / 2;
     m.style.left = (cx + 26 + w <= window.innerWidth - 8 ? cx + 26 : Math.max(8, cx - 26 - w)) + "px";
-    m.style.top = Math.min(Math.max(64, crossY - h / 2), window.innerHeight - sheet.offsetHeight - h - 8) + "px";
+    m.style.top = Math.min(Math.max(100, crossY - h / 2), window.innerHeight - sheet.offsetHeight - h - 8) + "px";
   }
   const pinCanvas = L.canvas({ padding: 0.3 });
 
@@ -740,6 +745,7 @@
           return drawSelBar();
         }
         menuPt = pt;
+        preloadPhoto(pt);
         $("imName").textContent = pt.name;
         $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
         $("imView").hidden = pt.kind !== "photo";
@@ -757,7 +763,22 @@
   $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
+  // A photo shares the picture itself. The iPhone only opens the share sheet straight from a
+  // tap, so the picture is loaded as soon as its menu opens, ready to go.
+  let photoReady = null;
+  function preloadPhoto(pt) {
+    photoReady = null;
+    if (pt.kind !== "photo") return;
+    photoDB.get(pt.photoId).then((b) => { if (b) photoReady = { id: pt.photoId, file: new File([b], `${pt.name.replace(/[^\w-]+/g, "_")}.jpg`, { type: "image/jpeg" }) }; }).catch(() => {});
+  }
+  async function sharePhoto(pt) {
+    const f = photoReady && photoReady.id === pt.photoId ? photoReady.file : null;
+    if (!f) return toast("Photo still loading: tap Share again");
+    if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch {} }
+    else toast("This phone can't share photos from here");
+  }
   function shareSaved(pt) {
+    if (pt.kind === "photo") return sharePhoto(pt);
     const c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
     openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n });
@@ -1448,6 +1469,43 @@
     }
     return "";
   }
+  // The South Cumbria team's reserves (NE NNR REF_CODE -> short name)
+  // A Map keeps this order (a plain object would sort the number-like codes)
+  const TEAM = new Map([["1006126", "Roudsea"], ["1006954", "Duddon"], ["1006067", "Hallsenna"], ["1006114", "Walney"], ["1006058", "Gait Barrows"], ["1006018", "Blelham"]]);
+  const isTeam = (f) => TEAM.has(f.properties && f.properties.REF_CODE);
+  const heather = () => "#7d4b75"; // on the map: tiles stay light in dark mode, so always the strong heather
+  nnrLayer.options.style = (f) => isTeam(f)
+    ? { color: heather(), weight: 2.5, opacity: 0.9, dashArray: null, fillColor: heather(), fillOpacity: map.getZoom() < 14 ? 0.18 : 0.05 }
+    : { color: "#0b7a3b", weight: 2, opacity: 0.7, dashArray: "8 5", fillColor: "#0b7a3b", fillOpacity: 0.04 };
+  const resLabels = L.layerGroup().addTo(map);
+  function drawResLabels() {
+    resLabels.clearLayers();
+    if (map.getZoom() > 13) return;
+    for (const f of nnr) if (isTeam(f)) {
+      const c = L.geoJSON(f).getBounds().getCenter();
+      L.marker(c, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
+    }
+  }
+  map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); drawResLabels(); });
+  function drawChips() {
+    const last = store.get("lastReserve", "");
+    $("chips").innerHTML = "";
+    for (const [code, name] of TEAM) {
+      const f = nnr.find((x) => x.properties.REF_CODE === code);
+      if (!f) continue;
+      const b = document.createElement("button");
+      b.textContent = name;
+      b.className = code === last ? "on" : "";
+      b.onclick = () => {
+        store.set("lastReserve", code);
+        following = false;
+        $("locBtn").classList.remove("on");
+        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [30, 110], paddingBottomRight: [70, sheet.offsetHeight + 20], maxZoom: 16 });
+        drawChips();
+      };
+      $("chips").appendChild(b);
+    }
+  }
   function useNNR(gj) {
     if (!gj || !gj.features || !gj.features.length) return false;
     nnr = gj.features.map((f) => {
@@ -1455,6 +1513,8 @@
       return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] };
     });
     nnrLayer.clearLayers().addData(gj);
+    drawResLabels();
+    drawChips();
     update();
     return true;
   }

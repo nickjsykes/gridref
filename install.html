@@ -36,6 +36,7 @@
   .fix p { margin: 10px 0; }
   .fix b { color: var(--green); }
   footer { color: var(--muted); font-size: 13px; text-align: center; margin-top: 30px; }
+  @media (prefers-color-scheme: dark) { footer img { filter: invert(1); } }
   @media print { .qr { break-inside: avoid; } body { font-size: 14px; } }
 </style>
 </head>
@@ -73,7 +74,7 @@
     <p><b>No "Add to Home Screen"</b>: you're not in Safari. Copy the link into Safari.</p>
   </div>
 
-  <footer>Grid Ref · Nick Sykes for Natural England</footer>
+  <footer><img src="osprey.svg" alt="" style="display:block;width:110px;margin:0 auto 8px;opacity:.75">Grid Ref · Nick Sykes for Natural England</footer>
 </main>
 </body>
 </html>
