@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=39">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=40">
 <style>
   :root {
     --green: #2f5d3a;
@@ -139,6 +139,10 @@
   .sheetmenu button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
   .sheetmenu .danger { color: var(--danger); }
   .sheetmenu .cancel { background: none; color: var(--muted); }
+  .shopts { display: grid; gap: 4px; }
+  .card .shopts label { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px 6px; font: 400 16px var(--sans); color: var(--ink); border-bottom: 1px solid var(--line); }
+  .shopts input { width: 22px; height: 22px; accent-color: var(--green); flex: none; }
+  .shprev { margin: 4px 0 0; padding: 8px 10px; background: var(--green-soft); border-radius: 10px; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow: auto; color: var(--ink); }
   .group { padding: 10px 14px 4px; font: 700 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; background: var(--panel); position: sticky; top: 0; }
   .item { padding: 7px 8px 7px 14px; border-bottom: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
   .item .main { flex: 1; min-width: 0; }
@@ -307,9 +311,8 @@
 </div>
 <div class="fabs left">
   <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg></button>
-  <button class="fab" id="measureBtn" aria-label="Measure distance and area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
-  <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
-  <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
+  <button class="fab" id="measureBtn" aria-label="Measure a line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17 17 3l4 4L7 21Z"/><path d="m7 13 2 2M10 10l2 2M13 7l2 2"/></svg></button>
+  <button class="fab" id="saveBtn" aria-label="Add a point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg></button>
 </div>
 <div class="layers" id="layers"></div>
 
@@ -332,7 +335,8 @@
       <button class="tool small" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
       <button class="tool" id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg><span>Share</span></button>
       <button class="tool primary" id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg><span>Navigate</span></button>
-      <button class="tool" id="saveBtn" aria-label="Save point"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg><span>Save</span></button>
+      <button class="tool" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg><span>Photo</span></button>
+      <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
       <button class="tool" id="listBtn" aria-label="Saved points"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg><span>Saved</span></button>
     </div>
   </div>
@@ -429,15 +433,23 @@
   <span id="instText"></span> <a href="install.html" class="instlink">Step by step ›</a>
   <button type="button" id="instClose" aria-label="Dismiss">✕</button>
 </div>
+<div class="modal sheetmenu" id="shareModal" hidden>
+  <div class="card">
+    <div class="im-title"><b>Share</b><span id="shTitle"></span></div>
+    <div class="shopts" id="shOpts"></div>
+    <pre class="shprev" id="shPrev"></pre>
+    <div class="btns"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=39"></script>
-<script src="config.js?v=39"></script>
-<script src="osgb.js?v=39"></script>
-<script src="parse.js?v=39"></script>
-<script src="local.js?v=39"></script>
+<script src="vendor/leaflet/leaflet.js?v=40"></script>
+<script src="config.js?v=40"></script>
+<script src="osgb.js?v=40"></script>
+<script src="parse.js?v=40"></script>
+<script src="local.js?v=40"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -458,11 +470,15 @@
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
   let current = "topo"; // every launch starts on Topo; a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
+  // Zoom no further than the chosen map goes (the shading on its own isn't a map)
+  const fitZoom = () => { map.setMaxZoom(LAYERS[current].layer.options.maxZoom || 19); if (map.getZoom() > map.getMaxZoom()) map.setZoom(map.getMaxZoom()); };
+  fitZoom();
   function setBase(k) {
     if (k === current) return;
     map.removeLayer(LAYERS[current].layer);
     current = k;
     LAYERS[k].layer.addTo(map);
+    fitZoom();
     if (offlineOverlay && map.hasLayer(offlineOverlay)) offlineOverlay.bringToFront();
   }
 
@@ -486,13 +502,13 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "39"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "40"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
   map.createPane("shade").style.zIndex = 250;
   const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
-    layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
+    layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
   let shadeOn = false; // off at every launch
   function setShade(on) {
     shadeOn = on;
@@ -837,17 +853,46 @@
       copy(last[what], el);
     };
   }
-  function shareText(p) {
-    const lines = [`Grid ref: ${p.ref}`, `Lat/long: ${p.ll}`];
-    if (w3w.words && w3w.at === spot(p)) lines.push(`what3words: ///${w3w.words}`);
-    lines.push(`https://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`);
-    return lines.join("\n");
+  // Share: tick what goes in. Remembered for next time; grid ref + Apple Maps to start with.
+  const SHARE_OPTS = [
+    ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
+    ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
+    ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
+    ["apple", "Apple Maps link", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
+    ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
+  ];
+  let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]));
+  function shareTextFor(x) {
+    return [x.head, ...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), x.notes].filter(Boolean).join("\n");
   }
-  $("shareBtn").onclick = async () => {
+  function drawShare() {
+    $("shOpts").innerHTML = "";
+    for (const [k, label] of SHARE_OPTS) {
+      const l = document.createElement("label");
+      l.innerHTML = `<input type="checkbox" ${shareOn.has(k) ? "checked" : ""}> <span></span>`;
+      l.querySelector("span").textContent = label;
+      l.querySelector("input").onchange = (e) => { e.target.checked ? shareOn.add(k) : shareOn.delete(k); store.set("shareOpts", [...shareOn]); $("shPrev").textContent = shareTextFor(shareItem); };
+      $("shOpts").appendChild(l);
+    }
+    $("shPrev").textContent = shareTextFor(shareItem);
+  }
+  function openShare(item) {
+    shareItem = item;
+    $("shTitle").textContent = item.head || item.ref;
+    drawShare();
+    $("shareModal").hidden = false;
+  }
+  $("shCancel").onclick = () => { $("shareModal").hidden = true; };
+  $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) $("shareModal").hidden = true; };
+  $("shGo").onclick = async () => {
+    const text = shareTextFor(shareItem);
+    if (!text) return toast("Tick at least one thing to share");
+    $("shareModal").hidden = true;
+    if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
+  };
+  $("shareBtn").onclick = () => {
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
-    const text = shareText(last);
-    if (navigator.share) { try { await navigator.share({ text }); } catch {} }
-    else copy(text);
+    openShare({ ref: last.ref, lat: last.lat, lon: last.lon, e: last.e, n: last.n });
   };
 
   // ---------- saved points ----------
@@ -1063,13 +1108,11 @@
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
   $("imCopy").onclick = () => { const c = centreOf(menuPt); copy(OSGB.gridRef(c.e, c.n, digits)); closeMenu(); };
-  $("imShare").onclick = async () => {
+  $("imShare").onclick = () => {
     const pt = menuPt, c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
-    const text = [`${pt.name}${what}`, `Grid ref: ${ref}`, `Lat/long: ${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}`, pt.notes || "",
-      `https://maps.apple.com/?ll=${c.lat.toFixed(6)},${c.lon.toFixed(6)}&q=${encodeURIComponent(pt.name)}`].filter(Boolean).join("\n");
     closeMenu();
-    if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
+    openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n });
   };
   $("imDel").onclick = () => {
     if (!confirm(`Delete “${menuPt.name}”?`)) return;
