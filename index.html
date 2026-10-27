@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=102">
-<link rel="stylesheet" href="app.css?v=102">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=104">
+<link rel="stylesheet" href="app.css?v=104">
 </head>
 <body>
 <div id="map"></div>
@@ -155,6 +155,7 @@
   <div class="card">
     <img id="photoOut" alt="Stamped photo" style="width:100%;border-radius:10px;display:block">
     <div class="chiprow stampopts" id="stampOpts" hidden></div>
+    <input class="stampline" id="stampLine" placeholder="Your line, e.g. your team or name" maxlength="60" enterkeyhint="done" hidden>
     <div class="btns three"><button type="button" id="photoClose">Close</button><button type="button" id="photoShare">Share</button><button type="button" class="primary" id="photoSave">Save</button></div>
   </div>
 </div>
@@ -212,13 +213,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=102"></script>
-<script src="config.js?v=102"></script>
-<script src="osgb.js?v=102"></script>
-<script src="parse.js?v=102"></script>
-<script src="zip.js?v=102"></script>
-<script src="exif.js?v=102"></script>
-<script src="local.js?v=102"></script>
-<script src="app.js?v=102"></script>
+<script src="vendor/leaflet/leaflet.js?v=104"></script>
+<script src="config.js?v=104"></script>
+<script src="osgb.js?v=104"></script>
+<script src="parse.js?v=104"></script>
+<script src="zip.js?v=104"></script>
+<script src="exif.js?v=104"></script>
+<script src="local.js?v=104"></script>
+<script src="app.js?v=104"></script>
 </body>
 </html>

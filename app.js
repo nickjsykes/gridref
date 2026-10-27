@@ -14,7 +14,6 @@
     // OS Outdoor: proper OS cartography (contours, paths, woods). Open data up to zoom 16 on
     // OS's free plan; needs a free OS Data Hub key in config.js, and only appears once there is one.
     ...(OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
-    topo: { name: "Topo", layer: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", { maxZoom: 17, subdomains: "abc", crossOrigin: true, attribution: "© OpenStreetMap, SRTM | © OpenTopoMap (CC-BY-SA)" }) },
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -30,7 +29,7 @@
     clearTimeout(c._t);
     if (c.classList.contains("open")) c._t = setTimeout(() => c.classList.remove("open"), 6000);
   });
-  let current = OS_KEY ? "outdoor" : "topo"; // every launch starts on OS Outdoor (or Topo without a key); a map picked in the layers menu lasts until the app is closed
+  let current = OS_KEY ? "outdoor" : "os"; // every launch starts on OS Outdoor (or the offline OS map without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
   const fitZoom = () => { map.setMaxZoom(LAYERS[current].layer.options.maxZoom || 19); if (map.getZoom() > map.getMaxZoom()) map.setZoom(map.getMaxZoom()); };
@@ -68,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "102"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "104"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -98,12 +97,6 @@
     sh.className = "tick" + (shadeOn ? " on" : "");
     sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
     layersEl.appendChild(sh);
-    if (pack.names) {
-      const note = document.createElement("div");
-      note.className = "lnote";
-      note.textContent = "Offline maps: " + pack.names.map((n) => n.replace(/ Wood and Mosses| Mosses| Moor/g, "").replace("North Walney", "Walney")).join(", ");
-      layersEl.appendChild(note);
-    }
     if (pack.state === "failed") {
       const off = document.createElement("button");
       off.textContent = "Offline maps paused: tap to retry";
@@ -419,21 +412,24 @@
       copy(last[what], el);
     };
   }
-  // Share: tick what goes in. Remembered for next time; name, notes, grid ref + Apple Maps to start with.
+  // Share: tick what goes in. Remembered for next time; grid ref, Apple Maps, name and notes to
+  // start with. The message reads location first (where a chat shows the map preview), then a
+  // blank line, then the name and notes, so it's easy to read.
   // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
-    ["name", "Name", (x) => x.head],
-    ["notes", "Notes", () => ""], // added last, below the links
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat / long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "Easting / northing", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
     ["apple", "Apple Maps link", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps link", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
+    ["name", "Name", (x) => x.head],
+    ["notes", "Notes", (x) => x.notes],
   ];
   let shareItem = null, shareOn = new Set(store.get("shareOpts", ["ref", "apple"]).filter((k) => k !== "app"));
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
   function shareTextFor(x) {
-    return [...SHARE_OPTS.filter(([k]) => shareOn.has(k)).map(([, , f]) => f(x)), shareOn.has("notes") && x.notes].filter(Boolean).join("\n");
+    const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
+    return [part(["ref", "ll", "en", "apple", "google"]), part(["name", "notes"])].filter(Boolean).join("\n\n");
   }
   function drawShare() {
     $("shOpts").innerHTML = "";
@@ -1657,13 +1653,13 @@
     toast("✓ Offline maps ready");
   }
 
-  // No signal: lay the OS map over whatever map is showing (aerial photos can't be kept,
-  // so that switches to the topo map underneath). Signal back: put it all back.
+  // No signal: lay the offline OS map (the reserves) over whatever map is showing; aerial
+  // photos can't be kept, so that switches back to OS Outdoor underneath. Signal back: put it all back.
   let offlineMode = false, swappedFrom = null, tileErrors = [], probe = null;
   function goOffline() {
     if (offlineMode) return;
     offlineMode = true;
-    if (current === "aerial") { swappedFrom = "aerial"; setBase("topo"); }
+    if (current === "aerial" && OS_KEY) { swappedFrom = "aerial"; setBase("outdoor"); }
     if (current !== "os") offlineOverlay.addTo(map);
     toast("Switching to offline maps");
     clearInterval(probe);
@@ -1682,7 +1678,7 @@
   }
   // Phones often claim to be online with no usable signal, so also watch for map tiles
   // failing to load: several in a few seconds means no signal.
-  for (const k of ["topo", "aerial"]) {
+  for (const k of ["outdoor", "aerial"].filter((x) => LAYERS[x])) {
     LAYERS[k].layer.on("tileerror", () => {
       const now = Date.now();
       tileErrors = tileErrors.filter((t) => now - t < 6000).concat(now);
@@ -1928,13 +1924,25 @@
     $("photoModal").hidden = false;
   }
   // What goes on the stamp: tick and it redraws. Remembered for next time.
-  const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["src", "GPS / crosshair"]];
+  // Where the position came from (GPS ±m, crosshair, the photo's own) always rides along with
+  // the location, so nobody trusts a crosshair guess as a GPS fix
+  const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["line", "Your line"]];
   let stampJob = null, stampOn = new Set(store.get("stampOpts", ["ref", "when", "reserve"]));
   function drawStampOpts() {
     $("stampOpts").hidden = false;
     $("stampOpts").innerHTML = STAMP_OPTS.filter(([k]) => k !== "reserve" || stampJob.reserve)
       .map(([k, l]) => `<button type="button" data-k="${k}" class="${stampOn.has(k) ? "on" : ""}">${l}</button>`).join("");
+    // "Your line": a credit each person types once (their team, their name), kept on this phone
+    $("stampLine").hidden = !stampOn.has("line");
+    $("stampLine").value = store.get("stampLine", "");
   }
+  let lineTimer = null;
+  $("stampLine").addEventListener("input", () => {
+    store.set("stampLine", $("stampLine").value.trim());
+    clearTimeout(lineTimer);
+    lineTimer = setTimeout(restamp, 300);
+  });
+  $("stampLine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("stampLine").blur(); });
   $("stampOpts").onclick = async (e) => {
     const b = e.target.closest("button");
     if (!b || !stampJob) return;
@@ -1955,9 +1963,11 @@
     const lines = [];
     const head = stampOn.has("ref") ? j.ref : stampOn.has("ll") ? j.ll : "";
     if (head) lines.push({ t: head, f: big });
-    const sub = [stampOn.has("ll") && stampOn.has("ref") ? j.ll : "", stampOn.has("when") ? j.when : "", stampOn.has("src") ? j.src : ""].filter(Boolean).join(" · ");
+    const sub = [head ? j.src : "", stampOn.has("ll") && stampOn.has("ref") ? j.ll : "", stampOn.has("when") ? j.when : ""].filter(Boolean).join(" · ");
     if (sub) lines.push({ t: sub, f: small });
     if (stampOn.has("reserve") && j.reserve) lines.push({ t: j.reserve, f: small });
+    const mine = stampOn.has("line") && store.get("stampLine", "");
+    if (mine) lines.push({ t: mine, f: `700 ${u}px -apple-system, sans-serif` });
     if (lines.length) {
       const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
       const w = Math.max(...lines.map((l) => { ctx.font = l.f; return ctx.measureText(l.t).width; })) + pad * 2;
@@ -1996,6 +2006,7 @@
     photoNew = null;
     stampJob = null;
     $("stampOpts").hidden = true;
+    $("stampLine").hidden = true;
     $("photoSave").hidden = true;
     $("photoOut").src = URL.createObjectURL(blob);
     $("photoModal").hidden = false;

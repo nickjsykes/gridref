@@ -358,7 +358,8 @@ body.large .results button .gr { font-size: 23px; }
 .chips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + 60px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
 .chips::-webkit-scrollbar { display: none; }
 .chips button { flex: none; border: 0; border-radius: 16px; padding: 6px 12px; font: 600 13.5px var(--sans); background: var(--panel); color: var(--ink); box-shadow: 0 1px 5px rgba(0,0,0,.18); }
-.chips button.on { background: var(--green); color: var(--panel); }
+/* the chosen reserve stands out on any map: dark, with a white edge */
+.chips button.on { background: var(--ink); color: var(--panel); box-shadow: 0 0 0 2px var(--panel), 0 2px 8px rgba(0,0,0,.35); }
 body.measuring .chips, body.navigating .chips, body.moving .chips { display: none; }
 
 /* the team's reserves named on the map when zoomed out */
@@ -441,3 +442,5 @@ body.adding .chips { visibility: hidden; } /* the menu may need their room on a 
 .pill .fab + .fab::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px; background: color-mix(in srgb, var(--ink) 15%, transparent); }
 .pill .fab.on, .pill .addbtn { background: var(--green); color: var(--panel); }
 .pill .addbtn::before, .pill .fab.on::before { display: none; }
+.stampline { display: block; width: 100%; box-sizing: border-box; margin: 8px 0 2px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; font: 16px var(--sans); background: var(--panel); color: var(--ink); }
+.stampline[hidden] { display: none; }
