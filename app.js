@@ -54,7 +54,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "83"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "86"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -637,6 +637,7 @@
   }
   function openSave(geom, edit) {
     fresh();
+    $("keepBar").hidden = true;
     saving = geom;
     editing = edit || null;
     const isShape = !!geom.kind && geom.kind !== "point"; // points saved before types existed have no kind
@@ -650,7 +651,7 @@
       }
     }
     $("ptName").value = editing ? editing.name : "";
-    $("ptName").placeholder = (isShape ? ({ line: "Line ", area: "Area ", photo: "Photo " }[geom.kind] || "Point ") : "Point ") + (points.length + 1);
+    $("ptName").placeholder = autoName(geom.kind, geom.lat, geom.lon);
     $("ptNotes").value = editing ? editing.notes || "" : "";
     if (editing) pick = { colour: editing.colour || "orange", shape: editing.shape || "circle" };
     $("ptMoveRow").hidden = !editing;
@@ -674,7 +675,7 @@
     if (!b || b.disabled || !saving) return;
     saving.kind = b.dataset.k;
     for (const x of $("ptKind").children) x.classList.toggle("on", x === b);
-    $("ptName").placeholder = (saving.kind === "line" ? "Line " : "Area ") + (points.length + 1);
+    $("ptName").placeholder = autoName(saving.kind, saving.lat, saving.lon);
   };
   $("saveForm").onsubmit = (e) => {
     e.preventDefault();
@@ -724,8 +725,13 @@
     const e = cx / (3 * A), n = cy / (3 * A), ll = OSGB.gridToWgs84(e, n);
     return { lat: ll.lat, lon: ll.lon, e: Math.round(e), n: Math.round(n) };
   }
-  let tab = store.get("tab", "point"), menuPt = null;
-  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.k; store.set("tab", tab); openDrawer(); } };
+  const keyOf = (p) => p.at + "|" + p.name;
+  // ---------- the notebook: newest first under day headings, filter by type and reserve ----------
+  // Imported files go into a folder of their own, shown as one row until you open it.
+  let tab = store.get("ntab", "all"), resF = "", folder = null, menuPt = null;
+  const KIND_WORD = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" };
+  $("tabs").onclick = (e) => { const b = e.target.closest("button"); if (b) { tab = b.dataset.k; store.set("ntab", tab); openDrawer(); } };
+  $("resFilter").onclick = (e) => { const b = e.target.closest("button"); if (b) { resF = b.dataset.r; openDrawer(); } };
   function showOnMap(pt) {
     closeDrawer();
     following = false;
@@ -733,65 +739,149 @@
     if (pt.pts) map.fitBounds(L.latLngBounds(pt.pts), { paddingTopLeft: [30, 80], paddingBottomRight: [80, sheet.offsetHeight + 20], maxZoom: 17 });
     else panTo(L.latLng(pt.lat, pt.lon), Math.max(map.getZoom(), 15));
   }
+  const dayKey = (iso) => new Date(iso).toDateString();
+  function dayLabel(iso) {
+    const d = new Date(iso), today = new Date(), y = new Date(Date.now() - 86400000);
+    if (d.toDateString() === today.toDateString()) return "Today";
+    if (d.toDateString() === y.toDateString()) return "Yesterday";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", ...(d.getFullYear() !== today.getFullYear() ? { year: "numeric" } : {}) });
+  }
+  const timeOf = (iso) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  function summary(list) {
+    const n = { point: 0, line: 0, area: 0, photo: 0 };
+    for (const p of list) n[p.kind || "point"]++;
+    return Object.entries(n).filter(([, v]) => v).map(([k, v]) => `${v} ${KIND_WORD[k].toLowerCase().replace(/s$/, v > 1 ? "s" : "")}`).join(", ");
+  }
+  const EMPTY_TYPE = {
+    point: "No points yet.<br>Line up the crosshair and tap the <b>+</b> point button.<br><br>Got a list of grid refs? <b>Import</b> a CSV.",
+    line: "No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.",
+    area: "No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.",
+    photo: "No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It's pinned on the map where it was taken.",
+  };
+  const empty = (html) => `<div class="empty"><i class="tex"></i><p>${html}</p></div>`;
   function openDrawer() {
     fresh();
-    const counts = { point: 0, line: 0, area: 0, photo: 0 };
-    for (const p of points) counts[p.kind || "point"]++;
-    for (const b of $("tabs").children) {
-      b.classList.toggle("on", b.dataset.k === tab);
-      b.textContent = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" }[b.dataset.k] + (counts[b.dataset.k] ? ` (${counts[b.dataset.k]})` : "");
-    }
+    $("keepBar").hidden = true;
+    if (folder && !points.some((p) => p.folder === folder)) folder = null;
+    const scope = folder ? points.filter((p) => p.folder === folder) : points;
+    // Which reserve each entry is in (worked out now, so imports and old entries get it too)
+    const resOf = new Map(scope.map((p) => { const c = centreOf(p); return [p, reserveShort(L.latLng(c.lat, c.lon))]; }));
+    const inRes = [...TEAM.values()].filter((r) => [...resOf.values()].includes(r));
+    if (resF && resF !== "-" && !inRes.includes(resF)) resF = "";
+    // Filters: type, then reserve (only offered when something is in a reserve)
+    const counts = { all: scope.length, point: 0, line: 0, area: 0, photo: 0 };
+    for (const p of scope) counts[p.kind || "point"]++;
+    $("tabs").innerHTML = ["all", "point", "line", "area", "photo"].filter((k) => k === "all" || counts[k] || k === tab)
+      .map((k) => `<button data-k="${k}" class="${k === tab ? "on" : ""}">${k === "all" ? "All" : KIND_WORD[k]}${counts[k] ? ` <small>${counts[k]}</small>` : ""}</button>`).join("");
+    const elsewhere = [...resOf.values()].some((r) => !r);
+    $("resFilter").innerHTML = inRes.length ? [["", "Everywhere"], ...inRes.map((r) => [r, r]), ...(elsewhere ? [["-", "Elsewhere"]] : [])]
+      .map(([v, l]) => `<button data-r="${v}" class="${v === resF ? "on" : ""}">${esc(l)}</button>`).join("") : "";
+    $("resFilter").hidden = !inRes.length;
+    const match = (p) => (tab === "all" || (p.kind || "point") === tab) && (!resF || (resF === "-" ? !resOf.get(p) : resOf.get(p) === resF));
+    // Header: the notebook, or the folder you're in
+    $("dTitle").textContent = folder || "Notebook";
+    $("dSub").textContent = folder ? summary(scope) + " · imported " + new Date(scope[0].at).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "On this phone";
+    $("folderBack").hidden = !folder;
+    $("folderActs").hidden = !folder;
     const list = $("list");
     list.innerHTML = "";
-    const items = points.filter((p) => (p.kind || "point") === tab);
-    if (!items.length) list.innerHTML = {
-      point: '<div class="empty"><i class="tex"></i><p>No points yet.<br>Line up the crosshair and tap <b>Save</b>.<br><br>Got a list of grid refs? <b>Import</b> a CSV.</p></div>',
-      line: '<div class="empty"><i class="tex"></i><p>No lines yet.<br>Use the ruler on the left of the map, then <b>Save</b>.</p></div>',
-      area: '<div class="empty"><i class="tex"></i><p>No areas yet.<br>Use the area tool on the left of the map, then <b>Save</b>.</p></div>',
-      photo: '<div class="empty"><i class="tex"></i><p>No photos yet.<br>Tap <b>Photo</b> to take one or choose one from your phone, then <b>Save</b>. It\'s pinned on the map where it was taken.</p></div>',
-    }[tab];
-    for (const pt of items) {
-      const row = document.createElement("div");
-      row.className = "item";
-      const when = new Date(pt.at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const isShape = tab === "line" || tab === "area";
-      const st = isShape ? shapeStats(pt) : null;
-      const col = COLOURS[pt.colour] || COLOURS.orange;
-      const mk = tab === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
-        : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${tab === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${tab === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
-      const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : tab === "area" ? fmtArea(st.area) : fmtDist(st.length);
-      row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 21 3l-8 18-2-8-8-2Z"/></svg></button>`;
-      row.querySelector(".name").textContent = pt.name;
-      row.querySelector(".gr").textContent = what;
-      if (tab === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
-      // Notes: up to 4 lines here; tap the entry to read them in full
-      if (pt.notes) row.querySelector(".note").textContent = pt.notes;
-      else row.querySelector(".note").remove();
-      row.querySelector(".meta").textContent = when + (pt.acc ? ` · ±${pt.acc} m` : "");
-      const c = centreOf(pt);
-      row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
-      if (picked.has(keyOf(pt))) row.classList.add("picked");
-      row.querySelector(".main").onclick = () => {
-        if (selecting) {
-          const k = keyOf(pt);
-          picked.has(k) ? picked.delete(k) : picked.add(k);
-          row.classList.toggle("picked", picked.has(k));
-          return drawSelBar();
-        }
-        menuPt = pt;
-        preloadPhoto(pt);
-        $("imName").textContent = pt.name;
-        $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (tab === "area" ? " (centre)" : tab === "line" ? " (start)" : "");
-        $("imView").hidden = pt.kind !== "photo";
-        $("imNotes").textContent = pt.notes || "";
-        $("itemMenu").hidden = false;
-      };
-      list.appendChild(row);
+    const shown = scope.filter(match);
+    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair and tap the <b>+</b> point button, draw a line or an area, or take a photo.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
+    else if (!shown.length) list.innerHTML = empty(tab !== "all" && !resF && !folder ? EMPTY_TYPE[tab] : "Nothing here with these filters.");
+    // Rows: in a folder just its entries (by name); otherwise loose entries and one row per
+    // folder, newest first, under day headings
+    let rows;
+    if (folder) rows = shown.slice().sort((a, b) => a.name.localeCompare(b.name, "en-GB", { numeric: true })).map((p) => ({ pt: p, at: p.at }));
+    else {
+      const folders = new Map();
+      rows = [];
+      for (const p of shown) {
+        if (!p.folder) { rows.push({ pt: p, at: p.at }); continue; }
+        const f = folders.get(p.folder) || folders.set(p.folder, { folder: p.folder, at: p.at, items: [] }).get(p.folder);
+        f.items.push(p);
+        if (p.at > f.at) f.at = p.at;
+      }
+      rows.push(...folders.values());
+      rows.sort((a, b) => (a.at < b.at ? 1 : -1));
+    }
+    let lastDay = null;
+    for (const r of rows) {
+      if (!folder && dayKey(r.at) !== lastDay) {
+        lastDay = dayKey(r.at);
+        const h = document.createElement("div");
+        h.className = "day";
+        h.textContent = dayLabel(r.at);
+        list.appendChild(h);
+      }
+      list.appendChild(r.folder ? folderRow(r) : itemRow(r.pt, resOf.get(r.pt), !folder));
     }
     $("backup").textContent = `Last export: ${ago(store.get("exported", ""))}`;
     if (selecting) drawSelBar();
     $("drawer").classList.add("open");
   }
+  function folderRow(f) {
+    const row = document.createElement("div");
+    row.className = "item folderrow";
+    row.innerHTML = `<span class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H9l2 2.5h8.5A1.5 1.5 0 0 1 21 9v9.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18.5Z"/></svg></span><div class="main"><div class="line1"><span class="name"></span></div><div class="meta"></div></div><span class="chev">›</span>`;
+    row.querySelector(".name").textContent = f.folder;
+    row.querySelector(".meta").textContent = `${summary(f.items)} · imported ${timeOf(f.at)}`;
+    row.onclick = () => { folder = f.folder; resF = ""; openDrawer(); $("list").scrollTop = 0; };
+    return row;
+  }
+  function itemRow(pt, res, withTime) {
+    const row = document.createElement("div");
+    row.className = "item";
+    const kind = pt.kind || "point", isShape = kind === "line" || kind === "area";
+    const st = isShape ? shapeStats(pt) : null;
+    const col = COLOURS[pt.colour] || COLOURS.orange;
+    const mk = kind === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
+      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
+    const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : kind === "area" ? fmtArea(st.area) : fmtDist(st.length);
+    row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div><button class="ic go" aria-label="Navigate here"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z" fill="currentColor"/></svg></button>`;
+    row.querySelector(".name").textContent = pt.name;
+    row.querySelector(".gr").textContent = what;
+    if (kind === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
+    // Notes: up to 4 lines here; tap the entry to read them in full
+    if (pt.notes) row.querySelector(".note").textContent = pt.notes;
+    else row.querySelector(".note").remove();
+    const meta = row.querySelector(".meta");
+    if (res) { const t = document.createElement("span"); t.className = "rtag"; t.textContent = res; meta.appendChild(t); }
+    meta.append([withTime ? timeOf(pt.at) : "", pt.acc ? `±${pt.acc} m` : ""].filter(Boolean).join(" · "));
+    const c = centreOf(pt);
+    row.querySelector(".go").onclick = () => navigateTo(c.lat, c.lon);
+    if (picked.has(keyOf(pt))) row.classList.add("picked");
+    row.querySelector(".main").onclick = () => {
+      if (selecting) {
+        const k = keyOf(pt);
+        picked.has(k) ? picked.delete(k) : picked.add(k);
+        row.classList.toggle("picked", picked.has(k));
+        return drawSelBar();
+      }
+      menuPt = pt;
+      preloadPhoto(pt);
+      $("imName").textContent = pt.name;
+      $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (kind === "area" ? " (centre)" : kind === "line" ? " (start)" : "");
+      $("imView").hidden = kind !== "photo";
+      $("imNotes").textContent = pt.notes || "";
+      $("itemMenu").hidden = false;
+    };
+    return row;
+  }
+  $("folderBack").onclick = () => { folder = null; resF = ""; openDrawer(); };
+  $("folderMap").onclick = () => {
+    const all = points.filter((p) => p.folder === folder).flatMap((p) => (p.pts ? p.pts : [[p.lat, p.lon]]));
+    if (!all.length) return;
+    closeDrawer();
+    following = false;
+    $("locBtn").classList.remove("on");
+    map.fitBounds(L.latLngBounds(all), { paddingTopLeft: [30, 110], paddingBottomRight: [80, sheet.offsetHeight + 20], maxZoom: 17 });
+  };
+  $("folderDel").onclick = () => {
+    const gone = points.filter((p) => p.folder === folder);
+    deleteSaved(gone, `Deleted folder ${folder} (${gone.length})`);
+    folder = null;
+    openDrawer();
+  };
   const closeMenu = () => { $("itemMenu").hidden = true; };
   $("imCancel").onclick = closeMenu;
   $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
@@ -822,31 +912,35 @@
   $("imView").onclick = () => { closeMenu(); viewPhoto(menuPt); };
   // Delete at once, with Undo for a few seconds (kinder than "are you sure?" with cold
   // thumbs). A photo's picture is only really removed once the Undo has gone.
-  let undoTimer = null, undoItem = null;
+  let undoTimer = null, undoItems = null;
   function finishDelete() {
     clearTimeout(undoTimer);
-    if (undoItem && undoItem.photoId) photoDB.del(undoItem.photoId).catch(() => {});
-    undoItem = null;
+    for (const p of undoItems || []) if (p.photoId) photoDB.del(p.photoId).catch(() => {});
+    undoItems = null;
     $("undoBar").hidden = true;
   }
-  function deleteSaved(pt) {
+  // One entry, or a list of them (a whole folder)
+  function deleteSaved(what, label) {
     finishDelete();
     fresh();
-    points = points.filter((p) => !(p.at === pt.at && p.name === pt.name));
+    const gone = Array.isArray(what) ? what : [what];
+    const keys = new Set(gone.map(keyOf));
+    points = points.filter((p) => !keys.has(keyOf(p)));
     savePoints();
-    undoItem = pt;
-    $("undoText").textContent = `Deleted ${pt.name}`;
+    undoItems = gone;
+    $("undoText").textContent = label || `Deleted ${gone[0].name}`;
+    $("keepBar").hidden = true;
     $("undoBar").hidden = false;
     undoTimer = setTimeout(finishDelete, 7000);
     return true;
   }
   $("undoBtn").onclick = () => {
     clearTimeout(undoTimer);
-    if (!undoItem) return;
+    if (!undoItems) return;
     fresh();
-    points.unshift(undoItem);
+    points.push(...undoItems);
     points.sort((a, b) => (a.at < b.at ? 1 : -1));
-    undoItem = null;
+    undoItems = null;
     $("undoBar").hidden = true;
     savePoints();
     if ($("drawer").classList.contains("open")) openDrawer();
@@ -863,11 +957,11 @@
       const c = p.pts.map(([a, b]) => `${b} ${a}`);
       return p.kind === "area" ? `POLYGON((${c.concat([c[0]]).join(", ")}))` : `LINESTRING(${c.join(", ")})`;
     };
-    const rows = [["Name", "Type", "Grid ref", "Latitude", "Longitude", "Easting", "Northing", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)", "Photo file"]]
+    const rows = [["Name", "Type", "Grid ref", "Latitude", "Longitude", "Easting", "Northing", "Length (m)", "Area (ha)", "GPS accuracy (m)", "Saved", "Notes", "Colour", "Shape", "Geometry (WKT)", "Photo file", "Folder"]]
       .concat(list.map((p) => {
         const st = p.pts ? shapeStats(p) : null;
         return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.lat.toFixed(6), p.lon.toFixed(6), p.e, p.n, st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
-          p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p)), p.photoId ? `photos/${p.photoId}.jpg` : ""];
+          p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p)), p.photoId ? `photos/${p.photoId}.jpg` : "", q(p.folder || "")];
       }));
     return rows.map((r) => r.join(",")).join("\n");
   }
@@ -883,7 +977,7 @@
         name: p.name, type: p.kind || "point", notes: p.notes || "", grid_ref: OSGB.gridRef(c.e, c.n, 8),
         latitude: +c.lat.toFixed(6), longitude: +c.lon.toFixed(6), easting: Math.round(c.e), northing: Math.round(c.n), length_m: st ? Math.round(st.length) : null,
         area_ha: st && st.area != null ? +(st.area / 10000).toFixed(4) : null, gps_accuracy_m: p.acc ?? null,
-        saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle", photo: p.photoId ? `photos/${p.photoId}.jpg` : null } };
+        saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle", photo: p.photoId ? `photos/${p.photoId}.jpg` : null, folder: p.folder || null } };
     });
     return JSON.stringify({ type: "FeatureCollection", features }, null, 1);
   }
@@ -917,7 +1011,6 @@
   }
   let exportFmt = "csv", exportPhotos = false, selecting = false;
   const picked = new Set();
-  const keyOf = (p) => p.at + "|" + p.name;
   $("exportBtn").onclick = () => {
     fresh();
     if (!points.length) return toast("Nothing saved yet");
@@ -983,7 +1076,7 @@
     if (cell || row.length) { row.push(cell); rows.push(row); }
     return rows.filter((r) => r.some((c) => c.trim()));
   }
-  function importCSV(text, photoFiles) {
+  function importCSV(text, photoFiles, folderName) {
     const rows = parseCSV(text.replace(/^﻿/, ""));
     if (rows.length < 2) return { added: 0, skipped: 0 };
     const head = rows[0].map((h) => h.trim().toLowerCase());
@@ -992,7 +1085,10 @@
     const iE = col("easting", "x"), iN = col("northing", "y"), iLat = col("lat"), iLon = col("lon", "lng", "long");
     const iAt = col("saved", "date", "time"), iAcc = col("gps accuracy", "accuracy");
     const iNotes = col("notes", "note", "comment", "description"), iColour = col("colour", "color"), iShape = col("shape"), iGeom = col("geometry", "wkt");
-    const iType = col("type"), iPhoto = col("photo file", "photo");
+    const iType = col("type"), iPhoto = col("photo file", "photo"), iFolder = col("folder");
+    // Our own export coming back (a backup) restores as it was; anything else gets a folder
+    const ours = head.includes("type") && head.includes("saved") && head.some((h) => h.startsWith("geometry"));
+    const folderOf = (get) => get(iFolder) || (ours ? "" : folderName || "");
     const pendingPhotos = [];
     fresh();
     const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
@@ -1009,6 +1105,7 @@
         const shp = { name: get(iName) || "Imported " + (added + 1), kind: /POLYGON/i.test(geom[1]) ? "area" : "line", pts, lat: pts[0][0], lon: pts[0][1], e: Math.round(g0.e), n: Math.round(g0.n),
           at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
           colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange" };
+        if (folderOf(get)) shp.folder = folderOf(get);
         const key = shp.name + "|" + shp.e + "|" + shp.n;
         if (seen.has(key)) { skipped++; continue; }
         seen.add(key);
@@ -1025,6 +1122,7 @@
       const at = get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString();
       const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null,
         notes: get(iNotes), colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange", shape: SHAPES[get(iShape).toLowerCase()] ? get(iShape).toLowerCase() : "circle" };
+      if (folderOf(get)) pt.folder = folderOf(get);
       // A photo row from one of our zips: bring the picture back too
       if (get(iType) === "photo" && photoFiles && photoFiles.has(get(iPhoto))) {
         pt.kind = "photo";
@@ -1039,7 +1137,7 @@
     }
     points.sort((a, b) => (a.at < b.at ? 1 : -1));
     if (added) { persist(); savePoints(); }
-    return { added, skipped, pendingPhotos };
+    return { added, skipped, pendingPhotos, folder: points.find((p) => p.folder && folderName && p.folder === folderName) ? folderName : null };
   }
   window.__importCSV = importCSV; // for testing
   $("importBtn").onclick = () => $("importFile").click();
@@ -1048,17 +1146,20 @@
     e.target.value = "";
     if (!f) return;
     let res;
+    const folderName = f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim() || "Imported";
     if (/\.zip$/i.test(f.name) || f.type === "application/zip") {
       let entries;
       try { entries = await Zip.read(f); } catch (err) { return toast(err.message); }
       const csv = entries.find((x) => /\.csv$/i.test(x.name));
       if (!csv) return toast("No CSV inside that zip");
       const photos = new Map(entries.filter((x) => /\.jpe?g$/i.test(x.name)).map((x) => [x.name, x.data]));
-      res = importCSV(new TextDecoder().decode(csv.data), photos);
+      res = importCSV(new TextDecoder().decode(csv.data), photos, folderName);
       for (const ph of res.pendingPhotos) { try { await photoDB.put(ph.id, new Blob([ph.data], { type: "image/jpeg" })); } catch {} }
-    } else res = importCSV(await f.text());
+    } else res = importCSV(await f.text(), null, folderName);
+    // Open the folder it went into, so you see what came in
+    if (res.added && res.folder) { folder = res.folder; resF = ""; }
     openDrawer();
-    toast(`Imported ${res.added}` + (res.pendingPhotos && res.pendingPhotos.length ? ` (${res.pendingPhotos.length} photos)` : "") + (res.skipped ? `, skipped ${res.skipped}` : ""));
+    toast(`Imported ${res.added}` + (res.added && res.folder ? ` into "${res.folder}"` : "") + (res.pendingPhotos && res.pendingPhotos.length ? ` (${res.pendingPhotos.length} photos)` : "") + (res.skipped ? `, skipped ${res.skipped}` : ""));
   };
 
   // ---------- search ----------
@@ -1115,7 +1216,26 @@
     setCompact(true); // just the grid ref; swipe up for the other formats
     // Jump, don't glide: lands at once even if the phone has paused animation (Low Power Mode)
     panTo(L.latLng(it.lat, it.lon), it.zoom || 15, false);
+    offerKeep(it);
   }
+  // "Add to notebook" for a few seconds after a search lands; gone once you move the map
+  let keepTimer = null, keepIt = null;
+  function offerKeep(it) {
+    clearTimeout(keepTimer);
+    keepIt = it;
+    $("keepText").textContent = it.title || "This place";
+    $("keepBar").hidden = !$("undoBar").hidden;
+    keepTimer = setTimeout(() => ($("keepBar").hidden = true), 9000);
+    setTimeout(() => map.once("movestart", () => ($("keepBar").hidden = true)), 0);
+  }
+  $("keepBtn").onclick = () => {
+    $("keepBar").hidden = true;
+    if (!keepIt) return;
+    const g = OSGB.wgs84ToGrid(keepIt.lat, keepIt.lon);
+    fresh();
+    openSave({ kind: "point", lat: keepIt.lat, lon: keepIt.lon, e: Math.round(g.e), n: Math.round(g.n), acc: null });
+    if (keepIt.title && !/^[A-Z]{2} \d/.test(keepIt.title)) $("ptName").value = keepIt.title; // a place name, not a bare grid ref
+  };
   const fmtRef = (lat, lon) => { const g = OSGB.wgs84ToGrid(lat, lon); return OSGB.gridRef(g.e, g.n, digits); };
   async function getJSON(url) { const r = await fetch(url); return r.json(); }
 
@@ -1526,13 +1646,24 @@
     }
     return inside;
   }
-  function reserveAt(ll) {
+  // "Roudsea 10:42": the reserve you're in (or what it is) and the time
+  function autoName(kind, lat, lon, when = new Date()) {
+    const r = lat != null ? reserveShort(L.latLng(lat, lon)) : "";
+    return `${r || { line: "Line", area: "Area", photo: "Photo" }[kind] || "Point"} ${timeOf(when.toISOString())}`;
+  }
+  // The team's short name for the reserve at a spot ("Roudsea"), or ""
+  function reserveShort(ll) {
+    const f = reserveFeatureAt(ll);
+    return f ? TEAM.get(f.properties.REF_CODE) || f.properties.LABEL : "";
+  }
+  function reserveAt(ll) { const f = reserveFeatureAt(ll); return f ? f.properties.LABEL : ""; }
+  function reserveFeatureAt(ll) {
     for (const f of nnr) {
       const [w, s2, e, n] = f.bbox;
       if (ll.lng < w || ll.lng > e || ll.lat < s2 || ll.lat > n) continue;
       const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
       for (const poly of polys) {
-        if (inRing(ll.lng, ll.lat, poly[0]) && !poly.slice(1).some((h) => inRing(ll.lng, ll.lat, h))) return f.properties.LABEL;
+        if (inRing(ll.lng, ll.lat, poly[0]) && !poly.slice(1).some((h) => inRing(ll.lng, ll.lat, h))) return f;
       }
     }
     return "";
@@ -1734,7 +1865,7 @@
     // On iPhone the share sheet has "Save Image" for the Photos library.
     photoFile = out;
     photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
-      name: "Photo " + when.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) };
+      name: autoName("photo", where.lat, where.lon, when) };
     $("photoSave").hidden = false;
     photoText = `${ref} · ${when.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}${reserve ? " · " + reserve : ""}`;
     $("photoOut").src = URL.createObjectURL(out);

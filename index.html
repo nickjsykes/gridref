@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=83">
-<link rel="stylesheet" href="app.css?v=83">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=86">
+<link rel="stylesheet" href="app.css?v=86">
 </head>
 <body>
 <div id="map"></div>
@@ -33,7 +33,7 @@
   <button class="fab" id="locBtn" aria-label="Show my location"><span class="acc" id="accBadge" hidden></span>
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20.5 3.5 3 11l7.6 2.4L13 21Z"/></svg>
   </button>
-  <button class="fab" id="listBtn" aria-label="Saved"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
+  <button class="fab" id="listBtn" aria-label="Notebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
   <button class="fab" id="layersBtn" aria-label="Map style">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3 2 8l10 5 10-5-10-5Z"/><path d="m2 13 10 5 10-5"/></svg>
   </button>
@@ -116,10 +116,13 @@
 
 <div class="drawer" id="drawer">
   <header>
-    <h2>Saved</h2>
+    <button class="back" id="folderBack" hidden aria-label="Back to the notebook">‹</button>
+    <div class="dtitle"><h2 id="dTitle">Notebook</h2><small id="dSub">On this phone</small></div>
     <button id="closeDrawer">Done</button>
   </header>
-  <div class="tabs" id="tabs"><button data-k="point">Points</button><button data-k="line">Lines</button><button data-k="area">Areas</button><button data-k="photo">Photos</button></div>
+  <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
+  <div class="chiprow" id="tabs"></div>
+  <div class="chiprow res" id="resFilter" hidden></div>
   <div class="list" id="list"></div>
   <p class="credit">Grid Ref · Nick Sykes for Natural England</p>
   <p class="backup" id="backup"></p>
@@ -196,18 +199,19 @@
     <div class="btns"><button type="button" id="exCancel">Cancel</button><button type="button" class="primary" id="exGo">Export</button></div>
   </div>
 </div>
+<div class="undo" id="keepBar" hidden><span id="keepText"></span><button type="button" id="keepBtn">Add to notebook</button></div>
 <div class="undo" id="undoBar" hidden><span id="undoText"></span><button type="button" id="undoBtn">Undo</button></div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=83"></script>
-<script src="config.js?v=83"></script>
-<script src="osgb.js?v=83"></script>
-<script src="parse.js?v=83"></script>
-<script src="zip.js?v=83"></script>
-<script src="exif.js?v=83"></script>
-<script src="local.js?v=83"></script>
-<script src="app.js?v=83"></script>
+<script src="vendor/leaflet/leaflet.js?v=86"></script>
+<script src="config.js?v=86"></script>
+<script src="osgb.js?v=86"></script>
+<script src="parse.js?v=86"></script>
+<script src="zip.js?v=86"></script>
+<script src="exif.js?v=86"></script>
+<script src="local.js?v=86"></script>
+<script src="app.js?v=86"></script>
 </body>
 </html>

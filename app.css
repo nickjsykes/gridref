@@ -129,9 +129,35 @@ body.measuring #listBtn, body.navigating #listBtn, body.moving #listBtn { displa
 .drawer h2 { margin: 0; font-size: 19px; }
 .drawer header button, .link { border: 0; background: none; color: var(--green); font: 600 16px var(--sans); padding: 6px 0; }
 .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-.tabs button { border: 0; border-radius: 10px; padding: 8px 2px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
-.tabs button.on { background: var(--green); color: var(--panel); }
+/* notebook header and filters */
+.drawer header { gap: 10px; }
+.dtitle { flex: 1; min-width: 0; }
+.dtitle h2 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dtitle small { display: block; color: var(--muted); font: 12.5px var(--sans); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.drawer header .back { font-size: 30px; line-height: 1; padding: 0 6px 4px 0; }
+.chiprow { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; scrollbar-width: none; flex: none; }
+.chiprow::-webkit-scrollbar { display: none; }
+.chiprow:last-of-type, .chiprow + .chiprow { padding-bottom: 8px; }
+#tabs { padding-bottom: 8px; }
+#tabs:has(+ .chiprow:not([hidden])) { padding-bottom: 0; }
+.chiprow[hidden] { display: none; }
+.chiprow button { flex: none; border: 0; border-radius: 16px; padding: 7px 13px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
+.chiprow button small { font-weight: 500; opacity: .75; margin-left: 2px; }
+.chiprow button.on { background: var(--green); color: var(--panel); }
+.chiprow.res button { background: none; box-shadow: inset 0 0 0 1px var(--line); padding: 5px 11px; font-size: 13px; }
+.chiprow.res button.on { background: var(--ink); color: var(--panel); box-shadow: none; }
+.drawer .list { border-top: 1px solid var(--line); }
+.folderacts { display: flex; gap: 8px; padding: 8px 12px 0; }
+.folderacts[hidden] { display: none; }
+.folderacts button { flex: 1; border: 0; border-radius: 10px; padding: 8px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
+.folderacts .danger { color: var(--danger); }
+/* day headings and folders in the list */
+.day { position: sticky; top: 0; z-index: 1; background: var(--panel); padding: 12px 14px 4px; font: 700 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); }
+.folderrow { cursor: pointer; }
+.folderrow .mk { color: var(--green); width: 34px; }
+.folderrow .chev { font-size: 24px; color: var(--muted); padding: 0 8px; }
+.rtag { display: inline-block; font: 600 11px var(--sans); color: #a83c0c; background: rgba(217, 72, 15, .1); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
+@media (prefers-color-scheme: dark) { .rtag { color: #f2a679; background: rgba(217, 72, 15, .2); } }
 .modal.sheetmenu { align-items: flex-end; padding-bottom: calc(var(--safe-b) + 10px); }
 .sheetmenu .card { gap: 6px; }
 .im-title { display: flex; flex-direction: column; padding: 2px 4px 6px; }
@@ -390,3 +416,7 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 .sheet.compact .actions { margin: 2px 0 0; }
 .sheet.compact .actions button { padding: 7px 8px; font-size: 14px; }
 .sheet.compact .actions svg { width: 18px; height: 18px; }
+#keepBar span { font-weight: 500; }
+/* left: 50% halves the room a shrink-to-fit bar gets; size these to their content instead */
+.undo { width: max-content; }
+.undo span { min-width: 0; }
