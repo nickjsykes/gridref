@@ -13,7 +13,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=37">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=39">
 <style>
   :root {
     --green: #2f5d3a;
@@ -419,6 +419,7 @@
     <button type="button" id="imShow">Show on map</button>
     <button type="button" id="imNav">Navigate here</button>
     <button type="button" id="imCopy">Copy grid ref</button>
+    <button type="button" id="imShare">Share grid ref</button>
     <button type="button" id="imDel" class="danger">Delete</button>
     <button type="button" id="imCancel" class="cancel">Cancel</button>
   </div>
@@ -432,11 +433,11 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=37"></script>
-<script src="config.js?v=37"></script>
-<script src="osgb.js?v=37"></script>
-<script src="parse.js?v=37"></script>
-<script src="local.js?v=37"></script>
+<script src="vendor/leaflet/leaflet.js?v=39"></script>
+<script src="config.js?v=39"></script>
+<script src="osgb.js?v=39"></script>
+<script src="parse.js?v=39"></script>
+<script src="local.js?v=39"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -455,7 +456,7 @@
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
-  let current = LAYERS[store.get("layer", "topo")] ? store.get("layer", "topo") : "topo"; // Topo by default
+  let current = "topo"; // every launch starts on Topo; a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   function setBase(k) {
     if (k === current) return;
@@ -485,17 +486,16 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "37"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "39"; // bump with each release so a phone can show which copy it's running
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
   map.createPane("shade").style.zIndex = 250;
   const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
     layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
-  let shadeOn = store.get("shade", (store.get("overlays", []) || []).includes("lidar"));
+  let shadeOn = false; // off at every launch
   function setShade(on) {
     shadeOn = on;
-    store.set("shade", on);
     if (on) lidarShade.addTo(map); else map.removeLayer(lidarShade);
   }
   function drawLayerMenu() {
@@ -610,7 +610,7 @@
   // ---------- readout ----------
   // 6 or 8 figures only: phone GPS (~5 m in the open, worse under trees) plus the ~3-5 m
   // datum shift can't support a 10-figure (1 m) ref. 10-figure refs can still be searched.
-  let digits = store.get("digits", 8) === 6 ? 6 : 8;
+  let digits = 8; // 8-figure at every launch
   let here = null; // { lat, lon, acc }
   function setPrec(d) {
     digits = d;
@@ -838,7 +838,7 @@
     };
   }
   function shareText(p) {
-    const lines = [`Grid ref: ${p.ref}`, `E/N: ${p.en}`, `Lat/long: ${p.ll}`];
+    const lines = [`Grid ref: ${p.ref}`, `Lat/long: ${p.ll}`];
     if (w3w.words && w3w.at === spot(p)) lines.push(`what3words: ///${w3w.words}`);
     lines.push(`https://maps.apple.com/?ll=${p.lat.toFixed(6)},${p.lon.toFixed(6)}&q=${encodeURIComponent(p.ref)}`);
     return lines.join("\n");
@@ -1063,6 +1063,14 @@
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
   $("imCopy").onclick = () => { const c = centreOf(menuPt); copy(OSGB.gridRef(c.e, c.n, digits)); closeMenu(); };
+  $("imShare").onclick = async () => {
+    const pt = menuPt, c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
+    const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
+    const text = [`${pt.name}${what}`, `Grid ref: ${ref}`, `Lat/long: ${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}`, pt.notes || "",
+      `https://maps.apple.com/?ll=${c.lat.toFixed(6)},${c.lon.toFixed(6)}&q=${encodeURIComponent(pt.name)}`].filter(Boolean).join("\n");
+    closeMenu();
+    if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
+  };
   $("imDel").onclick = () => {
     if (!confirm(`Delete “${menuPt.name}”?`)) return;
     fresh();
@@ -1764,7 +1772,7 @@
     const otherBrowser = /CriOS|EdgiOS|FxiOS|OPiOS|GSA\//.test(navigator.userAgent);
     $("instText").textContent = otherBrowser
       ? "Open this page in Safari to install it. Offline maps and your saved points need the Safari version."
-      : "Tap the Share button, then “Add to Home Screen”. Always open it from that icon: it works offline and keeps your saved points.";
+      : "Tap ••• next to the web address, then Share, then “Add to Home Screen”. Open it from that icon from then on.";
     $("install").hidden = false;
     $("instClose").onclick = () => { $("install").hidden = true; store.set("instSnooze", Date.now()); };
   })();
