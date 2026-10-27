@@ -68,7 +68,9 @@ body.measuring .fabs.left, body.navigating .fabs.left, body.moving .fabs.left { 
 /* GPS accuracy, always in view once GPS is on: green good, amber so-so, red poor */
 .acc { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); font: 700 11px var(--sans); color: #fff; background: #1f8a4c; padding: 1px 6px; border-radius: 9px; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
 .acc.mid { background: #c98a00; }
-.acc.poor { background: #c0392b; }
+.acc.poor { background: #c0392b; animation: accflash 1s ease-in-out infinite; }
+@keyframes accflash { 50% { background: #ff6b5a; transform: translateX(-50%) scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .acc.poor { animation: none; } }
 body.large .acc { font-size: 13px; }
 
 /* bottom sheet */
@@ -348,11 +350,15 @@ body.large .results button .gr { font-size: 23px; }
 .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
 .layers { position: fixed; z-index: 1001; right: 76px; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
 .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
-.layers button.tick { border-top: 1px solid var(--line); }
+.lidarrow { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-right: 12px; }
+.layers .lidarrow button.tick { width: auto; border: 0; flex: none; }
+.lidarrow input { flex: 1; min-width: 90px; accent-color: var(--green); }
+.lidarrow span { font: 600 13px var(--sans); color: var(--muted); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
+body.large .lidarrow span { font-size: 16px; }
 /* LiDAR ground detail: grey tiles blended onto whatever map is below (mid-grey = no change,
    darker = a dip, lighter = a rise). Hard light, because soft light barely touches a pale map.
    The blend sits on the pane, so it reaches the map tiles. */
-.leaflet-shade-pane { mix-blend-mode: hard-light; opacity: .65; }
+.leaflet-shade-pane { mix-blend-mode: hard-light; } /* strength (opacity) comes from the slider */
 .lidar { filter: brightness(.72) contrast(1.35); } /* the EA's shading is pale: bring flat ground to mid-grey (no change) */
 .layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; }
 .layers button.on { color: var(--green); font-weight: 700; }

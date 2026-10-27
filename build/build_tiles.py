@@ -147,11 +147,11 @@ def render_relief(z, x, y):
     if not hit:
         return None
     # Grey 128 = no change; darker = the ground dips, lighter = it rises. The app blends it
-    # onto whatever map is showing (soft light), so one small grey tile works over all of them
+    # onto whatever map is showing (hard light, strength set by the slider), so one small grey tile works over all of them
     d = fac[0] - 1
     if np.abs(d).max() < 0.03:
         return None
-    return Image.fromarray(np.clip(128 + d * 255 * 1.6, 0, 255).astype(np.uint8), "L")
+    return Image.fromarray(np.clip(128 + d * 255 * 1.8, 0, 255).astype(np.uint8), "L")
 
 def main():
     gj = json.loads((ROOT / "data" / "nnr.geojson").read_text("utf-8"))

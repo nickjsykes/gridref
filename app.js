@@ -67,12 +67,15 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "121"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "122"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
-  map.createPane("shade").style.zIndex = 250;
+  const shadePane = map.createPane("shade");
+  shadePane.style.zIndex = 250;
+  let shadePct = store.get("lidarPct", 65); // the slider: how strongly the LiDAR shows through
+  shadePane.style.opacity = shadePct / 100;
   const lidarShade = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-terrain-model-dtm-1m/wms", {
     layers: "Lidar_Composite_Hillshade_DTM_1m", format: "image/png", transparent: true, opacity: 0.55, crossOrigin: true, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
   // Round the team's reserves the ground detail is our own, sharper relief (walls, banks,
@@ -108,11 +111,31 @@
       };
       layersEl.appendChild(b);
     }
+    // LiDAR: a tick to show it, and a slider for how strongly (moving it turns it on)
+    const row = document.createElement("div");
+    row.className = "lidarrow";
     const sh = document.createElement("button");
-    sh.textContent = (shadeOn ? "☑ " : "☐ ") + "LiDAR ground detail";
+    sh.textContent = (shadeOn ? "☑ " : "☐ ") + "LiDAR";
     sh.className = "tick" + (shadeOn ? " on" : "");
     sh.onclick = () => { setShade(!shadeOn); drawLayerMenu(); placeLayerMenu(); };
-    layersEl.appendChild(sh);
+    const sl = document.createElement("input");
+    sl.type = "range";
+    sl.min = 0;
+    sl.max = 100;
+    sl.step = 5;
+    sl.value = shadePct;
+    sl.setAttribute("aria-label", "LiDAR strength");
+    const pct = document.createElement("span");
+    pct.textContent = shadePct + "%";
+    sl.oninput = () => {
+      shadePct = +sl.value;
+      shadePane.style.opacity = shadePct / 100;
+      pct.textContent = shadePct + "%";
+      if (!shadeOn) { setShade(true); sh.textContent = "☑ LiDAR"; sh.classList.add("on"); }
+    };
+    sl.onchange = () => store.set("lidarPct", shadePct);
+    row.append(sh, sl, pct);
+    layersEl.appendChild(row);
     if (pack.state === "failed") {
       const off = document.createElement("button");
       off.textContent = "Offline maps paused: tap to retry";
@@ -492,7 +515,7 @@
     if (shade.length) {
       ctx.save();
       ctx.globalCompositeOperation = "hard-light";
-      ctx.globalAlpha = 0.65;
+      ctx.globalAlpha = shadePct / 100;
       for (const img of shade) { ctx.filter = img.classList.contains("lidar") ? "brightness(.72) contrast(1.35)" : "none"; put(img); }
       ctx.restore();
     }

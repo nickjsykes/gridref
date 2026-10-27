@@ -70,10 +70,11 @@ def relief(dtm, valid):
     # Shape of the land: four light directions averaged, so no side is lost in shadow
     hs = np.mean([hillshade(z, az) for az in (315, 45, 135, 225)], axis=0)
     hs = (hs - np.median(hs)) / (np.percentile(hs, 98) - np.percentile(hs, 2) + 1e-6)
-    # The small stuff: ground minus a 15 m-smoothed copy of itself
-    lrm = z - gaussian_filter(z, 15)
-    lrm = np.clip(lrm / 0.6, -1, 1)  # ±60 cm is "a lot" for a wall or a drain
-    f = 1 + 0.22 * np.clip(hs, -1, 1) + 0.28 * lrm
+    # The small stuff: ground minus a smoothed copy of itself, at two sizes: 15 m for banks,
+    # tracks and wide ditches, 4 m for tumbled walls, grips and drains. Most of these are only
+    # 10-30 cm high, so they're stretched hard (tanh keeps the big ones from going solid)
+    lrm = 0.6 * (z - gaussian_filter(z, 15)) / 0.3 + 0.4 * (z - gaussian_filter(z, 5)) / 0.15
+    f = 1 + 0.12 * np.clip(hs, -1, 1) + 0.33 * np.tanh(lrm)
     # Fade out over the outer edge, and wherever there's no LiDAR (sea, gaps)
     dist = distance_transform_edt(valid)
     edge = np.ones_like(dist)

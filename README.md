@@ -8,7 +8,7 @@ A pocket map and notebook for rangers, built for the Natural England South Cumbr
 - **Share**: grid ref, lat/long, E/N, Apple/Google Maps links, name and notes, and a picture of the current map. Photos are stamped with the location, date, reserve and your own line.
 - **Navigate** to anything with a compass arrow, distance and bearing; arriving turns the panel green with a buzz and a chime.
 - **Reserve chips** jump to each reserve and show a card: weather, sunset, official tides (ADMIRALTY, daily via `.github/workflows/tides.yml`) and your notes there.
-- **Maps**: OS Outdoor (OS Maps API, OpenData), aerial, and an offline OS map for the seven reserves; "LiDAR ground detail" adds a 1 m relief layer (offline near the reserves, EA shading elsewhere).
+- **Maps**: OS Outdoor (OS Maps API, OpenData), aerial, and an offline OS map for the seven reserves; the LiDAR tick adds a 1 m relief layer with a strength slider (offline near the reserves, EA shading elsewhere).
 - **Big text** (Aa): bigger, high contrast, nothing taken away.
 
 Offline data: download OS Open Names and Code-Point Open (CSV) into `build/src/` as `opname.zip` and `codepo.zip`, then `python build/build_offline.py`. Contains OS data © Crown copyright and database right 2026 (Open Government Licence v3.0).
@@ -21,7 +21,7 @@ Static files only, no build step: `index.html` (layout), `app.css` (styles, ligh
 
 ## Offline maps and reserve boundaries
 
-- **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the seven reserves in `PACK` in `build/build_tiles.py`, zoom 11-17, plus the LiDAR relief layer (`maps/relief`, from `build/build_relief.py`), about 19 MB. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
+- **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the seven reserves in `PACK` in `build/build_tiles.py`, zoom 11-17, plus the LiDAR relief layer (`maps/relief`, from `build/build_relief.py`), about 28 MB. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
   Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
 - **NNR boundaries**: live from Natural England's National Nature Reserves (England) feature service every time the app has signal; `data/nnr.geojson` is the copy shipped for first use offline (refresh it with the query URL in `index.html`, `NNR_LIVE`).
 - **Other build scripts**: `build_ostn15.py` (OSTN15 table), `fetch_tides.py` (tides, run by the workflow), `draw_icon.py` (home-screen icon), `draw_art.py` (empty-notebook contour texture).
