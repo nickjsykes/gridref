@@ -67,8 +67,19 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "132"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "133"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
+  // On patchy signal a phone can pair an old saved page with this newer code, and the code then
+  // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
+  // the page isn't this build's, fetch both fresh, once; offline, carry on as best we can.
+  try {
+    const m = (document.querySelector('script[src*="app.js"]')?.getAttribute("src") || "").match(/v=(\d+)/);
+    if (m && m[1] !== VERSION && sessionStorage.getItem("gridref.pagefix") !== VERSION) {
+      sessionStorage.setItem("gridref.pagefix", VERSION);
+      location.replace(location.pathname + "?v=" + VERSION);
+      return;
+    }
+  } catch {}
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
   // showing. Its own pane sits above the maps, so switching map never covers it.
@@ -807,7 +818,7 @@
     closeDrawer();
     openSave(pt, pt);
   }
-  $("ptThumb").onclick = () => { const pt = editing; if (pt) { closeSave(); viewPhoto(pt); } };
+  if ($("ptThumb")) $("ptThumb").onclick = () => { const pt = editing; if (pt) { closeSave(); viewPhoto(pt); } };
   function openSave(geom, edit) {
     fresh();
     $("keepBar").hidden = true;
@@ -829,7 +840,7 @@
     if (editing) pick = { colour: editing.colour || "orange", shape: editing.shape || "circle" };
     $("ptMoveRow").hidden = !editing;
     $("ptReshape").hidden = !(editing && editing.pts);
-    const th = $("ptThumb");
+    const th = $("ptThumb") || document.createElement("img");
     if (th.src.startsWith("blob:")) URL.revokeObjectURL(th.src);
     th.removeAttribute("src");
     th.hidden = geom.kind !== "photo";
@@ -2216,9 +2227,8 @@
     photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
       name: autoName("photo", where.lat, where.lon, when) };
     $("photoSave").hidden = false;
-    $("photoName").hidden = false;
-    $("photoName").value = "";
-    $("photoName").placeholder = "Name: " + photoNew.name;
+    const pn = $("photoName");
+    if (pn) { pn.hidden = false; pn.value = ""; pn.placeholder = "Name: " + photoNew.name; }
     drawStampOpts();
     await restamp();
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
@@ -2246,7 +2256,7 @@
     lineTimer = setTimeout(restamp, 300);
   });
   $("stampLine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("stampLine").blur(); });
-  $("photoName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("photoName").blur(); });
+  $("photoName")?.addEventListener("keydown", (e) => { if (e.key === "Enter") $("photoName").blur(); });
   $("stampOpts").onclick = async (e) => {
     const b = e.target.closest("button");
     if (!b || !stampJob) return;
@@ -2298,7 +2308,7 @@
     fresh();
     // Named on this screen; left blank it keeps the automatic name (with the photo's own time).
     // The Add notes line only goes on the picture, never the name
-    const name = $("photoName").value.trim() || photoNew.name;
+    const name = ($("photoName")?.value || "").trim() || photoNew.name;
     points.unshift({ kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, name, at: new Date().toISOString() });
     persist();
     closePhoto();
@@ -2313,7 +2323,7 @@
     stampJob = null;
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
-    $("photoName").hidden = true;
+    if ($("photoName")) $("photoName").hidden = true;
     $("photoSave").hidden = true;
     $("photoOut").src = URL.createObjectURL(blob);
     $("photoModal").hidden = false;
