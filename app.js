@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "129"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "130"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -799,10 +799,10 @@
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
-  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
+  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; newPhoto = false; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
   $("ptCancel").onclick = () => { const was = editing; closeSave(); if (was) showOnMap(was); };
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
-  let editing = null;
+  let editing = null, newPhoto = false; // newPhoto: naming a photo just taken (already saved)
   function editSaved(pt) {
     closeDrawer();
     openSave(pt, pt);
@@ -863,8 +863,9 @@
     if (editing) {
       const i = points.findIndex((q) => q.at === editing.at && q.name === editing.name);
       if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(points[i].kind ? {} : { shape: pick.shape }) };
+      const was = newPhoto;
       closeSave();
-      if (savePoints()) toast("✓ Updated " + name);
+      if (savePoints()) toast((was ? "✓ Saved " : "✓ Updated ") + name);
       if (i >= 0) showOnMap(points[i]); // finish on the thing you just edited (Edit can start from the notebook)
       return;
     }
@@ -2252,6 +2253,8 @@
     // automatic name. The Add notes line only goes on the picture, never the name.
     openSave(pt, pt);
     $("ptName").value = "";
+    $("ptName").placeholder = pt.name; // its own time (a camera-roll photo's, not now)
+    newPhoto = true;
   };
   async function viewPhoto(pt) {
     let blob;

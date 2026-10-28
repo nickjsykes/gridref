@@ -347,7 +347,7 @@ body.large .results button .gr { font-size: 23px; }
 .leaflet-control-attribution a { color: inherit; }
 .leaflet-bottom { bottom: var(--sheet-h, 230px); }
 .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
-.layers { position: fixed; z-index: 1001; right: 76px; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
+.layers { position: fixed; z-index: 1001; right: 76px; max-width: calc(100vw - 84px); box-sizing: border-box; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
 .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
 .lidarrow { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-right: 12px; }
 .layers .lidarrow button.tick { width: auto; border: 0; flex: none; }
@@ -359,7 +359,7 @@ body.large .lidarrow span { font-size: 16px; }
    The blend sits on the pane, so it reaches the map tiles. */
 .leaflet-shade-pane { mix-blend-mode: hard-light; } /* strength (opacity) comes from the slider */
 .lidar { filter: brightness(.72) contrast(1.35); } /* the EA's shading is pale: bring flat ground to mid-grey (no change) */
-.layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; }
+.layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; white-space: normal; } /* wraps rather than widening the menu off a small screen */
 .layers button.on { color: var(--green); font-weight: 700; }
 
 /* reserve chips: one tap to each of the team's reserves */
