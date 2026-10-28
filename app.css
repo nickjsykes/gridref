@@ -555,3 +555,11 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* Launch glide: reserve outlines, labels and pins wait for the map to settle, then fade in */
 #map .leaflet-overlay-pane, #map .leaflet-marker-pane, #map .leaflet-shadow-pane { transition: opacity .5s; }
 #map.gliding .leaflet-overlay-pane, #map.gliding .leaflet-marker-pane, #map.gliding .leaflet-shadow-pane { opacity: 0; }
+
+/* tides, from typing "tide" in search */
+.results button.tiderow .t { display: block; font-weight: 700; }
+.results button.tiderow .tl, .results button.tiderow .tdays { margin-top: 5px; font-size: 14px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+.results button.tiderow .tdays div { display: grid; grid-template-columns: 5.4em 1fr; }
+.results button.tiderow .tdays div + div { margin-top: 3px; }
+.results button.tiderow .tdays span:first-child { font-weight: 700; }
+.results button.tiderow [hidden] { display: none; }

@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "149"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "150"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1498,6 +1498,64 @@
     const body = "What happened (and what you expected):\n\n\n\n---\n" + details.join("\n");
     location.href = `mailto:${to}?subject=${encodeURIComponent(`Field Notes bug (build ${VERSION})`)}&body=${encodeURIComponent(body)}`;
   }
+  // ---------- tides: type "tide" in the search box ----------
+  // Official tide times (ADMIRALTY, metres above chart datum like the tide tables), fetched
+  // daily by a GitHub job into data/tides.json. A copy is kept so they work offline for a week.
+  // Nothing on screen unless asked for. Each station shows the run of tides up to its second
+  // high; tap it for the next four days. Big tide (top of the spring range) in bold.
+  const TIDE_STATIONS = [["1006114", "Walney and Duddon"], ["1006126", "Roudsea and the Leven"]];
+  const TIDE_BIG = { "Duddon Bar": 8.4, "Ulverston": 9.3 };
+  let tides = store.get("tides", null);
+  const loadTides = () => fetch("data/tides.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null))
+    .then((j) => { if (j && j.reserves) { tides = j; store.set("tides", j); } }).catch(() => {});
+  const tTime = (at) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  function dayWord(at) {
+    const d = new Date(at), t = new Date();
+    if (d.toDateString() === t.toDateString()) return "today";
+    if (d.toDateString() === new Date(t.getTime() + 86400000).toDateString()) return "tomorrow";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
+  }
+  const cap = (w) => w[0].toUpperCase() + w.slice(1);
+  function tideEvent(e, big, tag = "") {
+    const txt = `${tag}${e.high ? "High" : "Low"} ${tTime(e.at)}${e.high ? ` (${e.m.toFixed(1)} m)` : ""}`;
+    return e.high && e.m >= big ? `<b>${esc(txt)}</b>` : esc(txt);
+  }
+  async function showTides() {
+    if (!tides) await loadTides();
+    else loadTides();
+    resultsEl.innerHTML = "";
+    const now = Date.now();
+    for (const [code, where] of TIDE_STATIONS) {
+      const st = tides && tides.reserves && tides.reserves[code];
+      const next = st ? st.events.filter((e) => Date.parse(e.at) > now) : [];
+      if (!next.length) continue;
+      const big = TIDE_BIG[st.station] ?? 99;
+      // up to and including the second high, with the day named where it changes
+      const run = [];
+      for (const e of next) { run.push(e); if (run.filter((x) => x.high).length === 2) break; }
+      let day = "today";
+      const line = run.map((e) => { const d = dayWord(e.at), tag = d !== day ? cap(d) + ": " : ""; day = d; return tideEvent(e, big, tag); }).join(", ");
+      // the next four days, a line each
+      const days = new Map();
+      for (const e of next) {
+        const d = dayWord(e.at);
+        if (days.size === 4 && !days.has(d)) break;
+        (days.get(d) || days.set(d, []).get(d)).push(e);
+      }
+      const table = [...days].map(([d, evs]) => `<div><span>${esc(cap(d))}</span><span class="ev">${evs.map((e) => tideEvent(e, big)).join(", ")}</span></div>`).join("");
+      const b = document.createElement("button");
+      b.className = "tiderow";
+      b.innerHTML = `<span class="tag">Tides</span><span class="t">${esc(st.station)}</span><small>${esc(where)}</small>
+        <div class="tl">${line}</div><div class="tdays" hidden>${table}</div>`;
+      b.onclick = () => { const t = b.querySelector(".tdays"); t.hidden = !t.hidden; b.querySelector(".tl").hidden = !t.hidden; };
+      resultsEl.appendChild(b);
+    }
+    const m = document.createElement("div");
+    m.className = "msg";
+    m.textContent = resultsEl.children.length ? "Tap a station for the next four days. Metres above chart datum; bold is a big tide. © UKHO" : "No tide times on this phone yet: try again with signal";
+    resultsEl.appendChild(m);
+    resultsEl.style.display = "block";
+  }
   // Recent searches: the last 12 places you went to from the search box
   const HISTORY_MAX = 12;
   function remember(it) {
@@ -1633,6 +1691,7 @@
     text = text.trim();
     if (!text) return showResults([]);
     // Tucked away on purpose: only the exact word "nick" offers it
+    if (/^(high |low )?tides?( times?| tables?)?$/i.test(text)) return showTides();
     if (text.toLowerCase() === "nick") return showResults([{ title: "Report bug to Nick…", sub: "Opens an email with this phone's details filled in", feedback: true }]);
     const readings = GridSearch.parse(text);
     // A whole message pasted in: look for a grid ref, lat/long, plus code, postcode or
