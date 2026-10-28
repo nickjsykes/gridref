@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "147"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "148"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2074,201 +2074,9 @@
     }
   }
   map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); drawResLabels(); });
-  // ---------- reserve card: tap a reserve chip for weather, tides and your entries there ----------
-  // Weather and tides come from Open-Meteo (free, no key). Tides are its sea-level model at the
-  // estuary mouth: good for "when's high water", not a substitute for the Admiralty tables.
-  // The card stays until you move the map, tap ×, or open something else.
-  const TIDAL = { "1006114": [54.13, -3.29], "1006954": [54.18, -3.27], "1006126": [54.15, -3.06] }; // Walney, Duddon, Roudsea (Leven)
-  const WX = [[0, "Clear"], [1, "Mostly clear"], [2, "Partly cloudy"], [3, "Overcast"], [45, "Fog"], [51, "Drizzle"], [61, "Rain"], [66, "Freezing rain"],
-    [71, "Snow"], [80, "Showers"], [85, "Snow showers"], [95, "Thunder"]];
-  const wxWord = (c) => (WX.filter(([k]) => c >= k).pop() || [0, ""])[1];
-  const cardCache = new Map();
-  const hhmm = (s) => s.slice(11, 16);
-  async function reserveConditions(code, c) {
-    const hit = cardCache.get(code);
-    if (hit && Date.now() - hit.at < 30 * 60000) return hit;
-    const tz = "&timezone=Europe%2FLondon";
-    const [w, t] = await Promise.all([
-      getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat.toFixed(3)}&longitude=${c.lng.toFixed(3)}&current=temperature_2m,weather_code,precipitation,wind_speed_10m,wind_direction_10m,wind_gusts_10m&hourly=precipitation_probability&daily=sunset&forecast_hours=8&wind_speed_unit=mph&forecast_days=1${tz}`),
-      TIDAL[code] ? getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${TIDAL[code][0]}&longitude=${TIDAL[code][1]}&minutely_15=sea_level_height_msl&forecast_days=2${tz}`).catch(() => null) : null,
-    ]);
-    const cur = w.current, now = cur.time;
-    // Sky: temperature and cloud, then rain only if it's raining or coming in the next few hours
-    let sky = `${Math.round(cur.temperature_2m)}°, ${wxWord(cur.weather_code).toLowerCase()}`;
-    const hours = (w.hourly && w.hourly.time) || [];
-    const wet = hours.findIndex((h, i) => h >= now.slice(0, 13) && w.hourly.precipitation_probability[i] >= 50);
-    if (cur.precipitation > 0.1) sky += ", raining";
-    else if (wet >= 0) sky += hours[wet].slice(0, 13) <= now.slice(0, 13) ? ", rain likely" : `, rain likely from ${hhmm(hours[wet])}`;
-    const sunset = w.daily.sunset[0];
-    const light = `Sunset ${hhmm(sunset)}`;
-    // Wind only when it matters: gusts that make trees, ladders, boats or the estuary risky
-    const g = Math.round(cur.wind_gusts_10m), dir = POINT_NAMES[Math.round(cur.wind_direction_10m / 45) % 8].toLowerCase();
-    const wind = g >= 35 || cur.wind_speed_10m >= 25 ? `gusts to ${g} mph from the ${dir}` : "";
-    // Tide: which way it's going and when it turns. Heights here are the model's, not the tide
-    // tables' (chart datum), so they're turned into big/small tide rather than shown as metres.
-    let tide = "";
-    if (t && t.minutely_15) {
-      const ts = t.minutely_15.time, v = t.minutely_15.sea_level_height_msl;
-      for (let i = 1; i < v.length - 1; i++) {
-        if (ts[i] < now || v[i] == null || v[i - 1] == null || v[i + 1] == null) continue;
-        const high = v[i] >= v[i - 1] && v[i] > v[i + 1], low = v[i] <= v[i - 1] && v[i] < v[i + 1];
-        if (!high && !low) continue;
-        const when = `${ts[i].slice(0, 10) === now.slice(0, 10) ? "" : "tomorrow "}${hhmm(ts[i])}`;
-        tide = high ? `Tide coming in · high at ${when}${v[i] >= 3.7 ? ", big tide" : v[i] <= 1.9 ? ", small tide" : ""}` : `Tide going out · low at ${when}`;
-        break;
-      }
-    }
-    const out = { at: Date.now(), sky: `${sky} · ${light}`, wind, tide };
-    cardCache.set(code, out);
-    return out;
-  }
-  // Official tides (ADMIRALTY, heights above chart datum like the tide tables), fetched daily
-  // by a GitHub job into data/tides.json; a copy is kept so they work offline for a week
-  let tides = store.get("tides", null);
-  fetch("data/tides.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.reserves) { tides = j; store.set("tides", j); } }).catch(() => {});
-  // Big tide: the top of each station's spring range (Duddon Bar 6.7 m neaps to 8.7 m
-  // springs; Ulverston 7.4 to 9.7 m, Oct 2026). Sands and saltmarsh flood furthest and fastest.
-  const TIDE_BIG = { "Duddon Bar": 8.4, "Ulverston": 9.3 };
-  const tTime = (at) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
-  function dayWord(at) {
-    const d = new Date(at), t = new Date();
-    if (d.toDateString() === t.toDateString()) return "today";
-    if (d.toDateString() === new Date(t.getTime() + 86400000).toDateString()) return "tomorrow";
-    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
-  }
-  function tideInfo(code) {
-    const st = tides && tides.reserves && tides.reserves[code];
-    if (!st || !st.events) return null;
-    const now = Date.now(), next = st.events.filter((e) => Date.parse(e.at) > now);
-    if (!next.length) return null;
-    return { station: st.station, next, lows: st.events.some((e) => !e.high), big: (e) => e.high && e.m >= (TIDE_BIG[st.station] ?? 99) };
-  }
-  // The tides from now up to the second high water: "High 00:30 (8.7 m), Low 06:40,
-  // High 12:51 (8.5 m)", so late in the evening it also says what the working day brings.
-  // Heights on the highs only; a big tide in bold. A day name where the day changes.
-  function officialTide(code) {
-    const t = tideInfo(code);
-    if (!t) return "";
-    const run = [];
-    let highs = 0;
-    for (const e of t.next) { run.push(e); if (e.high && ++highs === 2) break; }
-    let day = "today";
-    return run.map((e) => {
-      const d = dayWord(e.at), tag = d !== day ? `${d[0].toUpperCase() + d.slice(1)}: ` : "";
-      day = d;
-      const txt = `${tag}${e.high ? "High" : "Low"} ${tTime(e.at)}${e.high ? ` (${e.m.toFixed(1)} m)` : ""}`;
-      return t.big(e) ? `<b>${esc(txt)}</b>` : esc(txt);
-    }).join(", ");
-  }
-  // Tap the tide line: the tide table for today and the next three days
-  function tideTable(code) {
-    const t = tideInfo(code);
-    if (!t) return "";
-    const days = new Map();
-    for (const e of t.next) {
-      if (Date.parse(e.at) - Date.now() > 4 * 86400000) break;
-      const d = dayWord(e.at);
-      if (days.size === 4 && !days.has(d)) break;
-      (days.get(d) || days.set(d, []).get(d)).push(e);
-    }
-    const cell = (e) => `<span class="${t.big(e) ? "tbig" : ""}">${tTime(e.at)} <small>${e.m.toFixed(1)}</small></span>`;
-    let html = `<div class="tt-head"><span></span><b>High</b>${t.lows ? "<b>Low</b>" : ""}</div>`;
-    for (const [d, evs] of days) {
-      html += `<div class="tt-row"><span class="tt-day">${esc(d[0].toUpperCase() + d.slice(1))}</span><span>${evs.filter((e) => e.high).map(cell).join("")}</span>${t.lows ? `<span>${evs.filter((e) => !e.high).map(cell).join("")}</span>` : ""}</div>`;
-    }
-    return html + `<div class="tt-foot">${esc(t.station)}, metres above chart datum. <b>Bold</b> = big tide. © UKHO</div>`;
-  }
-  // ---------- launch: a safety card, only when there's something ----------
-  // Nothing on an ordinary day. Otherwise up to three facts, worst first, for the working
-  // day ahead (06:00 to 19:00, next 24 h): thunder, gales, a big tide in daylight, frost,
-  // fog, heat. Facts only, no advice: the team know their ground. Gone at a touch.
-  let todayEl = null;
-  function closeToday() { if (todayEl) { todayEl.remove(); todayEl = null; } }
-  async function todayAlerts() {
-    const out = [];
-    const when = (iso, nowIso) => iso.slice(0, 10) !== nowIso.slice(0, 10) ? `tomorrow from ${hhmm(iso)}` : iso.slice(0, 13) <= nowIso.slice(0, 13) ? "now" : `from ${hhmm(iso)}`;
-    try {
-      const w = await getJSON("https://api.open-meteo.com/v1/forecast?latitude=54.25&longitude=-3.10&current=weather_code&hourly=temperature_2m,weather_code,wind_gusts_10m&forecast_days=2&wind_speed_unit=mph&timezone=Europe%2FLondon");
-      const now = w.current.time, h = w.hourly, end = new Date(Date.parse(now) + 24 * 3600000).toISOString().slice(0, 13);
-      const hrs = h.time.map((t, i) => i).filter((i) => h.time[i].slice(0, 13) >= now.slice(0, 13) && h.time[i].slice(0, 13) <= end && +h.time[i].slice(11, 13) >= 6 && +h.time[i].slice(11, 13) <= 19);
-      const first = (test) => hrs.find(test);
-      let i = first((k) => h.weather_code[k] >= 95);
-      if (i != null) out.push(`Thunder forecast ${when(h.time[i], now)}`);
-      i = first((k) => h.wind_gusts_10m[k] >= 45);
-      if (i != null) out.push(`Gusts to ${Math.round(Math.max(...hrs.map((k) => h.wind_gusts_10m[k])))} mph ${when(h.time[i], now)}`);
-      var wx = { h, hrs, now };
-    } catch {}
-    // Big tide in working hours: the nearest one across the stations
-    const big = [];
-    for (const code of ["1006114", "1006126"]) {
-      const t = tideInfo(code);
-      if (!t) continue;
-      const e = t.next.find((x) => t.big(x) && Date.parse(x.at) - Date.now() < 24 * 3600000 && new Date(x.at).getHours() >= 6 && new Date(x.at).getHours() <= 19);
-      if (e) big.push({ e, station: t.station });
-    }
-    big.sort((a, b) => Date.parse(a.e.at) - Date.parse(b.e.at));
-    if (big[0]) { const { e, station } = big[0], d = dayWord(e.at); out.push(`Big tide ${d === "today" ? "" : d + " "}${tTime(e.at)} · ${e.m.toFixed(1)} m ${station.replace(" Bar", "")}`); }
-    if (wx) {
-      const { h, hrs, now } = wx;
-      let i = hrs.find((k) => h.temperature_2m[k] <= 0);
-      if (i != null) out.push(`Frost ${when(h.time[i], now)}, down to ${Math.round(Math.min(...hrs.map((k) => h.temperature_2m[k])))}°`);
-      i = hrs.find((k) => h.weather_code[k] === 45 || h.weather_code[k] === 48);
-      if (i != null) out.push(`Fog ${when(h.time[i], now)}`);
-      const hot = Math.max(...hrs.map((k) => h.temperature_2m[k]));
-      if (hot >= 26) out.push(`Hot: up to ${Math.round(hot)}°`);
-    }
-    return out.slice(0, 3);
-  }
-  async function showToday() {
-    let touched = false;
-    map.getContainer().addEventListener("pointerdown", () => { touched = true; closeToday(); }, { once: true });
-    const lines = await todayAlerts();
-    if (!lines.length || touched || cardFor) return;
-    todayEl = document.createElement("div");
-    todayEl.className = "rescard today";
-    todayEl.innerHTML = '<button type="button" class="rc-x" aria-label="Close">×</button>' + lines.map((l) => `<div class="td-line">${esc(l)}</div>`).join("");
-    todayEl.querySelector(".rc-x").onclick = closeToday;
-    document.body.appendChild(todayEl);
-  }
-  let cardFor = null;
-  function closeResCard() { $("resCard").hidden = true; const was = cardFor; cardFor = null; if (was) drawChips(); }
-  function showResCard(code, f) {
-    closeToday();
-    const name = TEAM.get(code), card = $("resCard");
-    cardFor = code;
-    fresh();
-    const mine = points.filter((p) => { const c = centreOf(p); return reserveShort(L.latLng(c.lat, c.lon)) === name; });
-    card.innerHTML = `<button type="button" class="rc-x" aria-label="Close">×</button>
-      <div class="rc-sky">…</div><div class="rc-tide"></div><div class="rc-wind"></div>
-      <button type="button" class="rc-mine"></button>`;
-    card.querySelector(".rc-mine").textContent = mine.length ? `${mine.length} ${mine.length > 1 ? "notes" : "note"} here ›` : "Nothing in your notebook here yet";
-    card.querySelector(".rc-mine").onclick = () => { if (!mine.length) return; folder = null; resF = name; openDrawer(); };
-    card.querySelector(".rc-x").onclick = closeResCard;
-    const tideEl = card.querySelector(".rc-tide");
-    tideEl.innerHTML = officialTide(code); // straight away, even with no signal
-    if (tideInfo(code)) {
-      tideEl.classList.add("tap");
-      tideEl.onclick = () => {
-        const open = card.querySelector(".rc-tt");
-        if (open) { open.remove(); tideEl.classList.remove("open"); return; }
-        tideEl.classList.add("open");
-        tideEl.insertAdjacentHTML("afterend", `<div class="rc-tt">${tideTable(code)}</div>`);
-      };
-    }
-    card.hidden = false;
-    const c = L.geoJSON(f).getBounds().getCenter();
-    reserveConditions(code, c).then((r) => {
-      if (cardFor !== code) return;
-      card.querySelector(".rc-sky").textContent = r.sky;
-      if (!officialTide(code) && r.tide) card.querySelector(".rc-tide").textContent = `${r.tide} (rough)`;
-      card.querySelector(".rc-wind").innerHTML = r.wind ? `<b>Windy:</b> ${esc(r.wind)}` : "";
-    }).catch(() => {
-      if (cardFor === code) card.querySelector(".rc-sky").textContent = "No signal for weather or tides";
-    });
-    return card.getBoundingClientRect().bottom;
-  }
-  // A chip is lit only while its reserve card is open (it used to remember the last one
-  // tapped, so the app opened with a reserve picked for no reason you could see)
+  // A chip takes you to its reserve, fitted between the chips and the panel. Some have a
+  // hand-picked view instead, for looks (grid ref and zoom).
+  const CHIP_VIEW = { "1006058": { e: 347755, n: 477155, z: 14.4 } }; // Gait Barrows: SD 4775 7715
   function drawChips() {
     const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
@@ -2277,15 +2085,13 @@
       if (!f) continue;
       const b = document.createElement("button");
       b.textContent = name;
-      b.className = code === cardFor ? "on" : "";
       b.onclick = () => {
         following = false;
         $("locBtn").classList.remove("on");
-        const top = showResCard(code, f);
+        const v = CHIP_VIEW[code];
+        if (v) { const ll = OSGB.gridToWgs84(v.e, v.n); return panTo(L.latLng(ll.lat, ll.lon), v.z, false); }
+        const top = $("chips").getBoundingClientRect().bottom;
         map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [20, top + 8], paddingBottomRight: [64, sheet.offsetHeight + 12], maxZoom: 16, animate: false });
-        drawChips();
-        // the card goes once you move the map yourself
-        setTimeout(() => map.once("movestart", () => { if (cardFor === code) closeResCard(); }), 0);
       };
       $("chips").appendChild(b);
     }
@@ -2804,12 +2610,12 @@
     layout();
     const pad = { paddingTopLeft: [52, 136], paddingBottomRight: [52, sheet.offsetHeight + 24] };
     if (launchQ) return map.fitBounds(RESERVES, { ...pad, animate: false });
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { map.fitBounds(RESERVES, { ...pad, animate: false }); return showToday(); }
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return map.fitBounds(RESERVES, { ...pad, animate: false });
     map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
     // Reserve outlines and pins stay hidden until the map settles, then fade in
     const box = map.getContainer();
     box.classList.add("gliding");
-    const settle = () => { box.classList.remove("gliding"); showToday(); };
+    const settle = () => box.classList.remove("gliding");
     setTimeout(() => box.classList.remove("gliding"), 7000); // never left hidden
     let touched = false;
     box.addEventListener("pointerdown", () => { touched = true; box.classList.remove("gliding"); }, { once: true });
