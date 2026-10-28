@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "127"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "128"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -807,6 +807,7 @@
     closeDrawer();
     openSave(pt, pt);
   }
+  $("ptThumb").onclick = () => { const pt = editing; if (pt) { closeSave(); viewPhoto(pt); } };
   function openSave(geom, edit) {
     fresh();
     $("keepBar").hidden = true;
@@ -828,6 +829,11 @@
     if (editing) pick = { colour: editing.colour || "orange", shape: editing.shape || "circle" };
     $("ptMoveRow").hidden = !editing;
     $("ptReshape").hidden = !(editing && editing.pts);
+    const th = $("ptThumb");
+    if (th.src.startsWith("blob:")) URL.revokeObjectURL(th.src);
+    th.removeAttribute("src");
+    th.hidden = geom.kind !== "photo";
+    if (geom.kind === "photo") photoDB.get(geom.photoId).then((b) => { if (b && saving === geom) th.src = URL.createObjectURL(b); }).catch(() => {});
     drawPickers();
     $("saveModal").hidden = false;
     setTimeout(() => $("ptName").focus(), 50);
@@ -2236,11 +2242,15 @@
     const id = "ph" + Date.now();
     try { await photoDB.put(id, photoFile); } catch { return toast("Couldn't save the photo on this phone"); }
     fresh();
-    points.unshift({ kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, at: new Date().toISOString() });
+    const pt = { kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, at: new Date().toISOString() };
+    points.unshift(pt);
     persist();
     savePoints();
     closePhoto();
-    toast("✓ Saved");
+    // Saved already (so it can't be lost); now give it a name and notes. Cancel keeps the
+    // automatic name. The Add notes line only goes on the picture, never the name.
+    openSave(pt, pt);
+    $("ptName").value = "";
   };
   async function viewPhoto(pt) {
     let blob;

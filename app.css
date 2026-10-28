@@ -492,3 +492,6 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 .refline .big { justify-content: center; }
 .ref { flex: none; text-align: center; }
 .more-hint { text-align: center; }
+/* a photo's own picture at the top of its Name/Notes screen (tap to see it full size) */
+.ptthumb { display: block; width: 100%; max-height: 22vh; object-fit: cover; border-radius: 10px; margin-bottom: 8px; background: #000; }
+.ptthumb[hidden] { display: none; }

@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=127">
-<link rel="stylesheet" href="app.css?v=127">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=128">
+<link rel="stylesheet" href="app.css?v=128">
 </head>
 <body>
 <div id="map"></div>
@@ -142,6 +142,7 @@
 
 <div class="modal" id="saveModal" hidden>
   <form class="card" id="saveForm" autocomplete="off">
+    <img class="ptthumb" id="ptThumb" alt="The photo" hidden>
     <div class="kind" id="ptKind" hidden><button type="button" data-k="line">Line</button><button type="button" data-k="area">Area</button></div>
     <label>Name:<input id="ptName" enterkeyhint="next"></label>
     <label>Notes:<textarea id="ptNotes" rows="4"></textarea></label>
@@ -214,13 +215,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=127"></script>
-<script src="config.js?v=127"></script>
-<script src="osgb.js?v=127"></script>
-<script src="parse.js?v=127"></script>
-<script src="zip.js?v=127"></script>
-<script src="exif.js?v=127"></script>
-<script src="local.js?v=127"></script>
-<script src="app.js?v=127"></script>
+<script src="vendor/leaflet/leaflet.js?v=128"></script>
+<script src="config.js?v=128"></script>
+<script src="osgb.js?v=128"></script>
+<script src="parse.js?v=128"></script>
+<script src="zip.js?v=128"></script>
+<script src="exif.js?v=128"></script>
+<script src="local.js?v=128"></script>
+<script src="app.js?v=128"></script>
 </body>
 </html>
