@@ -6,7 +6,8 @@ adds the key (a Cloudflare secret) and fetches them from OS.
 
 - Only answers pages listed in `ALLOWED` (`wrangler.toml`): the live app and the local preview.
 - 600 tiles a minute per phone at most.
-- Tiles cached at Cloudflare for a week, so a tile is only paid for once.
+- Tiles cached at Cloudflare for 24 hours: the OS API terms allow premium data to be cached
+  for up to 24 hours, no longer. So no premium offline pack.
 - Zoom 16 and below is OS open data (free). Zoom 17–20 is premium, within the Premium plan's
   free monthly allowance for a small team. Usage shows in the OS Data Hub dashboard.
 

@@ -7,7 +7,8 @@
 // Guard rails, since anyone can see this address in the app:
 // - only answers pages from ALLOWED (Field Notes on GitHub Pages, and the local preview)
 // - LIMITER: requests per minute per phone (wrangler.toml), so nobody can drain the allowance
-// - tiles are cached at Cloudflare for a week, so the same tile is only paid for once
+// - tiles are cached at Cloudflare for 24 hours (the most OS allows for premium data), so a
+//   tile is paid for at most once a day
 const OS = "https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857";
 
 export default {
@@ -30,12 +31,12 @@ export default {
     }
 
     const cache = caches.default;
-    const key = new Request(`https://fieldnotes-tiles.cache/outdoor/${z}/${x}/${y}.png`);
+    const key = new Request(`https://fieldnotes-tiles.cache/24h/outdoor/${z}/${x}/${y}.png`);
     let res = await cache.match(key);
     if (!res) {
       const up = await fetch(`${OS}/${z}/${x}/${y}.png?key=${env.OS_KEY}`);
       if (!up.ok) return new Response(null, { status: up.status, headers: cors(origin) });
-      res = new Response(up.body, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=604800" } });
+      res = new Response(up.body, { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=86400" } });
       ctx.waitUntil(cache.put(key, res.clone()));
     }
     const out = new Response(res.body, res);
