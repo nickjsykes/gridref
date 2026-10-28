@@ -201,7 +201,6 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 
 .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
 .drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
-.credit { margin: 0; padding: 8px 16px 0; color: var(--muted); font-size: 12px; text-align: center; }
 .backup { margin: 0; padding: 4px 16px 0; color: var(--muted); font-size: 12px; line-height: 1.4; text-align: center; }
 .backup:empty { display: none; }
 .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }

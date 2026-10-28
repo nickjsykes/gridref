@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "125"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "126"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -143,7 +143,7 @@
       layersEl.appendChild(off);
     }
     const ver = document.createElement("button");
-    ver.textContent = `Field Notes ${APP_VERSION} · build ${VERSION} · Nick for the South Cumbria NNR team`;
+    ver.textContent = `Field Notes ${APP_VERSION} · build ${VERSION} · Nick S for Cumbria NNR`;
     ver.disabled = true;
     ver.className = "ver";
     layersEl.appendChild(ver);
