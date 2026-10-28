@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "131"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "132"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -2122,31 +2122,42 @@
   }
   // Hold + to drop a pin at once (automatic name, rename later): for "mark it and keep walking".
   // Three arcs fan out from the button, up and right (clear of the screen edge and a right
-  // thumb), lighting one at a time with a tick each; let go after
-  // the third. It saves on the click that ends the hold, so the final tick works on an iPhone
-  // too (an iPhone only ticks close to a touch: the counting ticks are timed inside that).
-  let holdAt = 0, holdTimers = [];
+  // thumb), lighting one at a time (with a tick each where the phone allows); let go after the
+  // third. It saves as the finger lifts: an iPhone sends no click after a long press.
+  let holdAt = 0, holdTimers = [], skipClick = 0;
   const addBtn = $("addBtn");
   addBtn.insertAdjacentHTML("beforeend", '<svg class="holdring" viewBox="0 0 100 100" aria-hidden="true">' +
     [33, 43, 53].map((r, i) => `<circle class="h${i + 1}" cx="50" cy="50" r="${r}" pathLength="360" stroke-dasharray="56 304" transform="rotate(-73 50 50)"/>`).join("") + "</svg>");
   addBtn.addEventListener("pointerdown", () => {
     holdAt = Date.now();
+    skipClick = 0; // a new press: its own click counts
     unhold();
     holdTimers = [1, 2, 3].map((n) => setTimeout(() => {
       addBtn.classList.add("h" + n);
       if (n === 3) addBtn.classList.add("held"); // "let go now"
       haptic();
     }, (HOLD_MS * n) / 3));
+    holdTimers.push(setTimeout(() => { holdAt = 0; unhold(); }, HOLD_MS + 5000)); // never left stuck if the lift goes missing
   });
   const unhold = () => { holdTimers.forEach(clearTimeout); addBtn.classList.remove("held", "h1", "h2", "h3"); };
   // (not pointerleave: on a touch screen it fires as the finger lifts, before the click)
-  addBtn.addEventListener("pointercancel", () => { holdAt = 0; unhold(); });
-  addBtn.addEventListener("contextmenu", (e) => e.preventDefault());
-  addBtn.onclick = () => {
+  // The finger lifting ends the hold; so does iOS cancelling a long touch, which it may do.
+  // Either way a full hold drops the pin
+  const endHold = () => {
     const held = holdAt && Date.now() - holdAt >= HOLD_MS;
     holdAt = 0;
     unhold();
-    if (held) { setAdding(false); return quickPin(); }
+    if (!held) return; // a tap: the click that follows opens the menu
+    skipClick = Date.now(); // in case a click does follow (desktop, Android), it mustn't open the menu
+    setAdding(false);
+    haptic();
+    quickPin();
+  };
+  addBtn.addEventListener("pointerup", endHold);
+  addBtn.addEventListener("pointercancel", endHold);
+  addBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  addBtn.onclick = () => {
+    if (Date.now() - skipClick < 800) return; // the end of a hold, already handled
     setAdding(!document.body.classList.contains("adding"));
   };
   function quickPin() {

@@ -499,7 +499,7 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 .photoname { font-weight: 700; }
 .photoname[hidden] { display: none; }
 /* hold + : it fills in when a held tap will drop a pin */
-.addbtn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.addbtn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; touch-action: none; } /* a hold mustn't turn into a scroll or the iOS press menu */
 .addbtn.held { background: var(--ink); color: var(--panel); }
 .pill .addbtn svg.holdring { position: absolute; left: -26px; top: -26px; width: 100px; height: 100px; pointer-events: none; overflow: visible; transition: none; transform: none !important; }
 .holdring circle { fill: none; stroke: var(--green); stroke-width: 5; stroke-linecap: round; opacity: 0; transition: opacity .12s; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.45)); }
