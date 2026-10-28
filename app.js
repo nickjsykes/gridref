@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "133"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "134"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -178,19 +178,23 @@
 
   // Keep the crosshair in the middle of the visible map (above the sheet)
   const sheet = $("sheet");
+  // Measured from where the panel actually starts, never window.innerHeight: the iPhone
+  // home-screen app can misreport innerHeight, which left points landing below the crosshair
+  function crossY() { return sheet.getBoundingClientRect().top / 2; }
+  // The crosshair in map-container pixels
+  function crossPt() { return L.point(map.getSize().x / 2, crossY() - map.getContainer().getBoundingClientRect().top); }
   function layout() {
     const h = sheet.offsetHeight;
     document.documentElement.style.setProperty("--sheet-h", h + "px");
-    document.documentElement.style.setProperty("--cross-y", (window.innerHeight - h) / 2 + "px");
+    document.documentElement.style.setProperty("--cross-y", crossY() + "px");
   }
   // The point under the crosshair, not the map's geometric centre
   function target() {
-    const size = map.getSize();
-    return map.containerPointToLatLng([size.x / 2, (window.innerHeight - sheet.offsetHeight) / 2]);
+    return map.containerPointToLatLng(crossPt());
   }
   function panTo(latlng, zoom, animate = true) {
     const z = Math.min(zoom || map.getZoom(), map.getMaxZoom());
-    const offsetY = (window.innerHeight - (window.innerHeight - sheet.offsetHeight) / 2) - window.innerHeight / 2;
+    const offsetY = map.getSize().y / 2 - crossPt().y;
     const p = map.project(latlng, z).add([0, offsetY]);
     map.setView(map.unproject(p, z), z, { animate });
   }
@@ -509,7 +513,7 @@
   // of yours goes in it: no saved points, no blue dot. Chats show it as the big preview.
   async function mapPicture(x) {
     const box = map.getContainer().getBoundingClientRect();
-    const cx = box.width / 2, cy = (window.innerHeight - sheet.offsetHeight) / 2;
+    const { x: cx, y: cy } = crossPt();
     const half = Math.min(cx, cy), S = 1080, k = S / (2 * half), FOOT = 190;
     const c = document.createElement("canvas");
     c.width = S;
@@ -788,9 +792,9 @@
     m.style.bottom = "auto";
     m.style.display = "block";
     // Beside the crosshair, never on top of the thing you tapped
-    const w = m.offsetWidth, h = m.offsetHeight, crossY = (window.innerHeight - sheet.offsetHeight) / 2, cx = window.innerWidth / 2;
+    const w = m.offsetWidth, h = m.offsetHeight, cy = crossY(), cx = window.innerWidth / 2;
     m.style.left = (cx + 26 + w <= window.innerWidth - 8 ? cx + 26 : Math.max(8, cx - 26 - w)) + "px";
-    m.style.top = Math.min(Math.max(100, crossY - h / 2), window.innerHeight - sheet.offsetHeight - h - 8) + "px";
+    m.style.top = Math.min(Math.max(100, cy - h / 2), sheet.getBoundingClientRect().top - h - 8) + "px";
   }
   const pinCanvas = L.canvas({ padding: 0.3 });
 
@@ -1367,6 +1371,23 @@
     }
     resultsEl.style.display = items.length || msg ? "block" : "none";
   }
+  // An email to Nick with what he'd otherwise have to ask for: which build, which phone,
+  // home-screen app or browser, screen sizes, and where the crosshair was
+  function reportBug() {
+    const to = (window.GRIDREF_CONFIG || {}).feedbackTo;
+    if (!to) return toast("No feedback address set up yet");
+    const box = map.getContainer().getBoundingClientRect();
+    const details = [
+      `Field Notes ${APP_VERSION}, build ${VERSION}`,
+      `Opened as: ${navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "home-screen app" : "browser"}`,
+      `Phone: ${navigator.userAgent}`,
+      `Screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}, map ${Math.round(box.width)}×${Math.round(box.height)}, panel ${sheet.offsetHeight}`,
+      `Map: ${current}, zoom ${map.getZoom()}${last && last.ref ? ", crosshair " + last.ref : ""}`,
+      `Notebook: ${points.length} entries${here ? `, GPS ±${Math.round(here.acc)} m` : ""}`,
+    ];
+    const body = "What happened (and what you expected):\n\n\n\n---\n" + details.join("\n");
+    location.href = `mailto:${to}?subject=${encodeURIComponent(`Field Notes bug (build ${VERSION})`)}&body=${encodeURIComponent(body)}`;
+  }
   // Recent searches: the last 12 places you went to from the search box
   const HISTORY_MAX = 12;
   function remember(it) {
@@ -1386,6 +1407,7 @@
   function go(it) {
     if (it.clear) { store.set("history", []); resultsEl.style.display = "none"; return toast("Search history cleared"); }
     if (it.url) return openLink(it.w3w ? w3wHref(it.w3w) : it.url);
+    if (it.feedback) { resultsEl.style.display = "none"; $("q").value = ""; $("q").blur(); return reportBug(); }
     if (!it.fromHistory) remember(it);
     resultsEl.style.display = "none";
     $("q").blur();
@@ -1500,6 +1522,8 @@
     const my = ++seq;
     text = text.trim();
     if (!text) return showResults([]);
+    // Tucked away on purpose: only the exact word "nick" offers it
+    if (text.toLowerCase() === "nick") return showResults([{ title: "Report bug to Nick…", sub: "Opens an email with this phone's details filled in", feedback: true }]);
     const readings = GridSearch.parse(text);
     // A whole message pasted in: look for a grid ref, lat/long, plus code, postcode or
     // what3words inside it
@@ -2012,7 +2036,12 @@
         following = false;
         $("locBtn").classList.remove("on");
         const top = showResCard(code, f);
-        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [30, top + 12], paddingBottomRight: [70, sheet.offsetHeight + 20], maxZoom: 16, animate: false });
+        // Quarter-step zoom: between the card and the panel there's little room on a phone,
+        // and whole steps often had to drop a full level, leaving the reserve tiny
+        const snap = map.options.zoomSnap;
+        map.options.zoomSnap = 0.25;
+        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [20, top + 8], paddingBottomRight: [64, sheet.offsetHeight + 12], maxZoom: 16, animate: false });
+        map.options.zoomSnap = snap;
         drawChips();
         // the card goes once you move the map yourself
         setTimeout(() => map.once("movestart", () => { if (cardFor === code) closeResCard(); }), 0);

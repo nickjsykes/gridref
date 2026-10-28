@@ -5,4 +5,6 @@ window.GRIDREF_CONFIG = {
   what3wordsKey: "",
   // OS Data Hub key (free OpenData plan, osdatahub.os.uk): turns on the OS Outdoor map
   osKey: "L7yA8JJqGy9G0qIVctJdkNlca6ashTzg",
+  // Where "Report bug to Nick…" sends (type "nick" in the search box)
+  feedbackTo: "nick.sykes@naturalengland.org.uk",
 };
