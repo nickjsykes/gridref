@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "154"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "155"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2131,7 +2131,8 @@
     : { color: RESERVE, weight: 2.2, opacity: 1, fill: false, lineJoin: "round" });
   const bandLayer = L.geoJSON(null, { interactive: false, style: { color: RESERVE, weight: 11, opacity: 0.22, fill: false, lineJoin: "round" } });
   // The spotlight: one shape covering the whole region with the reserves cut out of it, in its
-  // own pane under the boundaries, gently darkening the land around them
+  // own pane under the boundaries, just a hint darker around them (10%): the team mark things
+  // outside the reserves too (shops, parking), so the rest of the map must stay fully usable
   const maskPane = map.createPane("mask");
   maskPane.style.zIndex = 350;
   let maskLayer = null;
@@ -2144,7 +2145,7 @@
       for (const poly of polys) { holes.push(flip(poly[0])); islands.push(...poly.slice(1).map((h) => [flip(h)])); }
     }
     const world = [[52.5, -6], [52.5, 0.5], [56.5, 0.5], [56.5, -6]];
-    maskLayer = L.polygon([[world, ...holes], ...islands], { pane: "mask", renderer: L.svg({ pane: "mask" }), interactive: false, stroke: false, fillColor: "#18231d", fillOpacity: 0.3 }).addTo(map);
+    maskLayer = L.polygon([[world, ...holes], ...islands], { pane: "mask", renderer: L.svg({ pane: "mask" }), interactive: false, stroke: false, fillColor: "#18231d", fillOpacity: 0.1 }).addTo(map);
   }
   function closeUp() {
     const close = map.getZoom() >= CLOSE;
