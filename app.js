@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "139"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "140"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -194,22 +194,6 @@
   function crossY() { return sheet.getBoundingClientRect().top / 2; }
   // The crosshair in map-container pixels
   function crossPt() { return L.point(map.getSize().x / 2, crossY() - map.getContainer().getBoundingClientRect().top); }
-  // How far short of the screen the page stops (the iPhone home-screen bug in app.css):
-  // 100vh is the whole screen, innerHeight is what we were given. Only ever in the home-screen
-  // app, where there are no browser bars to make the two differ for a good reason.
-  function measureGap() {
-    let gap = 0;
-    if (navigator.standalone || matchMedia("(display-mode: standalone)").matches) {
-      const probe = document.createElement("div");
-      probe.style.cssText = "position:fixed;top:0;height:100vh;width:0;visibility:hidden";
-      document.body.appendChild(probe);
-      gap = probe.offsetHeight - window.innerHeight;
-      probe.remove();
-      if (gap < 0 || gap > 80) gap = 0; // only ever a status bar's worth
-    }
-    document.documentElement.style.setProperty("--gap", gap + "px");
-  }
-  measureGap();
   function layout() {
     const h = sheet.offsetHeight;
     document.documentElement.style.setProperty("--sheet-h", h + "px");
@@ -1777,11 +1761,12 @@
     document.querySelector(".dial").classList.toggle("unsure", f.src === "compass" && !compassTrusted());
     drawHint();
   }
-  // The line under the dial. Until the compass can be trusted it says "Compass not ready" in
-  // bold with one tip at a time, flashed every few seconds for someone stood waiting on it.
-  // The moment it's good the dial flashes bright green with a tick, then settles to normal.
-  let hintKey = "", wasTrusted = false, readyUntil = 0, tipAt = 0, tipIdx = 0, compassOk = false, navAt = 0;
-  const TIPS = ["Keep away from magnets: phone case, car, gates, fences.", "Wave the phone in a figure-of-8.", "Hold the phone flat in front of you."];
+  // The words under the dial: a bold line and one or two lines of advice, the same shape in
+  // every state so the panel never changes height. Until the compass can be trusted it says
+  // "Compass not ready" in orange, steady (no flashing), with all the advice at once; the
+  // moment it's good the dial flashes bright green with a tick, then settles to normal.
+  let hintKey = "", wasTrusted = false, readyUntil = 0, compassOk = false, navAt = 0;
+  const MAGNETS = "Hold it flat, away from magnets: phone case, car, gates.";
   function drawHint() {
     if (!nav) return;
     const el = $("navHint"), f = facing(), dial = document.querySelector(".dial"), now = Date.now();
@@ -1792,20 +1777,20 @@
     wasTrusted = trusted;
     const ready = !nav.arrived && now < readyUntil;
     dial.classList.toggle("ready", ready);
-    if (notReady && now - tipAt > 3000) { tipAt = now; tipIdx++; }
-    const tip = Math.abs(tilt) > 60 ? "Hold the phone flatter: the compass only works lying roughly flat."
-      : disagree >= 3 ? "It disagrees with your walking direction: wave it in a figure-of-8, away from metal."
-      : TIPS[tipIdx % TIPS.length];
-    const key = nav.arrived ? "arrived" : ready ? "ready" : notReady ? "wait" + tipIdx + tip : f.src;
+    const [head, text, cls] = nav.arrived ? ["", "", ""]
+      : notReady ? ["Compass not ready", Math.abs(tilt) > 60 ? "Hold the phone flatter: it only works lying roughly flat."
+        : disagree >= 3 ? "It disagrees with your walking direction. Wave it in a figure-of-8, away from metal."
+        : MAGNETS + " Still orange? Wave it in a figure-of-8.", "warn"]
+      : ready ? ["✓ Compass ready", MAGNETS, "ok"]
+      : f.src === "compass" ? ["Compass", MAGNETS, ""]
+      : f.src === "travel" ? ["No compass", "The arrow follows your direction of walking. Keep moving.", ""]
+      : ["No compass", "North is at the top of the dial. Use the map and the bearing.", ""];
+    const key = head + "|" + text + "|" + cls;
     if (key === hintKey) return;
     hintKey = key;
-    el.className = "nav-hint" + (notReady ? " warn" : ready ? " ok" : "");
-    if (nav.arrived) el.textContent = "";
-    else if (ready) el.textContent = "✓ Compass ready";
-    else if (notReady) { el.innerHTML = "<b>Compass not ready</b><span></span>"; el.querySelector("span").textContent = tip; }
-    else el.textContent = f.src === "compass" ? "Hold flat. Keep away from magnets: phone case, car, gates."
-      : f.src === "travel" ? "No compass: the arrow follows your direction of walking. Keep moving."
-      : "No compass on this phone: the arrow is drawn with north at the top. Use the map and bearing.";
+    el.className = "nav-hint" + (cls ? " " + cls : "");
+    el.innerHTML = head ? "<b></b><span></span>" : "";
+    if (head) { el.querySelector("b").textContent = head; el.querySelector("span").textContent = text; }
   }
   async function compassOn() {
     // iPhone asks permission, and only from a tap
@@ -2704,7 +2689,7 @@
   })();
 
   // ---------- go ----------
-  window.addEventListener("resize", () => { measureGap(); layout(); fitRef(); update(); });
+  window.addEventListener("resize", () => { layout(); fitRef(); update(); });
   // Every launch opens on the team's patch: all seven reserves, Hallsenna to Gait Barrows and
   // Walney to Blelham, in the clear space between the reserve chips and the panel. It starts
   // over the whole of Cumbria and glides down onto them. A touch stops the glide where it is;
