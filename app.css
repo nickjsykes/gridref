@@ -495,3 +495,13 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* a photo's own picture at the top of its Name/Notes screen (tap to see it full size) */
 .ptthumb { display: block; width: 100%; max-height: 22vh; object-fit: cover; border-radius: 10px; margin-bottom: 8px; background: #000; }
 .ptthumb[hidden] { display: none; }
+/* the photo's name, on the photo screen (bold: it's the notebook entry, not the stamp) */
+.photoname { font-weight: 700; }
+.photoname[hidden] { display: none; }
+/* hold + : it fills in when a held tap will drop a pin */
+.addbtn { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.addbtn.held { background: var(--ink); color: var(--panel); }
+.pill .addbtn svg.holdring { position: absolute; left: -26px; top: -26px; width: 100px; height: 100px; pointer-events: none; overflow: visible; transition: none; transform: none !important; }
+.holdring circle { fill: none; stroke: var(--green); stroke-width: 5; stroke-linecap: round; opacity: 0; transition: opacity .12s; filter: drop-shadow(0 0 1.5px rgba(0,0,0,.45)); }
+.addbtn.h1 .h1, .addbtn.h2 .h2, .addbtn.h3 .h3 { opacity: 1; }
+.addbtn.held .holdring circle { stroke: var(--ink); }

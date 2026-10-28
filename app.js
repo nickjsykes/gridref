@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "130"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "131"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -799,10 +799,10 @@
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
-  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; newPhoto = false; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
+  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
   $("ptCancel").onclick = () => { const was = editing; closeSave(); if (was) showOnMap(was); };
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
-  let editing = null, newPhoto = false; // newPhoto: naming a photo just taken (already saved)
+  let editing = null;
   function editSaved(pt) {
     closeDrawer();
     openSave(pt, pt);
@@ -863,9 +863,8 @@
     if (editing) {
       const i = points.findIndex((q) => q.at === editing.at && q.name === editing.name);
       if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(points[i].kind ? {} : { shape: pick.shape }) };
-      const was = newPhoto;
       closeSave();
-      if (savePoints()) toast((was ? "✓ Saved " : "✓ Updated ") + name);
+      if (savePoints()) toast("✓ Updated " + name);
       if (i >= 0) showOnMap(points[i]); // finish on the thing you just edited (Edit can start from the notebook)
       return;
     }
@@ -955,7 +954,7 @@
     const list = $("list");
     list.innerHTML = "";
     const shown = scope.filter(match);
-    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair, tap <b>+</b>, then pick a point, line, area or photo.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
+    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair, tap <b>+</b>, then pick a point, line, area or photo.<br>In a hurry? <b>Hold +</b> to drop a pin there and then.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
     else if (!shown.length) list.innerHTML = empty("Nothing here with these filters.");
     // Rows: in a folder just its entries (by name); otherwise loose entries and one row per
     // folder, newest first, under day headings
@@ -2114,13 +2113,51 @@
   // 10 s without touching anything) and they tuck away. Moving the map keeps them open, so
   // you can line up the crosshair and then pick.
   let addTimer = null;
+  const HOLD_MS = 900;
   function setAdding(on) {
     document.body.classList.toggle("adding", on);
     $("addBtn").setAttribute("aria-expanded", on);
     clearTimeout(addTimer);
     if (on) addTimer = setTimeout(() => setAdding(false), 10000);
   }
-  $("addBtn").onclick = () => setAdding(!document.body.classList.contains("adding"));
+  // Hold + to drop a pin at once (automatic name, rename later): for "mark it and keep walking".
+  // Three arcs fan out from the button, up and right (clear of the screen edge and a right
+  // thumb), lighting one at a time with a tick each; let go after
+  // the third. It saves on the click that ends the hold, so the final tick works on an iPhone
+  // too (an iPhone only ticks close to a touch: the counting ticks are timed inside that).
+  let holdAt = 0, holdTimers = [];
+  const addBtn = $("addBtn");
+  addBtn.insertAdjacentHTML("beforeend", '<svg class="holdring" viewBox="0 0 100 100" aria-hidden="true">' +
+    [33, 43, 53].map((r, i) => `<circle class="h${i + 1}" cx="50" cy="50" r="${r}" pathLength="360" stroke-dasharray="56 304" transform="rotate(-73 50 50)"/>`).join("") + "</svg>");
+  addBtn.addEventListener("pointerdown", () => {
+    holdAt = Date.now();
+    unhold();
+    holdTimers = [1, 2, 3].map((n) => setTimeout(() => {
+      addBtn.classList.add("h" + n);
+      if (n === 3) addBtn.classList.add("held"); // "let go now"
+      haptic();
+    }, (HOLD_MS * n) / 3));
+  });
+  const unhold = () => { holdTimers.forEach(clearTimeout); addBtn.classList.remove("held", "h1", "h2", "h3"); };
+  // (not pointerleave: on a touch screen it fires as the finger lifts, before the click)
+  addBtn.addEventListener("pointercancel", () => { holdAt = 0; unhold(); });
+  addBtn.addEventListener("contextmenu", (e) => e.preventDefault());
+  addBtn.onclick = () => {
+    const held = holdAt && Date.now() - holdAt >= HOLD_MS;
+    holdAt = 0;
+    unhold();
+    if (held) { setAdding(false); return quickPin(); }
+    setAdding(!document.body.classList.contains("adding"));
+  };
+  function quickPin() {
+    if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
+    fresh();
+    const name = autoName("point", last.lat, last.lon);
+    points.unshift({ name, notes: "", colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle"), kind: "point",
+      lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null, at: new Date().toISOString() });
+    persist();
+    if (savePoints()) toast("📍 Pin dropped: " + name);
+  }
   map.on("move", () => { if (document.body.classList.contains("adding")) setAdding(true); });
   for (const id of ["saveBtn", "measureBtn", "areaBtn"]) $(id).addEventListener("click", () => setAdding(false));
   const photoMenu = $("photoMenu");
@@ -2168,6 +2205,9 @@
     photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
       name: autoName("photo", where.lat, where.lon, when) };
     $("photoSave").hidden = false;
+    $("photoName").hidden = false;
+    $("photoName").value = "";
+    $("photoName").placeholder = "Name: " + photoNew.name;
     drawStampOpts();
     await restamp();
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
@@ -2195,6 +2235,7 @@
     lineTimer = setTimeout(restamp, 300);
   });
   $("stampLine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("stampLine").blur(); });
+  $("photoName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("photoName").blur(); });
   $("stampOpts").onclick = async (e) => {
     const b = e.target.closest("button");
     if (!b || !stampJob) return;
@@ -2244,17 +2285,13 @@
     const id = "ph" + Date.now();
     try { await photoDB.put(id, photoFile); } catch { return toast("Couldn't save the photo on this phone"); }
     fresh();
-    const pt = { kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, at: new Date().toISOString() };
-    points.unshift(pt);
+    // Named on this screen; left blank it keeps the automatic name (with the photo's own time).
+    // The Add notes line only goes on the picture, never the name
+    const name = $("photoName").value.trim() || photoNew.name;
+    points.unshift({ kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, name, at: new Date().toISOString() });
     persist();
-    savePoints();
     closePhoto();
-    // Saved already (so it can't be lost); now give it a name and notes. Cancel keeps the
-    // automatic name. The Add notes line only goes on the picture, never the name.
-    openSave(pt, pt);
-    $("ptName").value = "";
-    $("ptName").placeholder = pt.name; // its own time (a camera-roll photo's, not now)
-    newPhoto = true;
+    if (savePoints()) toast("✓ Saved " + name);
   };
   async function viewPhoto(pt) {
     let blob;
@@ -2265,6 +2302,7 @@
     stampJob = null;
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
+    $("photoName").hidden = true;
     $("photoSave").hidden = true;
     $("photoOut").src = URL.createObjectURL(blob);
     $("photoModal").hidden = false;
