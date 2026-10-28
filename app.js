@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "140"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "141"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -318,7 +318,7 @@
     layout();
     // The panel grew or shrank (the GPS line appearing, say), which moves the crosshair: put
     // the same place back under it, unless a finger is on the map or it's mid-zoom
-    if (sheet.offsetHeight !== h0 && !map._animatingZoom && !map.dragging.moving() && !(map.touchZoom && map.touchZoom._zooming)) panTo(t, map.getZoom(), false);
+    if (sheet.offsetHeight !== h0 && !map._animatingZoom && !map._flyToFrame && !map.dragging.moving() && !(map.touchZoom && map.touchZoom._zooming)) panTo(t, map.getZoom(), false);
   }
 
   // ---------- what3words ----------
@@ -2065,9 +2065,12 @@
   function drawResLabels() {
     resLabels.clearLayers();
     if (map.getZoom() > 13) return;
+    // Names sit just off the reserve (above it; North Fen below, as Blelham Bog is right on
+    // top of it) as halo text, so the reserve itself is never hidden under its label
     for (const f of nnr) if (isTeam(f)) {
-      const c = L.geoJSON(f).getBounds().getCenter();
-      L.marker(c, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
+      const bb = L.geoJSON(f).getBounds(), below = f.properties.REF_CODE === "1006111";
+      const at = L.latLng(below ? bb.getSouth() : bb.getNorth(), bb.getCenter().lng);
+      L.marker(at, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel${below ? " below" : ""}">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
     }
   }
   map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); drawResLabels(); });
@@ -2697,7 +2700,7 @@
   const RESERVES = L.latLngBounds([[54.1229, -3.4460], [54.3983, -2.7904]]);
   const openOnPatch = () => {
     layout();
-    const pad = { paddingTopLeft: [52, 118], paddingBottomRight: [52, sheet.offsetHeight + 24] };
+    const pad = { paddingTopLeft: [52, 126], paddingBottomRight: [52, sheet.offsetHeight + 24] };
     if (launchQ || matchMedia("(prefers-reduced-motion: reduce)").matches) return map.fitBounds(RESERVES, { ...pad, animate: false });
     map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
     let touched = false;
@@ -2705,7 +2708,7 @@
     setTimeout(() => {
       if (touched) return;
       map.flyToBounds(RESERVES, { ...pad, duration: 1.8, easeLinearity: 0.2 });
-      const goal = map.getBoundsZoom(RESERVES, false, L.point(104, 118 + sheet.offsetHeight + 24));
+      const goal = map.getBoundsZoom(RESERVES, false, L.point(104, 126 + sheet.offsetHeight + 24));
       setTimeout(() => { if (!touched && Math.abs(map.getZoom() - goal) > 0.2) map.fitBounds(RESERVES, { ...pad, animate: false }); }, 3000);
     }, 500);
   };

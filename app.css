@@ -41,10 +41,14 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel)
 
 /* search */
 .top { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 10px); display: flex; gap: 8px; }
-.search { flex: 1; display: flex; background: var(--panel); border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.18); }
-.search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 16px var(--sans); padding: 12px 14px; outline: none; }
-.search button { border: 0; background: none; color: var(--green); font: 600 15px var(--sans); padding: 0 14px; }
-.results { max-height: 55vh; overflow-y: auto; position: fixed; z-index: 1001; left: 12px; right: 12px; top: calc(var(--safe-t) + 62px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); overflow: hidden; display: none; }
+/* The search bar is the way in, so it's the boldest thing at the top: a spruce outline,
+   a magnifier, bigger type and a filled Go */
+.search { flex: 1; display: flex; align-items: center; background: var(--panel); border: 2px solid var(--green); border-radius: 16px; box-shadow: 0 3px 14px rgba(0,0,0,.28); padding-left: 12px; }
+.search > svg { width: 21px; height: 21px; flex: none; color: var(--green); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 500 17px var(--sans); padding: 13px 10px; outline: none; }
+.search input::placeholder { color: var(--muted); opacity: 1; }
+.search button { border: 0; background: var(--green); color: var(--panel); font: 700 15px var(--sans); padding: 9px 14px; margin: 4px; border-radius: 11px; }
+.results { max-height: 55vh; overflow-y: auto; position: fixed; z-index: 1001; left: 12px; right: 12px; top: calc(var(--safe-t) + 70px); background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.2); overflow: hidden; display: none; }
 .results button { display: block; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 13px 14px; }
 .results button small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .results button .tag { float: right; font: 600 11px var(--sans); color: var(--green); background: var(--green-soft); border-radius: 6px; padding: 2px 6px; margin-left: 8px; }
@@ -152,7 +156,7 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .folderrow .chev { font-size: 24px; color: var(--muted); padding: 0 8px; }
 .rtag { display: inline-block; font: 600 11px var(--sans); color: #a83c0c; background: rgba(217, 72, 15, .1); border-radius: 6px; padding: 1px 6px; margin-right: 6px; }
 @media (prefers-color-scheme: dark) { .rtag { color: #f2a679; background: rgba(217, 72, 15, .2); } }
-.modal.sheetmenu { align-items: flex-end; padding-bottom: calc(var(--safe-b) + 10px); }
+.modal.sheetmenu { align-items: flex-end; padding-bottom: max(10px, calc(var(--safe-b) - 14px)); }
 .sheetmenu .card { gap: 6px; }
 .im-title { display: flex; flex-direction: column; padding: 2px 4px 6px; }
 .im-title b { font-size: 17px; }
@@ -172,7 +176,7 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .photopin { width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; background: #2b2b2b; border: 3px solid #fff; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .photopin svg { width: 14px; height: 14px; }
 .shopts { display: grid; gap: 4px; }
-.selbar { display: none; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+.selbar { display: none; gap: 8px; padding: 12px 16px max(10px, calc(var(--safe-b) - 20px)); border-top: 1px solid var(--line); }
 .drawer.selecting .selbar { display: flex; }
 .drawer.selecting footer, .drawer.selecting .item .go, .drawer.selecting #backup { display: none; }
 .selbar button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
@@ -200,7 +204,7 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .item .go { color: var(--green); }
 
 .empty { padding: 40px 24px; color: var(--muted); text-align: center; line-height: 1.5; }
-.drawer footer { display: flex; gap: 8px; padding: 12px 16px calc(var(--safe-b) + 12px); border-top: 1px solid var(--line); }
+.drawer footer { display: flex; gap: 8px; padding: 12px 16px max(10px, calc(var(--safe-b) - 20px)); border-top: 1px solid var(--line); }
 .backup { margin: 0; padding: 4px 16px 0; color: var(--muted); font-size: 12px; line-height: 1.4; text-align: center; }
 .backup:empty { display: none; }
 .drawer footer button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
@@ -342,16 +346,16 @@ body.large .results button .gr { font-size: 23px; }
 .pin { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
 /* install nudge, iPhone only, until it's installed */
-.install { position: fixed; z-index: 1150; left: 12px; right: 12px; top: calc(var(--safe-t) + 104px); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 40px 12px 14px; font: 14px/1.4 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
+.install { position: fixed; z-index: 1150; left: 12px; right: 12px; top: calc(var(--safe-t) + 112px); background: var(--ink); color: var(--panel); border-radius: 14px; padding: 12px 40px 12px 14px; font: 14px/1.4 var(--sans); box-shadow: 0 6px 20px rgba(0,0,0,.3); }
 .install[hidden] { display: none; }
 .install b { display: block; font-size: 15px; margin-bottom: 2px; }
 .instlink { color: var(--on-ink-link); font-weight: 700; white-space: nowrap; }
 .install button { position: absolute; top: 6px; right: 6px; border: 0; background: none; color: var(--panel); font-size: 18px; padding: 6px 10px; }
-.undo { position: fixed; z-index: 1250; left: 50%; transform: translateX(-50%); top: calc(var(--safe-t) + 104px); display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--panel); padding: 8px 8px 8px 16px; border-radius: 22px; font: 600 15px var(--sans); max-width: calc(100vw - 32px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.undo { position: fixed; z-index: 1250; left: 50%; transform: translateX(-50%); top: calc(var(--safe-t) + 112px); display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--panel); padding: 8px 8px 8px 16px; border-radius: 22px; font: 600 15px var(--sans); max-width: calc(100vw - 32px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
 .undo[hidden] { display: none; }
 .undo span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .undo button { border: 0; border-radius: 16px; padding: 8px 14px; font: 700 15px var(--sans); background: var(--green); color: var(--panel); flex: none; }
-.toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 104px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
+.toast { position: fixed; z-index: 1200; left: 50%; top: calc(var(--safe-t) + 112px); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 12px 18px; border-radius: 22px; font: 600 16px var(--sans); opacity: 0; transition: opacity .2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; line-height: 1.3; }
 .toast.show { opacity: 1; }
 
 .leaflet-control-attribution { font-size: 9px; }
@@ -379,7 +383,7 @@ body.large .lidarrow span { font-size: 16px; }
 .layers button.on { color: var(--green); font-weight: 700; }
 
 /* reserve chips: one tap to each of the team's reserves */
-.chips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + 60px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
+.chips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + 68px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
 .chips::-webkit-scrollbar { display: none; }
 .chips button { flex: none; border: 0; border-radius: 16px; padding: 6px 12px; font: 600 13.5px var(--sans); background: var(--panel); color: var(--ink); box-shadow: 0 1px 5px rgba(0,0,0,.18); }
 /* the chosen reserve stands out on any map: dark, with a white edge */
@@ -388,8 +392,10 @@ body.measuring .chips, body.navigating .chips, body.moving .chips { display: non
 
 /* the team's reserves named on the map when zoomed out */
 /* map tiles stay light in dark mode, so labels on the map keep dark text and a white halo */
-/* reserve names: a soft map tag (white, fine orange edge, orange dot) rather than a bold box */
-.reslabel { display: inline-flex; width: max-content; align-items: center; font: 600 11.5px/1 var(--sans); letter-spacing: .01em; color: #6b2a06; background: rgba(255,255,255,.94); border-radius: 6px; padding: 4px 8px; white-space: nowrap; pointer-events: none; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(217,72,15,.45), 0 1px 3px rgba(0,0,0,.22); }
+/* reserve names: bold orange halo text just off the reserve, never on top of it */
+.reslabel { display: block; width: max-content; font: 800 12.5px/1 var(--sans); letter-spacing: .02em; color: #a63a0a; white-space: nowrap; pointer-events: none; transform: translate(-50%, calc(-100% - 4px));
+  text-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 4px #fff, 0 0 6px #fff; }
+.reslabel.below { transform: translate(-50%, 4px); }
 /* names beside your own points, lines and areas when zoomed right in: a notebook, not a pin map */
 .pinlabel { font: 600 12px var(--sans); color: #26261f; white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; display: none; }
 .leaflet-container.close .pinlabel { display: block; }
@@ -470,7 +476,7 @@ body.adding .chips { visibility: hidden; } /* the menu may need their room on a 
 .stampline[hidden] { display: none; }
 
 /* reserve card: a few plain lines under the chips when you tap a reserve */
-.rescard { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 102px); max-width: 440px; padding: 7px 10px 7px 12px;
+.rescard { position: fixed; z-index: 1000; left: 12px; right: 12px; top: calc(var(--safe-t) + 110px); max-width: 440px; padding: 7px 10px 7px 12px;
   background: color-mix(in srgb, var(--panel) 90%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.2); font: 14px/1.35 var(--sans); color: var(--ink); }
 .rescard[hidden] { display: none; }
