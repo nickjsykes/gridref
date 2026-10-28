@@ -17,7 +17,10 @@
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
-  const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false }).setView([start.lat, start.lon], start.z);
+  // Zoom stops where your fingers stop: whole-step snapping made pinches jump a level after
+  // you let go, so it never quite landed where you meant
+  const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false, zoomSnap: 0.1, zoomDelta: 1, wheelPxPerZoomLevel: 120, bounceAtZoomLimits: false })
+    .setView([start.lat, start.lon], start.z);
   map.attributionControl.addAttribution("OS data © Crown copyright 2026");
   // The credits fold into a small © beside the + button (tap to read them; they fold away
   // again after a few seconds), so a full-width line of small print doesn't fight the map
@@ -67,7 +70,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "136"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "137"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -307,7 +310,7 @@
     layout();
     // The panel grew or shrank (the GPS line appearing, say), which moves the crosshair: put
     // the same place back under it, unless a finger is on the map or it's mid-zoom
-    if (sheet.offsetHeight !== h0 && !map._animatingZoom && !map.dragging.moving()) panTo(t, map.getZoom(), false);
+    if (sheet.offsetHeight !== h0 && !map._animatingZoom && !map.dragging.moving() && !(map.touchZoom && map.touchZoom._zooming)) panTo(t, map.getZoom(), false);
   }
 
   // ---------- what3words ----------
@@ -1685,7 +1688,7 @@
   let compassAcc = null, navBrgDeg = 0, frame = 0, shownRose = 0, shownArrow = 0, course = null;
   const diff = (a, b) => ((((b - a) % 360) + 540) % 360) - 180; // shortest turn from a to b
   // A phone compass is often wrong for the first few seconds (and when held upright, or near
-  // a car or magnetic case) while still sounding sure of itself. So the arrow stays grey,
+  // a car or magnetic case) while still sounding sure of itself. So the arrow stays orange,
   // with a "settling" message, until: the phone says it's within 25°, a couple of seconds
   // have passed, the phone is roughly flat, and, when walking, it agrees with GPS direction.
   let compassSince = 0, tilt = 0, disagree = 0;
@@ -1795,11 +1798,12 @@
     drawDial();
     document.querySelector(".dial").classList.toggle("here", arrived);
     const f = facing();
+    $("navHint").classList.toggle("warn", !arrived && f.src === "compass" && !compassTrusted());
     $("navHint").textContent = arrived ? ""
       : f.src === "compass" ? (compassTrusted() ? "Hold flat. Keep away from magnets: phone case, car, gates."
         : Math.abs(tilt) > 60 ? "Hold the phone flatter: the compass only works lying roughly flat."
         : disagree >= 3 ? "Compass disagrees with your walking direction: wave the phone in a figure-of-8, away from metal or a magnetic case."
-        : "Compass settling (grey arrow). Hold flat; if it stays grey, wave the phone in a figure-of-8.")
+        : "Compass not trusted yet (orange arrow). Hold flat; if it stays orange, wave the phone in a figure-of-8.")
       : f.src === "travel" ? "No compass: the arrow follows your direction of walking. Keep moving."
       : "No compass on this phone: the arrow is drawn with north at the top. Use the map and bearing.";
     const line = [me, to];
@@ -2111,12 +2115,7 @@
         following = false;
         $("locBtn").classList.remove("on");
         const top = showResCard(code, f);
-        // Quarter-step zoom: between the card and the panel there's little room on a phone,
-        // and whole steps often had to drop a full level, leaving the reserve tiny
-        const snap = map.options.zoomSnap;
-        map.options.zoomSnap = 0.25;
         map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [20, top + 8], paddingBottomRight: [64, sheet.offsetHeight + 12], maxZoom: 16, animate: false });
-        map.options.zoomSnap = snap;
         drawChips();
         // the card goes once you move the map yourself
         setTimeout(() => map.once("movestart", () => { if (cardFor === code) closeResCard(); }), 0);
@@ -2323,6 +2322,7 @@
     if (mode === "quick") { await restamp(); return keepPhoto(); }
     $("photoSave").hidden = false;
     if ($("photoStrip")) $("photoStrip").hidden = true;
+    if ($("stampHead")) $("stampHead").hidden = false;
     drawStampOpts();
     await restamp();
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
@@ -2375,18 +2375,47 @@
     if (stampOn.has("reserve") && j.reserve) lines.push({ t: j.reserve, f: small });
     const mine = stampOn.has("line") && j.line;
     if (mine) lines.push({ t: mine, f: `700 ${u}px -apple-system, sans-serif` });
+    let zoomRect = null;
     if (lines.length) {
-      const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
-      const w = Math.max(...lines.map((l) => { ctx.font = l.f; return ctx.measureText(l.t).width; })) + pad * 2;
-      const h = lines.reduce((s, l) => s + lh(l), 0) + pad * 2 - u * 0.2;
-      ctx.fillStyle = "rgba(0,0,0,.5)";
+      // The team's stamp: a "FIELD NOTES" mark over the details and a spruce bar down the
+      // side, so a stamped photo is recognisable wherever it's been sent
+      const mark = { t: "FIELD NOTES", f: `800 ${Math.round(u * 0.72)}px -apple-system, sans-serif`, c: "#8cc2b8", sp: Math.round(u * 0.18) };
+      lines.unshift(mark);
+      const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), bar = Math.round(u * 0.32), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
+      const wide = (l) => { ctx.font = l.f; return ctx.measureText(l.t).width + (l.sp ? l.sp * l.t.length : 0); };
+      const w = Math.max(...lines.map(wide)) + pad * 2 + bar;
+      const h = lines.reduce((s, l) => s + lh(l), 0) + pad * 2 - u * 0.2, top = c.height - m - h;
+      ctx.fillStyle = "rgba(0,0,0,.58)";
       ctx.beginPath();
-      ctx.roundRect ? ctx.roundRect(m, c.height - m - h, w, h, u * 0.5) : ctx.rect(m, c.height - m - h, w, h);
+      ctx.roundRect ? ctx.roundRect(m, top, w, h, u * 0.5) : ctx.rect(m, top, w, h);
       ctx.fill();
-      ctx.fillStyle = "#fff";
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = "#2e6560";
+      ctx.fillRect(m, top, bar, h);
+      ctx.restore();
       ctx.textBaseline = "top";
-      let y = c.height - m - h + pad;
-      for (const l of lines) { ctx.font = l.f; ctx.fillText(l.t, m + pad, y); y += lh(l); }
+      let y = top + pad;
+      for (const l of lines) {
+        ctx.font = l.f;
+        ctx.fillStyle = l.c || "#fff";
+        if (l.sp && "letterSpacing" in ctx) { ctx.letterSpacing = l.sp + "px"; ctx.fillText(l.t, m + bar + pad, y); ctx.letterSpacing = "0px"; }
+        else ctx.fillText(l.t, m + bar + pad, y);
+        y += lh(l);
+      }
+      zoomRect = { x: 0, y: Math.max(0, top - m), w: Math.min(c.width, w + m * 2), h: Math.min(c.height, h + m * 2) };
+    }
+    // The stamp close up under the photo: on a phone screen the real one is too small to check
+    const z = $("stampZoom");
+    if (z) {
+      z.hidden = !zoomRect;
+      if (zoomRect) {
+        const k = Math.min(1, 720 / zoomRect.w), zc = document.createElement("canvas");
+        zc.width = Math.round(zoomRect.w * k);
+        zc.height = Math.round(zoomRect.h * k);
+        zc.getContext("2d").drawImage(c, zoomRect.x, zoomRect.y, zoomRect.w, zoomRect.h, 0, 0, zc.width, zc.height);
+        z.src = zc.toDataURL("image/jpeg", 0.85);
+      }
     }
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
     photoFile = new File([blob], j.name, { type: "image/jpeg" });
@@ -2413,7 +2442,7 @@
     points.unshift({ name, notes: "", colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle"), kind: "point",
       lat: ph.lat, lon: ph.lon, e: Math.round(g.e), n: Math.round(g.n), acc: ph.acc, photos: [rec], at: new Date().toISOString() });
     persist();
-    if (savePoints()) toast("📷 Pin dropped with photo: " + name);
+    if (savePoints()) toast("📷 Stamped and pinned: " + name);
   }
   $("photoSave").onclick = keepPhoto;
   // A thing's photos: one big, the rest as a strip to tap through. Share sends the one showing.
@@ -2426,6 +2455,8 @@
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
     $("photoSave").hidden = true;
+    if ($("stampHead")) $("stampHead").hidden = true;
+    if ($("stampZoom")) $("stampZoom").hidden = true;
     const strip = $("photoStrip");
     if (strip) {
       for (const im of strip.querySelectorAll("img")) if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);
@@ -2613,13 +2644,13 @@
 
   // ---------- go ----------
   window.addEventListener("resize", () => { layout(); fitRef(); update(); });
-  // Every launch opens on the team's patch, Walney to Gait Barrows, framed in the clear map
-  // between the reserve chips, the side buttons and the panel
+  // Every launch opens on the team's patch
   const openOnPatch = () => {
     layout();
-    map.fitBounds([[54.118, -3.292], [54.198, -2.785]], {
-      paddingTopLeft: [68, 104], paddingBottomRight: [68, sheet.offsetHeight + 10], animate: false });
-  };
+    // All seven team reserves, Hallsenna to Gait Barrows and Walney to Blelham, in the clear
+    // space between the reserve chips and the panel, with room for their name badges
+    map.fitBounds([[54.1229, -3.4460], [54.3983, -2.7904]], {
+      paddingTopLeft: [52, 118], paddingBottomRight: [52, sheet.offsetHeight + 24], animate: false });  };
   for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadOSTN, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
