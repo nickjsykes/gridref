@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "155"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "156"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2153,23 +2153,41 @@
     if (close && !map.hasLayer(bandLayer)) bandLayer.addTo(map).bringToBack();
     if (!close && map.hasLayer(bandLayer)) map.removeLayer(bandLayer);
   }
-  // Tap a reserve chip: its boundary draws itself round, quickly, as the map lands on it
+  // Tap a reserve chip: its boundary draws itself round as the map lands on it, in the same
+  // time for every reserve. A reserve in several pieces (Duddon has ten) draws them one after
+  // another, each getting its share of the time by length: drawn as one outline, every piece
+  // would grow at once and the many small ones would be done in a blink.
+  const DRAW_MS = 1100;
   function drawOn(code) {
     nnrLayer.eachLayer((l) => {
       const path = l._path;
       if (!path || l.feature.properties.REF_CODE !== code || !path.getTotalLength) return;
-      const len = Math.ceil(path.getTotalLength());
-      path.style.transition = "none";
-      path.style.strokeDasharray = `${len} ${len}`;
-      path.style.strokeDashoffset = len;
-      path.getBoundingClientRect(); // start from the hidden state
-      path.style.transition = "stroke-dashoffset .9s cubic-bezier(.45,.05,.25,1)";
-      path.style.strokeDashoffset = 0;
-      const done = () => { path.style.transition = path.style.strokeDasharray = path.style.strokeDashoffset = ""; };
-      path.addEventListener("transitionend", done, { once: true });
-      setTimeout(done, 1300); // never left dashed if the transition doesn't report back
+      const NS = "http://www.w3.org/2000/svg";
+      const parts = (path.getAttribute("d") || "").match(/M[^M]*/g) || [];
+      const temps = parts.map((d) => {
+        const t = document.createElementNS(NS, "path");
+        t.setAttribute("d", d);
+        for (const a of ["stroke", "stroke-width", "stroke-linejoin", "stroke-linecap"]) if (path.getAttribute(a)) t.setAttribute(a, path.getAttribute(a));
+        t.setAttribute("fill", "none");
+        path.parentNode.appendChild(t);
+        return { t, len: Math.ceil(t.getTotalLength()) };
+      });
+      const total = temps.reduce((a, x) => a + x.len, 0) || 1;
+      path.style.strokeOpacity = 0;
+      let at = 0;
+      for (const { t, len } of temps) {
+        const ms = (DRAW_MS * len) / total;
+        t.style.strokeDasharray = `${len} ${len}`;
+        t.style.strokeDashoffset = len;
+        t.getBoundingClientRect(); // start from the hidden state
+        t.style.transition = `stroke-dashoffset ${ms}ms linear ${at}ms`;
+        t.style.strokeDashoffset = 0;
+        at += ms;
+      }
+      setTimeout(() => { temps.forEach(({ t }) => t.remove()); path.style.strokeOpacity = ""; }, DRAW_MS + 80);
     });
   }
+
   const resLabels = L.layerGroup().addTo(map);
   function drawResLabels() {
     resLabels.clearLayers();
