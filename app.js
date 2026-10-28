@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "128"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "129"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -2161,7 +2161,7 @@
     URL.revokeObjectURL(img.src);
     const pad2 = (v) => String(v).padStart(2, "0");
     const stamp = `${when.getFullYear()}${pad2(when.getMonth() + 1)}${pad2(when.getDate())}_${pad2(when.getHours())}${pad2(when.getMinutes())}`; // local time
-    stampJob = { base, name: `${ref.replace(/\s+/g, "")}_${stamp}.jpg`, ref, ll: `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`,
+    stampJob = { line: "", base, name: `${ref.replace(/\s+/g, "")}_${stamp}.jpg`, ref, ll: `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`,
       when: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${timeOf(when.toISOString())}`,
       reserve: reserve.replace(/ \(NNR\)$/, ""), src: where.src };
     photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
@@ -2182,13 +2182,14 @@
     $("stampOpts").hidden = false;
     $("stampOpts").innerHTML = STAMP_OPTS.filter(([k]) => k !== "reserve" || stampJob.reserve)
       .map(([k, l]) => `<button type="button" data-k="${k}" class="${stampOn.has(k) ? "on" : ""}">${l}</button>`).join("");
-    // "Add notes": a line each person types (a note, their team, their name), kept on this phone
+    // "Add notes": a line typed for this photo only. Never remembered: last week's note on
+    // today's photo would be worse than nothing
     $("stampLine").hidden = !stampOn.has("line");
-    $("stampLine").value = store.get("stampLine", "");
+    $("stampLine").value = stampJob.line || "";
   }
   let lineTimer = null;
   $("stampLine").addEventListener("input", () => {
-    store.set("stampLine", $("stampLine").value.trim());
+    if (stampJob) stampJob.line = $("stampLine").value.trim();
     clearTimeout(lineTimer);
     lineTimer = setTimeout(restamp, 300);
   });
@@ -2216,7 +2217,7 @@
     const sub = [head ? j.src : "", stampOn.has("ll") && stampOn.has("ref") ? j.ll : "", stampOn.has("when") ? j.when : ""].filter(Boolean).join(" · ");
     if (sub) lines.push({ t: sub, f: small });
     if (stampOn.has("reserve") && j.reserve) lines.push({ t: j.reserve, f: small });
-    const mine = stampOn.has("line") && store.get("stampLine", "");
+    const mine = stampOn.has("line") && j.line;
     if (mine) lines.push({ t: mine, f: `700 ${u}px -apple-system, sans-serif` });
     if (lines.length) {
       const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
