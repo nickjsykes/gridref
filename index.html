@@ -13,8 +13,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=135">
-<link rel="stylesheet" href="app.css?v=135">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=136">
+<link rel="stylesheet" href="app.css?v=136">
 </head>
 <body>
 <div id="map"></div>
@@ -42,7 +42,6 @@
 </div>
 <div class="fabs left">
   <div class="addmenu" id="addMenu">
-  <button class="fab" id="photoBtn" aria-label="Photo with grid ref"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
   <input type="file" id="photoIn" accept="image/*" capture="environment" hidden>
   <input type="file" id="photoPick" accept="image/*" hidden>
   <button class="fab" id="areaBtn" aria-label="Measure an area"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7 12 3l7 5-2 11H7Z" fill="currentColor" fill-opacity=".18"/><circle cx="5" cy="7" r="1.6" fill="currentColor"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="19" cy="8" r="1.6" fill="currentColor"/><circle cx="17" cy="19" r="1.6" fill="currentColor"/><circle cx="7" cy="19" r="1.6" fill="currentColor"/></svg></button>
@@ -51,12 +50,11 @@
   </div>
   <div class="pill">
   <button class="fab" id="listBtn" aria-label="Notebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6.5C9.5 4.6 6 4.3 3 5.3v13.4c3-1 6.5-.7 9 1.2 2.5-1.9 6-2.2 9-1.2V5.3c-3-1-6.5-.7-9 1.2Z"/><path d="M12 6.5v13.4"/></svg></button>
-  <button class="fab addbtn" id="addBtn" aria-label="Add a point, line, area or photo" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <button class="fab addbtn" id="addBtn" aria-label="Add a point, line or area" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
   </div>
 </div>
 <div class="layers" id="layers"></div>
 <div class="layers featmenu" id="featMenu"></div>
-<div class="layers photomenu" id="photoMenu"><button type="button" id="pmTake">Take a photo</button><button type="button" id="pmPick">Choose from phone</button></div>
 
 <section class="sheet" id="sheet">
   <button class="grab" id="grab" aria-label="Show or hide details"><span></span><small class="more-hint">Lat/long · E/N · what3words</small></button>
@@ -142,10 +140,10 @@
 
 <div class="modal" id="saveModal" hidden>
   <form class="card" id="saveForm" autocomplete="off">
-    <img class="ptthumb" id="ptThumb" alt="The photo" hidden>
     <div class="kind" id="ptKind" hidden><button type="button" data-k="line">Line</button><button type="button" data-k="area">Area</button></div>
     <label>Name:<input id="ptName" enterkeyhint="next" autocomplete="off"></label>
     <label>Notes:<textarea id="ptNotes" rows="4" autocomplete="off"></textarea></label>
+    <div class="phrow" id="ptPhotos"><div class="pthumbs" id="ptThumbs"></div><div class="phbtns"><button type="button" id="ptTake"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>Take photo</button><button type="button" id="ptPick">From phone</button></div></div>
     <div class="pick" id="ptColour" aria-label="Colour"></div>
     <div class="pick" id="ptShape" aria-label="Shape"></div>
     <div class="edmove" id="ptMoveRow"><button type="button" id="ptMove">Move</button><button type="button" id="ptReshape">Reshape</button></div>
@@ -155,10 +153,10 @@
 <div class="modal" id="photoModal" hidden>
   <div class="card">
     <img id="photoOut" alt="Stamped photo" style="width:100%;border-radius:10px;display:block">
-    <input class="stampline photoname" id="photoName" aria-label="Name" maxlength="80" enterkeyhint="done" autocomplete="off" hidden>
+    <div class="pthumbs viewstrip" id="photoStrip" hidden></div>
     <div class="chiprow stampopts" id="stampOpts" hidden></div>
     <input class="stampline" id="stampLine" placeholder="Message" autocomplete="off" maxlength="60" enterkeyhint="done" hidden>
-    <div class="btns three"><button type="button" id="photoClose">Close</button><button type="button" id="photoShare">Share</button><button type="button" class="primary" id="photoSave">Save</button></div>
+    <div class="btns three"><button type="button" id="photoClose">Close</button><button type="button" id="photoShare">Share</button><button type="button" class="primary" id="photoSave">Add</button></div>
   </div>
 </div>
 <div class="modal" id="w3wModal" hidden>
@@ -172,7 +170,7 @@
   <div class="card">
     <div class="im-title"><b id="imName"></b><span id="imRef"></span></div>
     <p class="im-notes" id="imNotes"></p>
-    <button type="button" id="imView">View</button>
+    <button type="button" id="imView">View photos</button>
     <button type="button" id="imShow">Show on map</button>
     <button type="button" id="imNav">Navigate</button>
     <button type="button" id="imShare">Share</button>
@@ -216,13 +214,13 @@
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=135"></script>
-<script src="config.js?v=135"></script>
-<script src="osgb.js?v=135"></script>
-<script src="parse.js?v=135"></script>
-<script src="zip.js?v=135"></script>
-<script src="exif.js?v=135"></script>
-<script src="local.js?v=135"></script>
-<script src="app.js?v=135"></script>
+<script src="vendor/leaflet/leaflet.js?v=136"></script>
+<script src="config.js?v=136"></script>
+<script src="osgb.js?v=136"></script>
+<script src="parse.js?v=136"></script>
+<script src="zip.js?v=136"></script>
+<script src="exif.js?v=136"></script>
+<script src="local.js?v=136"></script>
+<script src="app.js?v=136"></script>
 </body>
 </html>

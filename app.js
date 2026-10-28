@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "135"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "136"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -384,9 +384,9 @@
     clearTimeout(saveView);
     saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
   });
-  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; $("photoMenu").style.display = "none"; });
+  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
-  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; $("photoMenu").style.display = "none"; if (!nav) panTo(e.latlng); });
+  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
 
   // ---------- GPS ----------
   let watchId = null, following = false, meDot = null, meRing = null, gpsBlocked = false;
@@ -494,6 +494,7 @@
     ["apple", "Apple Maps", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
     ["google", "Google Maps", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
     ["pic", "Current map", () => ""],
+    ["photos", "Photos", () => ""],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
   ];
@@ -501,6 +502,8 @@
   // 27 Oct: start everyone on just the grid ref and Apple Maps (name and notes ride along on saved things)
   if (!store.get("shareReset3", false)) { shareOn = new Set(["ref", "apple", "name", "notes"]); store.set("shareOpts", [...shareOn]); store.set("shareReset3", true); }
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
+  // 28 Oct: photos ride along by default (only offered for things that have them)
+  if (!store.get("sharePhotos", false)) { shareOn.add("photos"); store.set("shareOpts", [...shareOn]); store.set("sharePhotos", true); }
   function shareTextFor(x) {
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
     return [part(["ref", "ll", "en", "apple", "google"]), part(["name", "notes"])].filter(Boolean).join("\n\n");
@@ -508,7 +511,7 @@
   function drawShare() {
     $("shOpts").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
-      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes) || (k === "pic" && !shareItem.canPic)) continue;
+      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes) || (k === "pic" && !shareItem.canPic) || (k === "photos" && !(shareItem.photos || []).length)) continue;
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = label;
@@ -608,12 +611,14 @@
   }
   // The picture is made as the share sheet opens: an iPhone only shares straight from a tap,
   // so it has to be ready when Share is pressed
-  let sharePic = null;
+  let sharePic = null, sharePhotos = null;
   function openShare(item) {
     shareItem = item;
     // only when the map is showing the place being shared (not from a notebook entry elsewhere)
     item.canPic = map.getContainer().clientWidth > 0 && target().distanceTo([item.lat, item.lon]) < 30;
     sharePic = null;
+    // its photos are read in now, so they're ready when Share is pressed (same iPhone rule)
+    sharePhotos = item.photos && item.photos.length ? photoFiles(item.label, item.photos) : null;
     $("shPic").hidden = true;
     if (item.canPic && shareOn.has("pic")) makePic();
     drawShare();
@@ -629,9 +634,11 @@
   $("shGo").onclick = async () => {
     const text = shareTextFor(shareItem);
     const pic = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : null;
-    if (!text && !pic) return toast("Tick at least one thing to share");
+    const phs = shareOn.has("photos") && sharePhotos ? await sharePhotos : [];
+    const files = [pic, ...phs].filter(Boolean);
+    if (!text && !files.length) return toast("Tick at least one thing to share");
     $("shareModal").hidden = true;
-    if (pic && navigator.canShare && navigator.canShare({ files: [pic] })) { try { await navigator.share({ files: [pic], text }); } catch {} return; }
+    if (files.length && navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, text }); } catch {} return; }
     if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
   };
   $("shareBtn").onclick = () => {
@@ -672,9 +679,18 @@
     }
     return true;
   }
+  // Photos belong to a point, line or area (pt.photos: id plus where it was taken). Before
+  // 28 Oct a photo was an entry of its own: those read back as a point carrying that photo.
+  function upgrade(p) {
+    if (p.kind !== "photo") return p;
+    const { photoId, ...rest } = p;
+    return { ...rest, kind: "point", shape: p.shape || "circle", colour: p.colour || "black",
+      photos: photoId ? [{ id: photoId, lat: p.lat, lon: p.lon, acc: p.acc ?? null }] : [] };
+  }
+  const photosOf = (p) => (Array.isArray(p.photos) ? p.photos.filter((x) => x && x.id) : []);
   const loadPoints = () => {
     const raw = store.get("points", []);
-    return Array.isArray(raw) ? raw.filter(sane).map((p) => ({ ...p, name: String(p.name ?? "Unnamed"), notes: p.notes == null ? "" : String(p.notes) })) : [];
+    return Array.isArray(raw) ? raw.filter(sane).map((p) => upgrade({ ...p, name: String(p.name ?? "Unnamed"), notes: p.notes == null ? "" : String(p.notes) })) : [];
   };
   let points = loadPoints();
   const fresh = () => (points = loadPoints());
@@ -761,17 +777,19 @@
         Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
         if (!many && lastZone === "near" && pt.pts.length <= 80)
           for (const v of pt.pts) L.circleMarker(v, { radius: 3, color: c, weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(pinLayer);
+        // A small camera where each photo of it was taken (not from far out: too busy)
+        if (!many && lastZone !== "far")
+          for (const ph of photosOf(pt)) if (okLL(ph.lat, ph.lon))
+            L.marker([ph.lat, ph.lon], { icon: L.divIcon({ className: "", html: `<div class="photodot">${CAMERA_SVG}</div>`, iconSize: [20, 20], iconAnchor: [10, 10] }) })
+              .on("click", () => openFeature(pt))
+              .addTo(pinLayer);
         continue;
       }
-      if (pt.kind === "photo") {
-        L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "", html: `<div class="photopin">${CAMERA_SVG}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] }) })
-          .on("click", () => openFeature(pt))
-          .addTo(pinLayer);
-        continue;
-      }
+      // Points with photos wear a small dark camera badge; colour and shape still say what it is
+      const badge = photosOf(pt).length ? `<i class="pcam">${CAMERA_SVG}</i>` : "";
       (many
         ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas, bubblingMouseEvents: false })
-        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour), iconSize: [22, 22], iconAnchor: [11, 11] }) }))
+        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour) + badge, iconSize: [22, 22], iconAnchor: [11, 11] }) }))
         .on("click", () => openFeature(pt))
         .addTo(pinLayer);
     } catch {}
@@ -789,8 +807,7 @@
     panTo(to, Math.max(map.getZoom(), 15));
   }
   function showFeatMenu(pt) {
-    preloadPhoto(pt);
-    const m = $("featMenu"), c = centreOf(pt);
+    const m = $("featMenu"), c = centreOf(pt), nPh = photosOf(pt).length;
     m.innerHTML = "";
     const head = document.createElement("div");
     head.className = "fm-title";
@@ -799,7 +816,7 @@
     head.querySelector("span").textContent = pt.kind === "area" ? fmtArea(shapeStats(pt).area) : pt.kind === "line" ? fmtDist(shapeStats(pt).length) : "";
     m.appendChild(head);
     const item = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { m.style.display = "none"; fn(); }; m.appendChild(b); };
-    if (pt.kind === "photo") item("View photo", () => viewPhoto(pt));
+    if (nPh) item(nPh > 1 ? `View photos (${nPh})` : "View photo", () => viewPhotos(pt));
     item("Navigate", () => { const cc = centreOf(pt); navigateTo(cc.lat, cc.lon); });
     item("Share", () => shareSaved(pt));
     item("Edit", () => editSaved(pt));
@@ -831,7 +848,15 @@
     fresh();
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
-  const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
+  // Photos being added or removed in the popup. Nothing is final until Save: photos taken
+  // and then cancelled are thrown away, and removed ones only go once you save.
+  const MAX_PHOTOS = 6;
+  let draft = null;
+  const closeSave = (kept) => {
+    if (draft && !kept) for (const id of draft.added) photoDB.del(id).catch(() => {});
+    draft = null;
+    $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur();
+  };
   $("ptCancel").onclick = () => { const was = editing; closeSave(); if (was) showOnMap(was); };
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
   let editing = null;
@@ -839,7 +864,31 @@
     closeDrawer();
     openSave(pt, pt);
   }
-  if ($("ptThumb")) $("ptThumb").onclick = () => { const pt = editing; if (pt) { closeSave(); viewPhoto(pt); } };
+  function drawDraft() {
+    const box = $("ptThumbs");
+    if (!box || !draft) return;
+    for (const im of box.querySelectorAll("img")) if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);
+    box.innerHTML = "";
+    draft.photos.forEach((ph, i) => {
+      const s = document.createElement("span");
+      s.className = "pth";
+      s.innerHTML = '<img alt="Photo"><button type="button" class="x" aria-label="Remove photo">×</button>';
+      photoDB.get(ph.id).then((b) => { if (b) s.querySelector("img").src = URL.createObjectURL(b); }).catch(() => {});
+      s.querySelector("img").onclick = () => viewPhotos({ name: $("ptName").value.trim() || $("ptName").placeholder, photos: draft.photos }, i);
+      s.querySelector(".x").onclick = () => {
+        draft.photos.splice(draft.photos.indexOf(ph), 1);
+        if (draft.added.delete(ph.id)) photoDB.del(ph.id).catch(() => {});
+        else draft.removed.add(ph.id);
+        drawDraft();
+      };
+      box.appendChild(s);
+    });
+    $("ptPhotos").querySelector(".phbtns").hidden = draft.photos.length >= MAX_PHOTOS;
+  }
+  // The camera or the phone's photos, then the stamp screen, then back here
+  let photoFor = null; // "draft" (this popup) or "quick" (hold +)
+  if ($("ptTake")) $("ptTake").onclick = () => { photoFor = "draft"; $("photoIn").click(); };
+  if ($("ptPick")) $("ptPick").onclick = () => { photoFor = "draft"; $("photoPick").click(); };
   function openSave(geom, edit) {
     fresh();
     $("keepBar").hidden = true;
@@ -848,7 +897,7 @@
     const isShape = !!geom.kind && geom.kind !== "point"; // points saved before types existed have no kind
     $("ptKind").hidden = true;
     $("ptShape").hidden = isShape;
-    $("ptColour").hidden = geom.kind === "photo"; // photo markers are always the dark camera
+    $("ptColour").hidden = false;
     if (isShape) {
       for (const b of $("ptKind").children) {
         b.disabled = b.dataset.k === "area" && (!geom.pts || geom.pts.length < 3);
@@ -861,11 +910,8 @@
     if (editing) pick = { colour: editing.colour || "orange", shape: editing.shape || "circle" };
     $("ptMoveRow").hidden = !editing;
     $("ptReshape").hidden = !(editing && editing.pts);
-    const th = $("ptThumb") || document.createElement("img");
-    if (th.src.startsWith("blob:")) URL.revokeObjectURL(th.src);
-    th.removeAttribute("src");
-    th.hidden = geom.kind !== "photo";
-    if (geom.kind === "photo") photoDB.get(geom.photoId).then((b) => { if (b && saving === geom) th.src = URL.createObjectURL(b); }).catch(() => {});
+    draft = { photos: photosOf(editing || geom).slice(), added: new Set(), removed: new Set() };
+    drawDraft();
     drawPickers();
     $("saveModal").hidden = false;
     setTimeout(() => $("ptName").focus(), 50);
@@ -892,21 +938,24 @@
     if (!saving) return;
     fresh();
     const name = $("ptName").value.trim() || $("ptName").placeholder;
+    const photos = draft ? draft.photos.slice() : photosOf(editing || saving);
+    if (draft) for (const id of draft.removed) photoDB.del(id).catch(() => {});
     if (editing) {
       const i = points.findIndex((q) => q.at === editing.at && q.name === editing.name);
-      if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(points[i].kind ? {} : { shape: pick.shape }) };
-      closeSave();
+      const isShape = editing.kind === "line" || editing.kind === "area";
+      if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(isShape ? {} : { shape: pick.shape }), photos };
+      closeSave(true);
       if (savePoints()) toast("✓ Updated " + name);
       if (i >= 0) showOnMap(points[i]); // finish on the thing you just edited (Edit can start from the notebook)
       return;
     }
-    points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, at: new Date().toISOString() });
+    points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, photos, at: new Date().toISOString() });
     store.set("ptColour", pick.colour);
     store.set("ptShape", pick.shape);
     persist();
     const wasShape = saving.kind && saving.kind !== "point";
-    closeSave();
-    if (savePoints()) toast("✓ Saved " + name);
+    closeSave(true);
+    if (savePoints()) toast("✓ Saved " + name + (photos.length ? ` with ${photos.length} photo${photos.length > 1 ? "s" : ""}` : ""));
     if (wasShape && measure) $("mDone").click(); // back to the map
   };
   $("listBtn").onclick = () => openDrawer();
@@ -986,7 +1035,7 @@
     const list = $("list");
     list.innerHTML = "";
     const shown = scope.filter(match);
-    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair, tap <b>+</b>, then pick a point, line, area or photo.<br>In a hurry? <b>Hold +</b> to drop a pin there and then.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
+    if (!scope.length) list.innerHTML = empty("Your notebook is empty.<br>Line up the crosshair, tap <b>+</b>, then pick a point, line or area. Add photos as you save it.<br>In a hurry? <b>Hold +</b> to take a photo and pin it where you stand.<br><br>Got a list of grid refs? <b>Import</b> a CSV.");
     else if (!shown.length) list.innerHTML = empty("Nothing here with these filters.");
     // Rows: in a folder just its entries (by name); otherwise loose entries and one row per
     // folder, newest first, under day headings
@@ -1034,13 +1083,22 @@
     const kind = pt.kind || "point", isShape = kind === "line" || kind === "area";
     const st = isShape ? shapeStats(pt) : null;
     const col = COLOURS[pt.colour] || COLOURS.orange;
-    const mk = kind === "photo" ? '<img class="thumb" alt="">' : !isShape ? shapeSvg(pt.shape, pt.colour, 18)
+    const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
     const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : kind === "area" ? fmtArea(st.area) : fmtDist(st.length);
-    row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="meta"></div></div>`;
+    row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="pthumbs"></div><div class="meta"></div></div>`;
     row.querySelector(".name").textContent = pt.name;
     row.querySelector(".gr").textContent = what;
-    if (kind === "photo") photoDB.get(pt.photoId).then((b) => { if (b) row.querySelector(".thumb").src = URL.createObjectURL(b); }).catch(() => {});
+    // Its photos as a strip of small thumbnails (tap one to open it)
+    const phs = photosOf(pt), strip = row.querySelector(".pthumbs");
+    if (!phs.length) strip.remove();
+    phs.forEach((ph, i) => {
+      const im = document.createElement("img");
+      im.alt = "Photo";
+      im.onclick = (e) => { if (selecting) return; e.stopPropagation(); viewPhotos(pt, i); };
+      photoDB.get(ph.id).then((b) => { if (b) im.src = URL.createObjectURL(b); }).catch(() => {});
+      strip.appendChild(im);
+    });
     // Notes: up to 4 lines here; tap the entry to read them in full
     if (pt.notes) row.querySelector(".note").textContent = pt.notes;
     else row.querySelector(".note").remove();
@@ -1057,10 +1115,10 @@
         return drawSelBar();
       }
       menuPt = pt;
-      preloadPhoto(pt);
       $("imName").textContent = pt.name;
       $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (kind === "area" ? " (centre)" : kind === "line" ? " (start)" : "");
-      $("imView").hidden = kind !== "photo";
+      $("imView").hidden = !phs.length;
+      $("imView").textContent = phs.length > 1 ? `View photos (${phs.length})` : "View photo";
       $("imNotes").textContent = pt.notes || "";
       $("itemMenu").hidden = false;
     };
@@ -1086,35 +1144,29 @@
   $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
   $("imNav").onclick = () => { closeMenu(); const c = centreOf(menuPt); navigateTo(c.lat, c.lon); };
-  // A photo shares the picture itself. The iPhone only opens the share sheet straight from a
-  // tap, so the picture is loaded as soon as its menu opens, ready to go.
-  let photoReady = null;
-  function preloadPhoto(pt) {
-    photoReady = null;
-    if (pt.kind !== "photo") return;
-    photoDB.get(pt.photoId).then((b) => { if (b) photoReady = { id: pt.photoId, file: new File([b], `${pt.name.replace(/[^\w-]+/g, "_")}.jpg`, { type: "image/jpeg" }) }; }).catch(() => {});
-  }
-  async function sharePhoto(pt) {
-    const f = photoReady && photoReady.id === pt.photoId ? photoReady.file : null;
-    if (!f) return toast("Photo still loading: tap Share again");
-    if (navigator.canShare && navigator.canShare({ files: [f] })) { try { await navigator.share({ files: [f] }); } catch {} }
-    else toast("This phone can't share photos from here");
-  }
   function shareSaved(pt) {
-    if (pt.kind === "photo") return sharePhoto(pt);
     const c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
-    openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n });
+    openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n, photos: photosOf(pt) });
+  }
+  // A saved thing's photos as files, named after it ("Broken_stile_2.jpg")
+  async function photoFiles(name, photos) {
+    const base = (name || "photo").replace(/[^\w-]+/g, "_");
+    const out = [];
+    for (const [i, ph] of photos.entries()) {
+      try { const b = await photoDB.get(ph.id); if (b) out.push(new File([b], `${base}${photos.length > 1 ? "_" + (i + 1) : ""}.jpg`, { type: "image/jpeg" })); } catch {}
+    }
+    return out;
   }
   $("imShare").onclick = () => { closeMenu(); shareSaved(menuPt); };
   $("imEdit").onclick = () => { closeMenu(); editSaved(menuPt); };
-  $("imView").onclick = () => { closeMenu(); viewPhoto(menuPt); };
+  $("imView").onclick = () => { closeMenu(); viewPhotos(menuPt); };
   // Delete at once, with Undo for a few seconds (kinder than "are you sure?" with cold
   // thumbs). A photo's picture is only really removed once the Undo has gone.
   let undoTimer = null, undoItems = null;
   function finishDelete() {
     clearTimeout(undoTimer);
-    for (const p of undoItems || []) if (p.photoId) photoDB.del(p.photoId).catch(() => {});
+    for (const p of undoItems || []) for (const ph of photosOf(p)) photoDB.del(ph.id).catch(() => {});
     undoItems = null;
     $("undoBar").hidden = true;
   }
@@ -1160,7 +1212,7 @@
       .concat(list.map((p) => {
         const st = p.pts ? shapeStats(p) : null;
         return [q(p.name), p.kind || "point", OSGB.gridRef(p.e, p.n, 8), p.lat.toFixed(6), p.lon.toFixed(6), p.e, p.n, st ? Math.round(st.length) : "", st && st.area != null ? (st.area / 10000).toFixed(3) : "",
-          p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p)), p.photoId ? `photos/${p.photoId}.jpg` : "", q(p.folder || "")];
+          p.acc ?? "", p.at, q(p.notes || ""), p.colour || "orange", p.shape || "circle", q(wkt(p)), q(photosOf(p).map((ph) => `photos/${ph.id}.jpg`).join("; ")), q(p.folder || "")];
       }));
     return rows.map((r) => r.join(",")).join("\n");
   }
@@ -1176,20 +1228,20 @@
         name: p.name, type: p.kind || "point", notes: p.notes || "", grid_ref: OSGB.gridRef(c.e, c.n, 8),
         latitude: +c.lat.toFixed(6), longitude: +c.lon.toFixed(6), easting: Math.round(c.e), northing: Math.round(c.n), length_m: st ? Math.round(st.length) : null,
         area_ha: st && st.area != null ? +(st.area / 10000).toFixed(4) : null, gps_accuracy_m: p.acc ?? null,
-        saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle", photo: p.photoId ? `photos/${p.photoId}.jpg` : null, folder: p.folder || null } };
+        saved: p.at, colour: p.colour || "orange", shape: p.shape || "circle", photos: photosOf(p).map((ph) => `photos/${ph.id}.jpg`).join("; ") || null, folder: p.folder || null } };
     });
     return JSON.stringify({ type: "FeatureCollection", features }, null, 1);
   }
   async function exportList(list, fmt, withPhotos) {
     if (!list.length) return toast("Nothing picked to export");
     const day = new Date().toISOString().slice(0, 10);
-    const photos = withPhotos ? list.filter((p) => p.photoId) : [];
+    const photos = withPhotos ? list.flatMap(photosOf) : [];
     let file;
     if (photos.length) {
       // A zip: both data files (so it restores and opens anywhere) plus the photos themselves
       toast(`Packing ${photos.length} photo${photos.length > 1 ? "s" : ""}…`);
       const files = [{ name: `field-notes-${day}.csv`, data: toCSV(list) }, { name: `field-notes-${day}.geojson`, data: toGeoJSON(list) }];
-      for (const p of photos) { try { const b = await photoDB.get(p.photoId); if (b) files.push({ name: `photos/${p.photoId}.jpg`, data: b }); } catch {} }
+      for (const ph of photos) { try { const b = await photoDB.get(ph.id); if (b) files.push({ name: `photos/${ph.id}.jpg`, data: b }); } catch {} }
       file = new File([await Zip.make(files)], `field-notes-${day}.zip`, { type: "application/zip" });
     } else {
       file = fmt === "geojson"
@@ -1289,6 +1341,12 @@
     const ours = head.includes("type") && head.includes("saved") && head.some((h) => h.startsWith("geometry"));
     const folderOf = (get) => get(iFolder) || (ours ? "" : folderName || "");
     const pendingPhotos = [];
+    // "photos/a.jpg; photos/b.jpg": each file found in the zip gets a fresh id on this phone
+    const withPics = (get) => (photoFiles ? get(iPhoto).split(/\s*;\s*/).filter((f) => photoFiles.has(f)) : []).map((f) => {
+      const id = "ph" + Date.now() + "_" + pendingPhotos.length;
+      pendingPhotos.push({ id, data: photoFiles.get(f) });
+      return { id, lat: null, lon: null };
+    });
     fresh();
     const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
     let added = 0, skipped = 0;
@@ -1305,6 +1363,8 @@
           at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
           colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange" };
         if (folderOf(get)) shp.folder = folderOf(get);
+        const phs = withPics(get);
+        if (phs.length) shp.photos = phs;
         const key = shp.name + "|" + shp.e + "|" + shp.n;
         if (seen.has(key)) { skipped++; continue; }
         seen.add(key);
@@ -1322,12 +1382,10 @@
       const pt = { name: get(iName) || "Imported " + (added + 1), lat: ll.lat, lon: ll.lon, e: Math.round(g.e), n: Math.round(g.n), at, acc: +get(iAcc) || null,
         notes: get(iNotes), colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange", shape: SHAPES[get(iShape).toLowerCase()] ? get(iShape).toLowerCase() : "circle" };
       if (folderOf(get)) pt.folder = folderOf(get);
-      // A photo row from one of our zips: bring the picture back too
-      if (get(iType) === "photo" && photoFiles && photoFiles.has(get(iPhoto))) {
-        pt.kind = "photo";
-        pt.photoId = "ph" + Date.now() + "_" + added;
-        pendingPhotos.push({ id: pt.photoId, data: photoFiles.get(get(iPhoto)) });
-      }
+      if (get(iType) === "point" || get(iType) === "photo") pt.kind = "point"; // old exports had photo rows
+      // From one of our zips: bring its pictures back too
+      const phs = withPics(get);
+      if (phs.length) { pt.photos = phs; if (get(iType) === "photo") pt.colour = COLOURS[get(iColour).toLowerCase()] ? pt.colour : "black"; }
       const key = pt.name + "|" + pt.e + "|" + pt.n;
       if (seen.has(key)) { skipped++; continue; }
       seen.add(key);
@@ -2163,12 +2221,10 @@
   for (const id of ["mDist", "mArea", "mHa"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v, $(id).parentElement); };
   map.on("move", () => { if (measure) drawMeasure(); });
 
-  // ---------- photo with the grid ref stamped on ----------
-  // Take one: placed by GPS if the blue dot is on, otherwise the crosshair.
-  // Choose one from the phone: placed where the photo says it was taken, otherwise the crosshair.
-  // One + button: tap it for Point, Line, Area and Photo; tap again (or pick one, or leave it
-  // 10 s without touching anything) and they tuck away. Moving the map keeps them open, so
-  // you can line up the crosshair and then pick.
+  // ---------- the + button, and photos with the grid ref stamped on ----------
+  // One + button: tap it for Point, Line and Area; tap again (or pick one, or leave it 10 s
+  // without touching anything) and they tuck away. Moving the map keeps them open, so you can
+  // line up the crosshair and then pick. Photos are added in the Save popup of any of them.
   let addTimer = null;
   const HOLD_MS = 900;
   function setAdding(on) {
@@ -2177,10 +2233,11 @@
     clearTimeout(addTimer);
     if (on) addTimer = setTimeout(() => setAdding(false), 10000);
   }
-  // Hold + to drop a pin at once (automatic name, rename later): for "mark it and keep walking".
+  // Hold + for "photograph it and keep walking": the camera opens at once, and the photo is
+  // saved as a pin where you're standing (GPS, else the crosshair) with an automatic name.
   // Three arcs fan out from the button, up and right (clear of the screen edge and a right
   // thumb), lighting one at a time (with a tick each where the phone allows); let go after the
-  // third. It saves as the finger lifts: an iPhone sends no click after a long press.
+  // third. It acts as the finger lifts: an iPhone sends no click after a long press.
   let holdAt = 0, holdTimers = [], skipClick = 0;
   const addBtn = $("addBtn");
   addBtn.insertAdjacentHTML("beforeend", '<svg class="holdring" viewBox="0 0 100 100" aria-hidden="true">' +
@@ -2199,7 +2256,7 @@
   const unhold = () => { holdTimers.forEach(clearTimeout); addBtn.classList.remove("held", "h1", "h2", "h3"); };
   // (not pointerleave: on a touch screen it fires as the finger lifts, before the click)
   // The finger lifting ends the hold; so does iOS cancelling a long touch, which it may do.
-  // Either way a full hold drops the pin
+  // Either way a full hold opens the camera
   const endHold = () => {
     const held = holdAt && Date.now() - holdAt >= HOLD_MS;
     holdAt = 0;
@@ -2208,7 +2265,7 @@
     skipClick = Date.now(); // in case a click does follow (desktop, Android), it mustn't open the menu
     setAdding(false);
     haptic();
-    quickPin();
+    quickPhoto();
   };
   addBtn.addEventListener("pointerup", endHold);
   addBtn.addEventListener("pointercancel", endHold);
@@ -2217,40 +2274,30 @@
     if (Date.now() - skipClick < 800) return; // the end of a hold, already handled
     setAdding(!document.body.classList.contains("adding"));
   };
-  function quickPin() {
+  function quickPhoto() {
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
-    fresh();
-    const name = autoName("point", last.lat, last.lon);
-    points.unshift({ name, notes: "", colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle"), kind: "point",
-      lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null, at: new Date().toISOString() });
-    persist();
-    if (savePoints()) toast("📍 Pin dropped: " + name);
+    photoFor = "quick";
+    $("photoIn").click();
   }
   map.on("move", () => { if (document.body.classList.contains("adding")) setAdding(true); });
   for (const id of ["saveBtn", "measureBtn", "areaBtn"]) $(id).addEventListener("click", () => setAdding(false));
-  const photoMenu = $("photoMenu");
-  $("photoBtn").onclick = () => {
-    if (photoMenu.style.display === "block") return (photoMenu.style.display = "none");
-    const b = $("photoBtn").getBoundingClientRect();
-    photoMenu.style.left = b.right + 10 + "px";
-    photoMenu.style.top = b.top + "px";
-    photoMenu.style.display = "block";
-  };
-  $("photoBtn").addEventListener("click", () => setAdding(true)); // keep the menu while choosing
-  $("pmTake").onclick = () => { photoMenu.style.display = "none"; setAdding(false); $("photoIn").click(); };
-  $("pmPick").onclick = () => { photoMenu.style.display = "none"; setAdding(false); $("photoPick").click(); };
   $("photoIn").onchange = (e) => stampPhoto(e, false);
   $("photoPick").onchange = (e) => stampPhoto(e, true);
+  // The stamp says where you were standing when you took it: GPS, or for one chosen from the
+  // phone, where the photo says it was taken. Without either, the place of the thing it's of.
   async function stampPhoto(e, fromPhone) {
     const file = e.target.files[0];
     e.target.value = "";
-    if (!file) return;
+    const mode = photoFor;
+    photoFor = null;
+    if (!file || !mode || (mode === "draft" && !draft)) return;
     toast("Stamping the photo…");
     const ex = fromPhone ? await EXIF.read(file) : {};
+    const thing = mode === "draft" ? centreOf(saving) : { lat: last.lat, lon: last.lon };
     const where = ex.lat != null ? { lat: ex.lat, lon: ex.lon, src: "Photo's location" }
       : here && !fromPhone ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` }
-      : { lat: last.lat, lon: last.lon, src: "" };
-    if (fromPhone && ex.lat == null) toast("No location in that photo: placed at the crosshair");
+      : { lat: thing.lat, lon: thing.lon, src: "" };
+    if (fromPhone && ex.lat == null) toast("No location in that photo: stamped with this " + ({ line: "line", area: "area" }[saving.kind] || "point") + "'s");
     const g = OSGB.wgs84ToGrid(where.lat, where.lon);
     const ref = OSGB.gridRef(g.e, g.n, digits) || `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`;
     const when = ex.when || (fromPhone && file.lastModified ? new Date(file.lastModified) : new Date());
@@ -2270,11 +2317,12 @@
     stampJob = { line: "", base, name: `${ref.replace(/\s+/g, "")}_${stamp}.jpg`, ref, ll: `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`,
       when: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${timeOf(when.toISOString())}`,
       reserve: reserve.replace(/ \(NNR\)$/, ""), src: where.src };
-    photoNew = { lat: where.lat, lon: where.lon, e: Math.round(g.e), n: Math.round(g.n), acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null,
-      name: autoName("photo", where.lat, where.lon, when) };
+    photoNew = { lat: where.lat, lon: where.lon, acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null, mode };
+    viewing = null;
+    // Hold +: no screen in between, stamped your usual way and saved
+    if (mode === "quick") { await restamp(); return keepPhoto(); }
     $("photoSave").hidden = false;
-    const pn = $("photoName");
-    if (pn) { pn.hidden = false; pn.value = ""; pn.placeholder = "Name: " + photoNew.name; }
+    if ($("photoStrip")) $("photoStrip").hidden = true;
     drawStampOpts();
     await restamp();
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
@@ -2282,8 +2330,8 @@
     $("photoModal").hidden = false;
   }
   // What goes on the stamp: tick and it redraws. Remembered for next time.
-  // Where the position came from (GPS ±m, crosshair, the photo's own) always rides along with
-  // the location, so nobody trusts a crosshair guess as a GPS fix
+  // Where the position came from (GPS ±m, the photo's own) always rides along with the
+  // location, so nobody trusts a guess as a GPS fix
   const STAMP_OPTS = [["ref", "Grid ref"], ["ll", "Lat/long"], ["when", "Date & time"], ["reserve", "Reserve"], ["line", "Add notes"]];
   let stampJob = null, stampOn = new Set(store.get("stampOpts", ["ref", "when", "reserve"]));
   function drawStampOpts() {
@@ -2302,7 +2350,6 @@
     lineTimer = setTimeout(restamp, 300);
   });
   $("stampLine").addEventListener("keydown", (e) => { if (e.key === "Enter") $("stampLine").blur(); });
-  $("photoName")?.addEventListener("keydown", (e) => { if (e.key === "Enter") $("photoName").blur(); });
   $("stampOpts").onclick = async (e) => {
     const b = e.target.closest("button");
     if (!b || !stampJob) return;
@@ -2346,33 +2393,68 @@
     if ($("photoOut").src.startsWith("blob:")) URL.revokeObjectURL($("photoOut").src);
     $("photoOut").src = URL.createObjectURL(photoFile);
   }
-  let photoFile = null, photoNew = null;
-  $("photoSave").onclick = async () => {
-    if (!photoFile || !photoNew) return;
+  let photoFile = null, photoNew = null, viewing = null;
+  // Add: into the popup's photos, or (hold +) straight into the notebook as a pin
+  async function keepPhoto() {
+    const ph = photoNew;
+    if (!photoFile || !ph) return;
     const id = "ph" + Date.now();
     try { await photoDB.put(id, photoFile); } catch { return toast("Couldn't save the photo on this phone"); }
-    fresh();
-    // Named on this screen; left blank it keeps the automatic name (with the photo's own time).
-    // The Add notes line only goes on the picture, never the name
-    const name = ($("photoName")?.value || "").trim() || photoNew.name;
-    points.unshift({ kind: "photo", photoId: id, notes: "", colour: "black", ...photoNew, name, at: new Date().toISOString() });
-    persist();
+    const rec = { id, lat: +ph.lat.toFixed(6), lon: +ph.lon.toFixed(6), acc: ph.acc };
     closePhoto();
-    if (savePoints()) toast("✓ Saved " + name);
-  };
-  async function viewPhoto(pt) {
-    let blob;
-    try { blob = await photoDB.get(pt.photoId); } catch {}
-    if (!blob) return toast("That photo isn't on this phone any more");
-    photoFile = new File([blob], `${pt.name.replace(/[^\w-]+/g, "_")}.jpg`, { type: "image/jpeg" });
-    photoNew = null;
+    if (ph.mode === "draft") {
+      if (!draft) { photoDB.del(id).catch(() => {}); return; }
+      draft.photos.push(rec);
+      draft.added.add(id);
+      return drawDraft();
+    }
+    fresh();
+    const g = OSGB.wgs84ToGrid(ph.lat, ph.lon), name = autoName("point", ph.lat, ph.lon);
+    points.unshift({ name, notes: "", colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle"), kind: "point",
+      lat: ph.lat, lon: ph.lon, e: Math.round(g.e), n: Math.round(g.n), acc: ph.acc, photos: [rec], at: new Date().toISOString() });
+    persist();
+    if (savePoints()) toast("📷 Pin dropped with photo: " + name);
+  }
+  $("photoSave").onclick = keepPhoto;
+  // A thing's photos: one big, the rest as a strip to tap through. Share sends the one showing.
+  async function viewPhotos(pt, i = 0) {
+    const phs = photosOf(pt);
+    if (!phs.length) return;
+    viewing = { pt, i };
     stampJob = null;
+    photoNew = null;
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
-    if ($("photoName")) $("photoName").hidden = true;
     $("photoSave").hidden = true;
-    $("photoOut").src = URL.createObjectURL(blob);
+    const strip = $("photoStrip");
+    if (strip) {
+      for (const im of strip.querySelectorAll("img")) if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);
+      strip.innerHTML = "";
+      strip.hidden = phs.length < 2;
+      if (phs.length > 1) phs.forEach((ph, k) => {
+        const im = document.createElement("img");
+        im.alt = "Photo " + (k + 1);
+        im.onclick = () => showPhoto(k);
+        photoDB.get(ph.id).then((b) => { if (b) im.src = URL.createObjectURL(b); }).catch(() => {});
+        strip.appendChild(im);
+      });
+    }
     $("photoModal").hidden = false;
+    await showPhoto(i);
+  }
+  async function showPhoto(k) {
+    if (!viewing) return;
+    const phs = photosOf(viewing.pt), ph = phs[k];
+    if (!ph) return;
+    viewing.i = k;
+    if ($("photoStrip")) [...$("photoStrip").children].forEach((im, n) => im.classList.toggle("on", n === k));
+    let blob;
+    try { blob = await photoDB.get(ph.id); } catch {}
+    if (!blob) { photoFile = null; return toast("That photo isn't on this phone any more"); }
+    const base = (viewing.pt.name || "photo").replace(/[^\w-]+/g, "_");
+    photoFile = new File([blob], `${base}${phs.length > 1 ? "_" + (k + 1) : ""}.jpg`, { type: "image/jpeg" });
+    if ($("photoOut").src.startsWith("blob:")) URL.revokeObjectURL($("photoOut").src);
+    $("photoOut").src = URL.createObjectURL(blob);
   }
   $("photoShare").onclick = async () => {
     if (!photoFile) return;
@@ -2385,7 +2467,7 @@
       a.click();
     }
   };
-  function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; }
+  function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; viewing = null; }
   $("photoClose").onclick = closePhoto;
 
   // ---------- move and reshape saved things ----------

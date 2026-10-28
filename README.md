@@ -4,7 +4,7 @@ A pocket map and notebook for rangers, built by Nick for the South Cumbria NNR t
 
 - **Find and convert**: the crosshair reads out the OS grid ref (8 figures), lat/long, E/N and what3words; tap any to copy. Grid refs and E/N match OS's own OSTN15 conversion to within centimetres (`data/ostn15.json`).
 - **Search anything**: grid refs, E/N, lat/long (decimal or DMS), postcodes, plus codes, ///what3words, map links, place names (offline for SD/NY, online elsewhere), your own notebook and the reserves, with typo tolerance, and locations pulled out of a pasted message. `node test/parse.test.js`.
-- **Notebook** (on the phone only): points, lines, areas and photos by day, filtered by reserve, each tagged with its reserve; CSV imports go into folders; export CSV (E/N in EPSG:27700) or GeoJSON, with photos as a zip.
+- **Notebook** (on the phone only): points, lines and areas by day, each with up to 6 stamped photos (hold + = photo pinned where you stand), filtered by reserve, each tagged with its reserve; CSV imports go into folders; export CSV (E/N in EPSG:27700) or GeoJSON, with photos as a zip.
 - **Share**: grid ref, lat/long, E/N, Apple/Google Maps links, name and notes, and a picture of the current map. Photos are stamped with the location, date, reserve and your own line.
 - **Navigate** to anything with a compass arrow, distance and bearing; arriving turns the panel green with a buzz and a chime.
 - **Reserve chips** jump to each reserve and show a card: weather, sunset, official tides (ADMIRALTY, daily via `.github/workflows/tides.yml`) and your notes there.
