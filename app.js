@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "126"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "127"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   const layersEl = $("layers");
   // LiDAR shading: the Environment Agency's 1 m ground model, blended over whichever map is
@@ -800,7 +800,7 @@
     openSave({ kind: "point", lat: last.lat, lon: last.lon, e: Math.round(last.e), n: Math.round(last.n), acc: following && here ? Math.round(here.acc) : null });
   };
   const closeSave = () => { $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur(); };
-  $("ptCancel").onclick = closeSave;
+  $("ptCancel").onclick = () => { const was = editing; closeSave(); if (was) showOnMap(was); };
   $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
   let editing = null;
   function editSaved(pt) {
@@ -859,6 +859,7 @@
       if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(points[i].kind ? {} : { shape: pick.shape }) };
       closeSave();
       if (savePoints()) toast("✓ Updated " + name);
+      if (i >= 0) showOnMap(points[i]); // finish on the thing you just edited (Edit can start from the notebook)
       return;
     }
     points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, at: new Date().toISOString() });
