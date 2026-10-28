@@ -555,6 +555,10 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* Launch glide: reserve outlines, labels and pins wait for the map to settle, then fade in */
 #map .leaflet-overlay-pane, #map .leaflet-marker-pane, #map .leaflet-shadow-pane { transition: opacity .5s; }
 #map.gliding .leaflet-overlay-pane, #map.gliding .leaflet-marker-pane, #map.gliding .leaflet-shadow-pane { opacity: 0; }
+/* Spotlight round the reserves when zoomed in (app.js closeUp): fades with the zoom */
+#map .leaflet-mask-pane { opacity: 0; transition: opacity .6s; pointer-events: none; }
+#map .leaflet-mask-pane.on { opacity: 1; }
+#map.gliding .leaflet-mask-pane { opacity: 0; }
 
 /* tides, from typing "tide" in search */
 .results button.tiderow .t { display: block; font-weight: 700; }

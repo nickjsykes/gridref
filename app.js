@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "153"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "154"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2123,7 +2123,52 @@
   const isTeam = (f) => TEAM.has(f.properties && f.properties.REF_CODE);
   // Burnt orange: nothing on the topo map uses it, and tiles stay light in dark mode
   const RESERVE = "#d9480f";
-  nnrLayer.options.style = () => ({ color: RESERVE, weight: 3, opacity: 0.95, fillColor: RESERVE, fillOpacity: map.getZoom() < 14 ? 0.14 : 0.04 });
+  // Zoomed out: a bold line and a tint, so the reserves stand out across the county. Zoomed in
+  // (13 up): a crisp edge with a soft band along it, and the spotlight dims everything outside.
+  const CLOSE = 13;
+  nnrLayer.options.style = () => (map.getZoom() < CLOSE
+    ? { color: RESERVE, weight: 3, opacity: 0.95, fillColor: RESERVE, fillOpacity: 0.14 }
+    : { color: RESERVE, weight: 2.2, opacity: 1, fill: false, lineJoin: "round" });
+  const bandLayer = L.geoJSON(null, { interactive: false, style: { color: RESERVE, weight: 11, opacity: 0.22, fill: false, lineJoin: "round" } });
+  // The spotlight: one shape covering the whole region with the reserves cut out of it, in its
+  // own pane under the boundaries, gently darkening the land around them
+  const maskPane = map.createPane("mask");
+  maskPane.style.zIndex = 350;
+  let maskLayer = null;
+  function drawMask() {
+    if (maskLayer) map.removeLayer(maskLayer);
+    const flip = (ring) => ring.map(([x, y]) => [y, x]);
+    const holes = [], islands = [];
+    for (const f of nnr) {
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) { holes.push(flip(poly[0])); islands.push(...poly.slice(1).map((h) => [flip(h)])); }
+    }
+    const world = [[52.5, -6], [52.5, 0.5], [56.5, 0.5], [56.5, -6]];
+    maskLayer = L.polygon([[world, ...holes], ...islands], { pane: "mask", renderer: L.svg({ pane: "mask" }), interactive: false, stroke: false, fillColor: "#18231d", fillOpacity: 0.3 }).addTo(map);
+  }
+  function closeUp() {
+    const close = map.getZoom() >= CLOSE;
+    maskPane.classList.toggle("on", close);
+    if (close && !map.hasLayer(bandLayer)) bandLayer.addTo(map).bringToBack();
+    if (!close && map.hasLayer(bandLayer)) map.removeLayer(bandLayer);
+  }
+  // Tap a reserve chip: its boundary draws itself round, quickly, as the map lands on it
+  function drawOn(code) {
+    nnrLayer.eachLayer((l) => {
+      const path = l._path;
+      if (!path || l.feature.properties.REF_CODE !== code || !path.getTotalLength) return;
+      const len = Math.ceil(path.getTotalLength());
+      path.style.transition = "none";
+      path.style.strokeDasharray = `${len} ${len}`;
+      path.style.strokeDashoffset = len;
+      path.getBoundingClientRect(); // start from the hidden state
+      path.style.transition = "stroke-dashoffset .9s cubic-bezier(.45,.05,.25,1)";
+      path.style.strokeDashoffset = 0;
+      const done = () => { path.style.transition = path.style.strokeDasharray = path.style.strokeDashoffset = ""; };
+      path.addEventListener("transitionend", done, { once: true });
+      setTimeout(done, 1300); // never left dashed if the transition doesn't report back
+    });
+  }
   const resLabels = L.layerGroup().addTo(map);
   function drawResLabels() {
     resLabels.clearLayers();
@@ -2136,7 +2181,7 @@
       L.marker(at, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel${below ? " below" : ""}">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
     }
   }
-  map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); drawResLabels(); });
+  map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); closeUp(); drawResLabels(); });
   // Fit a reserve into the biggest clear space on screen: nothing over it, not even the
   // see-through buttons. Two ways to fit: the full width down to the tops of the corner
   // buttons, or the gap between the two button columns down to the panel. A wide reserve
@@ -2167,6 +2212,7 @@
         following = false;
         $("locBtn").classList.remove("on");
         fitClear(L.geoJSON(f).getBounds());
+        drawOn(code);
       };
       $("chips").appendChild(b);
     }
@@ -2181,6 +2227,9 @@
       return { ...f, bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()] };
     });
     nnrLayer.clearLayers().addData(gj);
+    bandLayer.clearLayers().addData(gj);
+    drawMask();
+    closeUp();
     drawResLabels();
     drawChips();
     update();
