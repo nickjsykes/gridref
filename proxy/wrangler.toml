@@ -1,0 +1,15 @@
+name = "fieldnotes-tiles"
+main = "worker.js"
+compatibility_date = "2025-06-01"
+
+[vars]
+# Pages allowed to use the proxy: the live app and the local preview
+ALLOWED = "https://nickjsykes.github.io,http://localhost:8793"
+
+# Per phone: 600 tiles a minute is plenty for fast panning, and stops anyone draining the allowance
+[[ratelimits]]
+name = "LIMITER"
+namespace_id = "1001"
+simple = { limit = 600, period = 60 }
+
+# The OS key is a secret, set once with:  npx wrangler secret put OS_KEY

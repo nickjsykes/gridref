@@ -9,11 +9,17 @@
   // ---------- map ----------
   const BLANK = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
   const OS_KEY = (window.GRIDREF_CONFIG || {}).osKey || "";
+  const OS_PROXY = ((window.GRIDREF_CONFIG || {}).osProxy || "").replace(/\/$/, "");
   const LAYERS = {
     aerial: { name: "Aerial photo", layer: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, crossOrigin: true, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" }) },
-    // OS Outdoor: proper OS cartography (contours, paths, woods). Open data up to zoom 16 on
-    // OS's free plan; needs a free OS Data Hub key in config.js, and only appears once there is one.
-    ...(OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
+    // OS Outdoor: proper OS cartography (contours, paths, woods). Two ways in, set in config.js:
+    // - osProxy: our Cloudflare Worker (proxy/), which holds a Premium-plan key, so the map
+    //   carries on to zoom 20 with OS MasterMap detail (buildings, fences, field boundaries)
+    // - osKey: a free OpenData key straight to OS, which stops at zoom 16 and stretches after
+    ...(OS_PROXY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`${OS_PROXY}/outdoor/{z}/{x}/{y}.png`, { maxNativeZoom: 20, maxZoom: 20, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } }
+      : OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
+    // On trial: OpenStreetMap, drawn to zoom 19. In the Lakes it often has walls, gates and stiles
+    osm: { name: "OpenStreetMap (trial)", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }) },
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -33,7 +39,7 @@
     clearTimeout(c._t);
     if (c.classList.contains("open")) c._t = setTimeout(() => c.classList.remove("open"), 6000);
   });
-  let current = OS_KEY ? "outdoor" : "os"; // every launch starts on OS Outdoor (or the offline OS map without a key); a map picked in the layers menu lasts until the app is closed
+  let current = LAYERS.outdoor ? "outdoor" : "os"; // every launch starts on OS Outdoor (or the offline OS map without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
   const fitZoom = () => { map.setMaxZoom(LAYERS[current].layer.options.maxZoom || 19); if (map.getZoom() > map.getMaxZoom()) map.setZoom(map.getMaxZoom()); };
@@ -78,7 +84,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "150"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "151"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2047,7 +2053,7 @@
   function goOffline() {
     if (offlineMode) return;
     offlineMode = true;
-    if (current === "aerial" && OS_KEY) { swappedFrom = "aerial"; setBase("outdoor"); }
+    if (current === "aerial" && LAYERS.outdoor) { swappedFrom = "aerial"; setBase("outdoor"); }
     if (current !== "os") offlineOverlay.addTo(map);
     toast("Switching to offline maps");
     clearInterval(probe);
@@ -2066,7 +2072,7 @@
   }
   // Phones often claim to be online with no usable signal, so also watch for map tiles
   // failing to load: several in a few seconds means no signal.
-  for (const k of ["outdoor", "aerial"].filter((x) => LAYERS[x])) {
+  for (const k of ["outdoor", "aerial", "osm"].filter((x) => LAYERS[x])) {
     LAYERS[k].layer.on("tileerror", () => {
       const now = Date.now();
       tileErrors = tileErrors.filter((t) => now - t < 6000).concat(now);
