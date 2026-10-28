@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "141"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "142"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2142,7 +2142,7 @@
     return `Tide ${next[0].high ? "coming in" : "going out"} · high at ${when} ${hi.m.toFixed(1)} m`;
   }
   let cardFor = null;
-  function closeResCard() { $("resCard").hidden = true; cardFor = null; }
+  function closeResCard() { $("resCard").hidden = true; const was = cardFor; cardFor = null; if (was) drawChips(); }
   function showResCard(code, f) {
     const name = TEAM.get(code), card = $("resCard");
     cardFor = code;
@@ -2167,17 +2167,18 @@
     });
     return card.getBoundingClientRect().bottom;
   }
+  // A chip is lit only while its reserve card is open (it used to remember the last one
+  // tapped, so the app opened with a reserve picked for no reason you could see)
   function drawChips() {
-    const last = store.get("lastReserve", "");
+    const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
     for (const [code, name] of TEAM) {
       const f = nnr.find((x) => x.properties.REF_CODE === code);
       if (!f) continue;
       const b = document.createElement("button");
       b.textContent = name;
-      b.className = code === last ? "on" : "";
+      b.className = code === cardFor ? "on" : "";
       b.onclick = () => {
-        store.set("lastReserve", code);
         following = false;
         $("locBtn").classList.remove("on");
         const top = showResCard(code, f);
@@ -2188,6 +2189,7 @@
       };
       $("chips").appendChild(b);
     }
+    $("chips").scrollLeft = keepScroll;
   }
   function useNNR(gj) {
     if (!gj || !gj.features || !gj.features.length) return false;
@@ -2705,13 +2707,33 @@
     map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
     let touched = false;
     map.getContainer().addEventListener("pointerdown", () => (touched = true), { once: true });
-    setTimeout(() => {
+    // Fly onto a drawn map: wait for the Cumbria view to load, and fetch the tiles of the
+    // landing view in the background meanwhile (2.5 s at most, so a slow signal never stalls it)
+    const base = LAYERS[current].layer;
+    const startLoaded = new Promise((r) => { if (!base._loading) r(); else base.once("load", r); });
+    const end = map._getBoundsCenterZoom(RESERVES, pad);
+    const landingLoaded = Promise.all(landingTiles(base, end.center, end.zoom).map((src) => new Promise((r) => {
+      const im = new Image();
+      im.crossOrigin = "anonymous"; // same as the map's own requests, so the browser reuses them
+      im.onload = im.onerror = r;
+      im.src = src;
+    })));
+    Promise.race([Promise.all([startLoaded, landingLoaded]), new Promise((r) => setTimeout(r, 2500))]).then(() => {
       if (touched) return;
       map.flyToBounds(RESERVES, { ...pad, duration: 1.8, easeLinearity: 0.2 });
-      const goal = map.getBoundsZoom(RESERVES, false, L.point(104, 126 + sheet.offsetHeight + 24));
-      setTimeout(() => { if (!touched && Math.abs(map.getZoom() - goal) > 0.2) map.fitBounds(RESERVES, { ...pad, animate: false }); }, 3000);
-    }, 500);
+      setTimeout(() => { if (!touched && Math.abs(map.getZoom() - end.zoom) > 0.2) map.fitBounds(RESERVES, { ...pad, animate: false }); }, 3000);
+    });
   };
+  // The tile addresses a layer will need to show `center` at zoom `z` on this screen
+  function landingTiles(layer, center, z) {
+    const tz = Math.min(Math.round(z), layer.options.maxNativeZoom ?? layer.options.maxZoom ?? 19);
+    const half = map.getSize().multiplyBy(Math.pow(2, tz - z) / 2), c = map.project(center, tz), ts = 256;
+    const out = [];
+    for (let x = Math.floor((c.x - half.x) / ts); x <= Math.floor((c.x + half.x) / ts); x++)
+      for (let y = Math.floor((c.y - half.y) / ts); y <= Math.floor((c.y + half.y) / ts); y++)
+        out.push(L.Util.template(layer._url, { ...layer.options, x, y, z: tz, s: "a", r: "" }));
+    return out.slice(0, 60);
+  }
   for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadOSTN, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
