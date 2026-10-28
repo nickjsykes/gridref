@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "146"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "147"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2207,11 +2207,11 @@
       if (e) big.push({ e, station: t.station });
     }
     big.sort((a, b) => Date.parse(a.e.at) - Date.parse(b.e.at));
-    if (big[0]) { const { e, station } = big[0], d = dayWord(e.at); out.push(`Big tide ${d === "today" ? "" : d + " "}${tTime(e.at)}: ${e.m.toFixed(1)} m at ${station}`); }
+    if (big[0]) { const { e, station } = big[0], d = dayWord(e.at); out.push(`Big tide ${d === "today" ? "" : d + " "}${tTime(e.at)} · ${e.m.toFixed(1)} m ${station.replace(" Bar", "")}`); }
     if (wx) {
       const { h, hrs, now } = wx;
       let i = hrs.find((k) => h.temperature_2m[k] <= 0);
-      if (i != null) out.push(`Freezing ${when(h.time[i], now)}, low of ${Math.round(Math.min(...hrs.map((k) => h.temperature_2m[k])))}°`);
+      if (i != null) out.push(`Frost ${when(h.time[i], now)}, down to ${Math.round(Math.min(...hrs.map((k) => h.temperature_2m[k])))}°`);
       i = hrs.find((k) => h.weather_code[k] === 45 || h.weather_code[k] === 48);
       if (i != null) out.push(`Fog ${when(h.time[i], now)}`);
       const hot = Math.max(...hrs.map((k) => h.temperature_2m[k]));
@@ -2802,7 +2802,7 @@
   const RESERVES = L.latLngBounds([[54.1229, -3.4460], [54.3983, -2.7904]]);
   const openOnPatch = () => {
     layout();
-    const pad = { paddingTopLeft: [52, 126], paddingBottomRight: [52, sheet.offsetHeight + 24] };
+    const pad = { paddingTopLeft: [52, 136], paddingBottomRight: [52, sheet.offsetHeight + 24] };
     if (launchQ) return map.fitBounds(RESERVES, { ...pad, animate: false });
     if (matchMedia("(prefers-reduced-motion: reduce)").matches) { map.fitBounds(RESERVES, { ...pad, animate: false }); return showToday(); }
     map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
