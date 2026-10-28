@@ -1,6 +1,6 @@
 # Field Notes
 
-A pocket map and notebook for rangers, built for the Natural England South Cumbria NNR team (iPhone first). Live at https://nickjsykes.github.io/gridref/ (install guide: `install.html`).
+A pocket map and notebook for rangers, built by Nick for the South Cumbria NNR team (iPhone first). Live at https://nickjsykes.github.io/gridref/ (install guide: `install.html`).
 
 - **Find and convert**: the crosshair reads out the OS grid ref (8 figures), lat/long, E/N and what3words; tap any to copy. Grid refs and E/N match OS's own OSTN15 conversion to within centimetres (`data/ostn15.json`).
 - **Search anything**: grid refs, E/N, lat/long (decimal or DMS), postcodes, plus codes, ///what3words, map links, place names (offline for SD/NY, online elsewhere), your own notebook and the reserves, with typo tolerance, and locations pulled out of a pasted message. `node test/parse.test.js`.
