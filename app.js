@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "148"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "149"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2074,9 +2074,24 @@
     }
   }
   map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); drawResLabels(); });
-  // A chip takes you to its reserve, fitted between the chips and the panel. Some have a
-  // hand-picked view instead, for looks (grid ref and zoom).
-  const CHIP_VIEW = { "1006058": { e: 347755, n: 477155, z: 14.4 } }; // Gait Barrows: SD 4775 7715
+  // Fit a reserve into the biggest clear space on screen: nothing over it, not even the
+  // see-through buttons. Two ways to fit: the full width down to the tops of the corner
+  // buttons, or the gap between the two button columns down to the panel. A wide reserve
+  // wins in the first, a tall one in the second; whichever lets it come in closer is used.
+  function fitClear(bounds) {
+    const box = map.getContainer().getBoundingClientRect(), m = 10, r = (el) => el.getBoundingClientRect();
+    const left = r(document.querySelector(".fabs.left")), right = r(document.querySelector(".fabs:not(.left)"));
+    const attr = document.querySelector(".leaflet-control-attribution");
+    const top = r($("chips")).bottom + m - box.top, panel = r(sheet).top - m - box.top;
+    const corners = Math.min(left.top, right.top, attr ? r(attr).top : Infinity) - m - box.top;
+    const W = box.width, H = box.height;
+    const fits = [
+      { tl: [m, top], br: [m, H - corners] },
+      { tl: [left.right + m - box.left, top], br: [W - (right.left - m - box.left), H - panel] },
+    ].map((o) => ({ ...o, z: map.getBoundsZoom(bounds, false, L.point(o.tl).add(o.br)) }));
+    const best = fits[0].z >= fits[1].z ? fits[0] : fits[1];
+    map.fitBounds(bounds, { paddingTopLeft: best.tl, paddingBottomRight: best.br, maxZoom: 17, animate: false });
+  }
   function drawChips() {
     const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
@@ -2088,10 +2103,7 @@
       b.onclick = () => {
         following = false;
         $("locBtn").classList.remove("on");
-        const v = CHIP_VIEW[code];
-        if (v) { const ll = OSGB.gridToWgs84(v.e, v.n); return panTo(L.latLng(ll.lat, ll.lon), v.z, false); }
-        const top = $("chips").getBoundingClientRect().bottom;
-        map.fitBounds(L.geoJSON(f).getBounds(), { paddingTopLeft: [20, top + 8], paddingBottomRight: [64, sheet.offsetHeight + 12], maxZoom: 16, animate: false });
+        fitClear(L.geoJSON(f).getBounds());
       };
       $("chips").appendChild(b);
     }
