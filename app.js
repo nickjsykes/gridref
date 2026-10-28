@@ -78,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "142"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "144"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2126,24 +2126,111 @@
   // by a GitHub job into data/tides.json; a copy is kept so they work offline for a week
   let tides = store.get("tides", null);
   fetch("data/tides.json", { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).then((j) => { if (j && j.reserves) { tides = j; store.set("tides", j); } }).catch(() => {});
+  // Big tide: the top of each station's spring range (Duddon Bar 6.7 m neaps to 8.7 m
+  // springs; Ulverston 7.4 to 9.7 m, Oct 2026). Sands and saltmarsh flood furthest and fastest.
+  const TIDE_BIG = { "Duddon Bar": 8.4, "Ulverston": 9.3 };
+  const tTime = (at) => new Date(at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  function dayWord(at) {
+    const d = new Date(at), t = new Date();
+    if (d.toDateString() === t.toDateString()) return "today";
+    if (d.toDateString() === new Date(t.getTime() + 86400000).toDateString()) return "tomorrow";
+    return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric" });
+  }
+  function tideInfo(code) {
+    const st = tides && tides.reserves && tides.reserves[code];
+    if (!st || !st.events) return null;
+    const now = Date.now(), next = st.events.filter((e) => Date.parse(e.at) > now);
+    if (!next.length) return null;
+    return { station: st.station, next, lows: st.events.some((e) => !e.high), big: (e) => e.high && e.m >= (TIDE_BIG[st.station] ?? 99) };
+  }
+  // The next two high waters, so "high at 00:30" late in the evening also says what the
+  // working day brings. Which way it's going only where the station gives low waters too.
   function officialTide(code) {
-    const ev = tides && tides.reserves && tides.reserves[code] && tides.reserves[code].events;
-    if (!ev) return "";
-    const now = Date.now(), next = ev.filter((e) => Date.parse(e.at) > now);
-    if (!next.length) return "";
-    const day = (d) => (new Date(d).toDateString() === new Date().toDateString() ? "" : "tomorrow ");
-    // Just the next high water: when and how high, as rangers read it off the tide table
-    const hi = next.find((e) => e.high);
-    if (!hi) return "";
-    const when = `${new Date(hi.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${day(hi.at) ? " tomorrow" : ""}`;
-    // Some stations (Ulverston, for Roudsea) only publish high waters: then we can't tell
-    // which way it's going, so don't guess
-    if (!ev.some((e) => !e.high)) return `High tide at ${when} ${hi.m.toFixed(1)} m`;
-    return `Tide ${next[0].high ? "coming in" : "going out"} · high at ${when} ${hi.m.toFixed(1)} m`;
+    const t = tideInfo(code);
+    if (!t) return "";
+    const [h1, h2] = t.next.filter((e) => e.high);
+    if (!h1) return "";
+    const one = (e, prevDay) => { const d = dayWord(e.at); return `${d !== prevDay && d !== "today" ? d + " " : ""}${tTime(e.at)} (${e.m.toFixed(1)} m${t.big(e) ? ", big" : ""})`; };
+    const line = `high ${one(h1, "today")}` + (h2 ? `, then ${one(h2, dayWord(h1.at))}` : "");
+    return t.lows ? `${t.next[0].high ? "Coming in" : "Going out"} · ${line}` : line[0].toUpperCase() + line.slice(1);
+  }
+  // Tap the tide line: the tide table for today and the next three days
+  function tideTable(code) {
+    const t = tideInfo(code);
+    if (!t) return "";
+    const days = new Map();
+    for (const e of t.next) {
+      if (Date.parse(e.at) - Date.now() > 4 * 86400000) break;
+      const d = dayWord(e.at);
+      if (days.size === 4 && !days.has(d)) break;
+      (days.get(d) || days.set(d, []).get(d)).push(e);
+    }
+    const cell = (e) => `<span class="${t.big(e) ? "tbig" : ""}">${tTime(e.at)} <small>${e.m.toFixed(1)}</small></span>`;
+    let html = `<div class="tt-head"><span></span><b>High</b>${t.lows ? "<b>Low</b>" : ""}</div>`;
+    for (const [d, evs] of days) {
+      html += `<div class="tt-row"><span class="tt-day">${esc(d[0].toUpperCase() + d.slice(1))}</span><span>${evs.filter((e) => e.high).map(cell).join("")}</span>${t.lows ? `<span>${evs.filter((e) => !e.high).map(cell).join("")}</span>` : ""}</div>`;
+    }
+    return html + `<div class="tt-foot">${esc(t.station)}, metres above chart datum. <b>Bold</b> = big tide. © UKHO</div>`;
+  }
+  // ---------- launch: a safety card, only when there's something worth knowing ----------
+  // Nothing on an ordinary day. Otherwise up to three plain lines, worst first, for the
+  // working day ahead (06:00 to 19:00, next 24 h): thunder, gales, a big tide in daylight,
+  // ice, fog, heat on the mosses, the last hour of light. Gone at a touch.
+  const TIDE_WHERE = { "Duddon Bar": "Walney and the Duddon", "Ulverston": "Roudsea and the Leven" };
+  let todayEl = null;
+  function closeToday() { if (todayEl) { todayEl.remove(); todayEl = null; } }
+  async function todayAlerts() {
+    const out = [];
+    const when = (iso, nowIso) => iso.slice(0, 10) !== nowIso.slice(0, 10) ? `tomorrow from ${hhmm(iso)}` : iso.slice(0, 13) <= nowIso.slice(0, 13) ? "now" : `from ${hhmm(iso)}`;
+    try {
+      const w = await getJSON("https://api.open-meteo.com/v1/forecast?latitude=54.25&longitude=-3.10&current=weather_code&hourly=temperature_2m,weather_code,wind_gusts_10m&daily=sunset&forecast_days=2&wind_speed_unit=mph&timezone=Europe%2FLondon");
+      const now = w.current.time, h = w.hourly, end = new Date(Date.parse(now) + 24 * 3600000).toISOString().slice(0, 13);
+      const hrs = h.time.map((t, i) => i).filter((i) => h.time[i].slice(0, 13) >= now.slice(0, 13) && h.time[i].slice(0, 13) <= end && +h.time[i].slice(11, 13) >= 6 && +h.time[i].slice(11, 13) <= 19);
+      const first = (test) => hrs.find(test);
+      let i = first((k) => h.weather_code[k] >= 95);
+      if (i != null) out.push(`Thunder possible ${when(h.time[i], now)}. Keep off open moss and the coast.`);
+      i = first((k) => h.wind_gusts_10m[k] >= 45);
+      if (i != null) out.push(`Gusts to ${Math.round(Math.max(...hrs.map((k) => h.wind_gusts_10m[k])))} mph ${when(h.time[i], now)}. Take care under trees and on the coast.`);
+      var wx = { h, hrs, now, sunset: w.daily.sunset[0] };
+    } catch {}
+    // Big tide in working hours: the nearest one across the stations
+    const big = [];
+    for (const code of ["1006114", "1006126"]) {
+      const t = tideInfo(code);
+      if (!t) continue;
+      const e = t.next.find((x) => t.big(x) && Date.parse(x.at) - Date.now() < 24 * 3600000 && new Date(x.at).getHours() >= 6 && new Date(x.at).getHours() <= 19);
+      if (e) big.push({ e, station: t.station });
+    }
+    big.sort((a, b) => Date.parse(a.e.at) - Date.parse(b.e.at));
+    if (big[0]) { const { e, station } = big[0], d = dayWord(e.at); out.push(`Big tide ${d === "today" ? "" : d + " "}${tTime(e.at)}: ${e.m.toFixed(1)} m at ${station}. Sands and saltmarsh at ${TIDE_WHERE[station] || "the coast"} flood fast.`); }
+    if (wx) {
+      const { h, hrs, now, sunset } = wx;
+      let i = hrs.find((k) => h.temperature_2m[k] <= 0);
+      if (i != null) out.push(`Freezing ${when(h.time[i], now)}: boardwalks, stiles and bridges will be icy.`);
+      i = hrs.find((k) => h.weather_code[k] === 45 || h.weather_code[k] === 48);
+      if (i != null) out.push(`Fog ${when(h.time[i], now)}: hard to see your way on the sands and mosses.`);
+      const hot = Math.max(...hrs.map((k) => h.temperature_2m[k]));
+      if (hot >= 26) out.push(`Hot (${Math.round(hot)}°): fire risk on the mosses. Carry water.`);
+      const left = (Date.parse(sunset) - Date.parse(now)) / 60000;
+      if (left > 0 && left <= 60) out.push(`Sunset ${hhmm(sunset)}: under an hour of light left.`);
+    }
+    return out.slice(0, 3);
+  }
+  async function showToday() {
+    let touched = false;
+    map.getContainer().addEventListener("pointerdown", () => { touched = true; closeToday(); }, { once: true });
+    const lines = await todayAlerts();
+    if (!lines.length || touched || cardFor) return;
+    todayEl = document.createElement("div");
+    todayEl.className = "rescard today";
+    todayEl.innerHTML = '<button type="button" class="rc-x" aria-label="Close">×</button>' + lines.map((l) => `<div class="td-line">${esc(l)}</div>`).join("");
+    todayEl.querySelector(".rc-x").onclick = closeToday;
+    document.body.appendChild(todayEl);
   }
   let cardFor = null;
   function closeResCard() { $("resCard").hidden = true; const was = cardFor; cardFor = null; if (was) drawChips(); }
   function showResCard(code, f) {
+    closeToday();
     const name = TEAM.get(code), card = $("resCard");
     cardFor = code;
     fresh();
@@ -2154,7 +2241,17 @@
     card.querySelector(".rc-mine").textContent = mine.length ? `${mine.length} ${mine.length > 1 ? "notes" : "note"} here ›` : "Nothing in your notebook here yet";
     card.querySelector(".rc-mine").onclick = () => { if (!mine.length) return; folder = null; resF = name; openDrawer(); };
     card.querySelector(".rc-x").onclick = closeResCard;
-    card.querySelector(".rc-tide").textContent = officialTide(code); // straight away, even with no signal
+    const tideEl = card.querySelector(".rc-tide");
+    tideEl.textContent = officialTide(code); // straight away, even with no signal
+    if (tideInfo(code)) {
+      tideEl.classList.add("tap");
+      tideEl.onclick = () => {
+        const open = card.querySelector(".rc-tt");
+        if (open) { open.remove(); tideEl.classList.remove("open"); return; }
+        tideEl.classList.add("open");
+        tideEl.insertAdjacentHTML("afterend", `<div class="rc-tt">${tideTable(code)}</div>`);
+      };
+    }
     card.hidden = false;
     const c = L.geoJSON(f).getBounds().getCenter();
     reserveConditions(code, c).then((r) => {
@@ -2703,7 +2800,8 @@
   const openOnPatch = () => {
     layout();
     const pad = { paddingTopLeft: [52, 126], paddingBottomRight: [52, sheet.offsetHeight + 24] };
-    if (launchQ || matchMedia("(prefers-reduced-motion: reduce)").matches) return map.fitBounds(RESERVES, { ...pad, animate: false });
+    if (launchQ) return map.fitBounds(RESERVES, { ...pad, animate: false });
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) { map.fitBounds(RESERVES, { ...pad, animate: false }); return showToday(); }
     map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
     let touched = false;
     map.getContainer().addEventListener("pointerdown", () => (touched = true), { once: true });
@@ -2719,8 +2817,9 @@
       im.src = src;
     })));
     Promise.race([Promise.all([startLoaded, landingLoaded]), new Promise((r) => setTimeout(r, 2500))]).then(() => {
-      if (touched) return;
+      if (touched) return showToday();
       map.flyToBounds(RESERVES, { ...pad, duration: 1.8, easeLinearity: 0.2 });
+      setTimeout(showToday, 1900); // once it has landed
       setTimeout(() => { if (!touched && Math.abs(map.getZoom() - end.zoom) > 0.2) map.fitBounds(RESERVES, { ...pad, animate: false }); }, 3000);
     });
   };

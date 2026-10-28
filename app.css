@@ -562,3 +562,22 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* Take photo / Add from phone: side by side, or stacked on the narrowest phones (never wrapped mid-label) */
 .phbtns { flex-wrap: wrap; }
 .phbtns button { flex: 1 1 auto; white-space: nowrap; padding: 10px 8px; }
+
+/* tide line: tap for the table */
+.rc-tide.tap { cursor: pointer; }
+.rc-tide.tap::after { content: " ›"; color: var(--green); font-weight: 700; }
+.rc-tide.tap.open::after { content: " ⌄"; }
+.rc-tt { margin: 6px 0 4px; font-size: 13px; }
+.rc-tt .tt-head, .rc-tt .tt-row { display: grid; grid-template-columns: 7.2em 1fr 1fr; gap: 6px; padding: 3px 0; }
+.rc-tt .tt-head b { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.rc-tt .tt-row { border-top: 1px solid var(--line); }
+.rc-tt .tt-day { font-weight: 700; }
+.rc-tt .tt-row span span { display: block; font-variant-numeric: tabular-nums; }
+.rc-tt small { color: var(--muted); font-size: 11.5px; }
+.rc-tt .tbig { font-weight: 800; color: var(--ink); }
+.rc-tt .tt-foot b { color: var(--ink); }
+.rc-tt .tt-foot { color: var(--muted); font-size: 11px; margin-top: 4px; }
+/* launch safety card: same place as a reserve card, amber edge */
+.rescard.today { border-left: 4px solid #f08c00; padding-right: 30px; }
+.rescard.today .td-line { font-weight: 600; line-height: 1.3; padding: 2px 0; }
+.rescard.today .td-line + .td-line { border-top: 1px solid var(--line); padding-top: 4px; margin-top: 2px; }
