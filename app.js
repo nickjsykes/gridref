@@ -67,7 +67,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "134"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "135"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -272,9 +272,9 @@
     ref.style.fontSize = Math.max(20, Math.min(large ? 72 : 38, room / (ref.textContent.length * 0.62))) + "px";
   }
 
-  let last = null;
+  let last = null, atMe = false;
   function update() {
-    const t = following && here ? L.latLng(here.lat, here.lon) : target();
+    const t = following && here ? L.latLng(here.lat, here.lon) : target(), h0 = sheet.offsetHeight;
     const p = info(t);
     p.en = `${Math.round(p.e)}, ${Math.round(p.n)}`;
     p.ll = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`;
@@ -288,16 +288,26 @@
     $("vEN").textContent = p.ref ? p.en : "—";
     $("vLL").textContent = p.ll;
     w3wUpdate(p);
+    // Inside the GPS error circle a distance and direction are just noise: on a wobbly fix
+    // they flipped every second (and the line kept vanishing, jolting the panel). So it
+    // says "You are here" until you're clearly outside, with a margin so it doesn't flicker.
+    const fm = $("fromMe");
+    fm.dataset.nav = "";
     if (following && here) {
-      $("fromMe").textContent = `You are here, GPS ±${Math.round(here.acc)} m`;
+      fm.textContent = `You are here, GPS ±${Math.round(here.acc)} m`;
     } else if (here) {
       const me = L.latLng(here.lat, here.lon);
-      const d = me.distanceTo(t);
-      $("fromMe").textContent = d < 3 ? "" : `${fmtDist(d)} from you, ${fmtBrg(bearing(me, t))} ›`;
+      const d = me.distanceTo(t), near = Math.max(5, here.acc);
+      atMe = atMe ? d < near * 1.3 : d < near;
+      fm.textContent = atMe ? `You are here, GPS ±${Math.round(here.acc)} m` : `${fmtDist(d)} from you, ${fmtBrg(bearing(me, t))} ›`;
+      if (!atMe) fm.dataset.nav = "1";
     } else {
-      $("fromMe").textContent = "";
+      fm.textContent = "";
     }
     layout();
+    // The panel grew or shrank (the GPS line appearing, say), which moves the crosshair: put
+    // the same place back under it, unless a finger is on the map or it's mid-zoom
+    if (sheet.offsetHeight !== h0 && !map._animatingZoom && !map.dragging.moving()) panTo(t, map.getZoom(), false);
   }
 
   // ---------- what3words ----------
@@ -413,12 +423,19 @@
       update();
       if (nav) drawNav();
     }, (err) => {
+      // A weak or lost signal is usually brief and the watch carries on by itself, so keep
+      // following; only a refusal switches GPS off
+      if (err.code !== 1) {
+        if (first) toast("Weak GPS signal. Still trying…");
+        return;
+      }
       following = false;
       $("locBtn").classList.remove("on");
       navigator.geolocation.clearWatch(watchId);
       watchId = null;
-      gpsBlocked = err.code === 1;
-      toast(gpsBlocked ? "Location is blocked. Settings › Privacy & Security › Location Services › Safari Websites › While Using" : "Couldn't get a GPS fix. Try again in the open");
+      gpsBlocked = true;
+      toast("Location is blocked. Settings › Privacy & Security › Location Services › Safari Websites › While Using");
+      update();
       if (nav) drawNav();
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 });
   }
@@ -1572,7 +1589,7 @@
   $("q").addEventListener("focus", () => { if ($("q").value.trim()) search($("q").value, false); else showHistory(); });
 
   // Tap "340 m from you, NE (047°) ›" to navigate there
-  $("fromMe").onclick = () => { if ($("fromMe").textContent && !following) $("navBtn").click(); };
+  $("fromMe").onclick = () => { if ($("fromMe").dataset.nav && !following) $("navBtn").click(); };
 
   // ---------- sheet: swipe down for just the grid ref, up for everything ----------
   function setCompact(on) {
