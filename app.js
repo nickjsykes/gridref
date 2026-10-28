@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "156"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "157"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2124,8 +2124,10 @@
   // Burnt orange: nothing on the topo map uses it, and tiles stay light in dark mode
   const RESERVE = "#d9480f";
   // Zoomed out: a bold line and a tint, so the reserves stand out across the county. Zoomed in
-  // (13 up): a crisp edge with a soft band along it, and the spotlight dims everything outside.
-  const CLOSE = 13;
+  // (11.5 up): a crisp edge with a soft band along it, and a faint spotlight outside. The switch
+  // sits well below every reserve chip's view (all land at about 13 or closer) and above the
+  // launch overview (about 9), so every chip shows the same style on any phone.
+  const CLOSE = 11.5;
   nnrLayer.options.style = () => (map.getZoom() < CLOSE
     ? { color: RESERVE, weight: 3, opacity: 0.95, fillColor: RESERVE, fillOpacity: 0.14 }
     : { color: RESERVE, weight: 2.2, opacity: 1, fill: false, lineJoin: "round" });
