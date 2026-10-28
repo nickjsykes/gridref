@@ -6,9 +6,9 @@ window.GRIDREF_CONFIG = {
   // OS Outdoor map. Best: osProxy, the address of our Cloudflare Worker (proxy/README.md),
   // which holds a Premium key and gives full detail to zoom 20. Once that's set, empty osKey
   // and delete that key in the Data Hub: on a Premium account it would unlock premium too.
-  osProxy: "",
+  osProxy: "https://fieldnotes-tiles.nickjsykes.workers.dev",
   // Fallback: an OS Data Hub OpenData key (osdatahub.os.uk), sharp only to zoom 16
-  osKey: "L7yA8JJqGy9G0qIVctJdkNlca6ashTzg",
+  osKey: "",
   // Where "Report bug to Nick…" sends (type "nick" in the search box)
   feedbackTo: "nick.sykes@naturalengland.org.uk",
 };

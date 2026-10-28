@@ -7,6 +7,7 @@ A pocket map and notebook for rangers, built by Nick for the South Cumbria NNR t
 - **Notebook** (on the phone only): points, lines and areas by day, each with up to 6 stamped photos (hold + = photo pinned where you stand), filtered by reserve, each tagged with its reserve; CSV imports go into folders; export CSV (E/N in EPSG:27700) or GeoJSON, with photos as a zip.
 - **Share**: grid ref, lat/long, E/N, Apple/Google Maps links, name and notes, and a picture of the current map. Photos are stamped with the location, date, reserve and your own line.
 - **Navigate** to anything with a compass arrow, distance and bearing; arriving turns the panel green with a buzz and a chime.
+- **OS Outdoor** comes through `proxy/` (Cloudflare Worker `fieldnotes-tiles.nickjsykes.workers.dev`, Premium key held as a secret): full OS MasterMap detail to zoom 20.
 - **Reserve chips** jump to each reserve (Gait Barrows has a hand-picked view). Official tides (ADMIRALTY) are still fetched daily by `.github/workflows/tides.yml` into `data/tides.json` and shown when you type "tide" in search (build 150).
 - **Maps**: OS Outdoor (OS Maps API, OpenData), aerial, and an offline OS map for the seven reserves; the LiDAR tick adds a 1 m relief layer with a strength slider (offline near the reserves, EA shading elsewhere).
 - **Big text** (Aa): bigger, high contrast, nothing taken away.
