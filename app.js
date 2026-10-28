@@ -17,6 +17,7 @@
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
+  const launchQ = new URLSearchParams(location.search).get("q"); // opened from a shared link: go straight there
   // Zoom stops where your fingers stop: whole-step snapping made pinches jump a level after
   // you let go, so it never quite landed where you meant
   const map = L.map("map", { zoomControl: false, attributionControl: true, tap: false, zoomSnap: 0.1, zoomDelta: 1, wheelPxPerZoomLevel: 120, bounceAtZoomLimits: false })
@@ -37,13 +38,20 @@
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
   const fitZoom = () => { map.setMaxZoom(LAYERS[current].layer.options.maxZoom || 19); if (map.getZoom() > map.getMaxZoom()) map.setZoom(map.getMaxZoom()); };
   fitZoom();
+  // The offline OS map only covers the reserves, and only from zoom 11 in: everywhere else it
+  // was a blank (dark in dark mode). So OS Outdoor sits underneath it, shown wherever the
+  // offline tiles stop, as long as there's signal.
+  LAYERS.os.layer.setZIndex(2);
   function setBase(k) {
     if (k === current) return;
     map.removeLayer(LAYERS[current].layer);
+    if (current === "os" && LAYERS.outdoor && k !== "outdoor") map.removeLayer(LAYERS.outdoor.layer);
     current = k;
+    if (k === "os" && LAYERS.outdoor) LAYERS.outdoor.layer.addTo(map).setZIndex(1);
     LAYERS[k].layer.addTo(map);
     fitZoom();
     if (offlineOverlay && map.hasLayer(offlineOverlay)) offlineOverlay.bringToFront();
+    if (k === "os" && map.getZoom() < 11) toast("Offline map covers the reserves, closer in. OS Outdoor shows out here");
   }
 
   let large = store.get("large", false);
@@ -70,7 +78,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "137"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "139"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -186,6 +194,22 @@
   function crossY() { return sheet.getBoundingClientRect().top / 2; }
   // The crosshair in map-container pixels
   function crossPt() { return L.point(map.getSize().x / 2, crossY() - map.getContainer().getBoundingClientRect().top); }
+  // How far short of the screen the page stops (the iPhone home-screen bug in app.css):
+  // 100vh is the whole screen, innerHeight is what we were given. Only ever in the home-screen
+  // app, where there are no browser bars to make the two differ for a good reason.
+  function measureGap() {
+    let gap = 0;
+    if (navigator.standalone || matchMedia("(display-mode: standalone)").matches) {
+      const probe = document.createElement("div");
+      probe.style.cssText = "position:fixed;top:0;height:100vh;width:0;visibility:hidden";
+      document.body.appendChild(probe);
+      gap = probe.offsetHeight - window.innerHeight;
+      probe.remove();
+      if (gap < 0 || gap > 80) gap = 0; // only ever a status bar's worth
+    }
+    document.documentElement.style.setProperty("--gap", gap + "px");
+  }
+  measureGap();
   function layout() {
     const h = sheet.offsetHeight;
     document.documentElement.style.setProperty("--sheet-h", h + "px");
@@ -777,6 +801,10 @@
         Shape(pt.pts, { color: casing, weight: W[0], opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
+        // An invisible band 30 px wide along the edge: a thumb-sized target for a thin line
+        Shape(pt.pts, { color: "#000", weight: 30, opacity: 0.001, fill: false, lineJoin: "round", lineCap: "round", bubblingMouseEvents: false })
+          .on("click", () => openFeature(pt))
+          .addTo(pinLayer);
         Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
         if (!many && lastZone === "near" && pt.pts.length <= 80)
           for (const v of pt.pts) L.circleMarker(v, { radius: 3, color: c, weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(pinLayer);
@@ -800,14 +828,34 @@
   const CAMERA_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13" r="3.5"/></svg>';
 
   // ---------- tap something on the map: snap to it, then a small menu ----------
+  // A line snaps to its middle (on the line, unlike the middle of its box)
+  function midOf(pt) {
+    const ll = pt.pts.map(([a, b]) => L.latLng(a, b));
+    let half = shapeStats(pt).length / 2;
+    for (let i = 1; i < ll.length; i++) {
+      const d = ll[i - 1].distanceTo(ll[i]);
+      if (half <= d && d > 0) { const k = half / d; return L.latLng(ll[i - 1].lat + (ll[i].lat - ll[i - 1].lat) * k, ll[i - 1].lng + (ll[i].lng - ll[i - 1].lng) * k); }
+      half -= d;
+    }
+    return ll[ll.length - 1];
+  }
+  // Tap something: it comes in close. A point to zoom 17; a line or area as big as fits
+  // the clear map (up to 18), never further out than you already were
   function openFeature(pt) {
     if (measure || nav || moving) return;
-    const c = centreOf(pt), to = L.latLng(c.lat, c.lon);
+    const shape = pt.kind === "line" || pt.kind === "area";
+    const c = centreOf(pt), to = pt.kind === "line" ? midOf(pt) : L.latLng(c.lat, c.lon);
     following = false;
     $("locBtn").classList.remove("on");
-    if (target().distanceTo(to) < 1) return showFeatMenu(pt);
+    let z = 17;
+    if (shape) {
+      const room = L.point(map.getSize().x - 60, (sheet.getBoundingClientRect().top - 120) - 40);
+      z = Math.min(18, map.getBoundsZoom(L.latLngBounds(pt.pts), false, map.getSize().subtract(room)) - 0.3); // a little slack: it centres on the line, not its box
+    }
+    z = Math.max(map.getZoom(), Math.min(z, map.getMaxZoom()));
+    if (target().distanceTo(to) < 1 && Math.abs(map.getZoom() - z) < 0.05) return showFeatMenu(pt);
     map.once("moveend", () => setTimeout(() => showFeatMenu(pt), 0));
-    panTo(to, Math.max(map.getZoom(), 15));
+    panTo(to, z);
   }
   function showFeatMenu(pt) {
     const m = $("featMenu"), c = centreOf(pt), nPh = photosOf(pt).length;
@@ -1727,6 +1775,37 @@
     $("rose").style.transform = `rotate(${shownRose}deg)`;
     $("arrow").style.transform = `rotate(${shownArrow}deg)`;
     document.querySelector(".dial").classList.toggle("unsure", f.src === "compass" && !compassTrusted());
+    drawHint();
+  }
+  // The line under the dial. Until the compass can be trusted it says "Compass not ready" in
+  // bold with one tip at a time, flashed every few seconds for someone stood waiting on it.
+  // The moment it's good the dial flashes bright green with a tick, then settles to normal.
+  let hintKey = "", wasTrusted = false, readyUntil = 0, tipAt = 0, tipIdx = 0, compassOk = false, navAt = 0;
+  const TIPS = ["Keep away from magnets: phone case, car, gates, fences.", "Wave the phone in a figure-of-8.", "Hold the phone flat in front of you."];
+  function drawHint() {
+    if (!nav) return;
+    const el = $("navHint"), f = facing(), dial = document.querySelector(".dial"), now = Date.now();
+    const trusted = f.src === "compass" && compassTrusted();
+    // Not ready: a compass that isn't trusted yet, or one that's been allowed but hasn't spoken
+    const notReady = !nav.arrived && (f.src === "compass" ? !trusted : compassOk && f.src === "none" && now - navAt < 5000);
+    if (trusted && !wasTrusted) { readyUntil = now + 1600; haptic(); setTimeout(drawHint, 1650); }
+    wasTrusted = trusted;
+    const ready = !nav.arrived && now < readyUntil;
+    dial.classList.toggle("ready", ready);
+    if (notReady && now - tipAt > 3000) { tipAt = now; tipIdx++; }
+    const tip = Math.abs(tilt) > 60 ? "Hold the phone flatter: the compass only works lying roughly flat."
+      : disagree >= 3 ? "It disagrees with your walking direction: wave it in a figure-of-8, away from metal."
+      : TIPS[tipIdx % TIPS.length];
+    const key = nav.arrived ? "arrived" : ready ? "ready" : notReady ? "wait" + tipIdx + tip : f.src;
+    if (key === hintKey) return;
+    hintKey = key;
+    el.className = "nav-hint" + (notReady ? " warn" : ready ? " ok" : "");
+    if (nav.arrived) el.textContent = "";
+    else if (ready) el.textContent = "✓ Compass ready";
+    else if (notReady) { el.innerHTML = "<b>Compass not ready</b><span></span>"; el.querySelector("span").textContent = tip; }
+    else el.textContent = f.src === "compass" ? "Hold flat. Keep away from magnets: phone case, car, gates."
+      : f.src === "travel" ? "No compass: the arrow follows your direction of walking. Keep moving."
+      : "No compass on this phone: the arrow is drawn with north at the top. Use the map and bearing.";
   }
   async function compassOn() {
     // iPhone asks permission, and only from a tap
@@ -1797,15 +1876,7 @@
     navBrgDeg = brg;
     drawDial();
     document.querySelector(".dial").classList.toggle("here", arrived);
-    const f = facing();
-    $("navHint").classList.toggle("warn", !arrived && f.src === "compass" && !compassTrusted());
-    $("navHint").textContent = arrived ? ""
-      : f.src === "compass" ? (compassTrusted() ? "Hold flat. Keep away from magnets: phone case, car, gates."
-        : Math.abs(tilt) > 60 ? "Hold the phone flatter: the compass only works lying roughly flat."
-        : disagree >= 3 ? "Compass disagrees with your walking direction: wave the phone in a figure-of-8, away from metal or a magnetic case."
-        : "Compass not trusted yet (orange arrow). Hold flat; if it stays orange, wave the phone in a figure-of-8.")
-      : f.src === "travel" ? "No compass: the arrow follows your direction of walking. Keep moving."
-      : "No compass on this phone: the arrow is drawn with north at the top. Use the map and bearing.";
+    drawHint();
     const line = [me, to];
     if (navLine) navLine.setLatLngs(line);
     else navLine = L.polyline(line, { color: "#c0392b", weight: 3, dashArray: "6 8", interactive: false }).addTo(map);
@@ -1828,8 +1899,15 @@
     document.body.classList.add("navigating");
     layout();
     navFlag = L.marker([nav.lat, nav.lon], { interactive: false, icon: L.divIcon({ className: "flag", html: "🚩", iconSize: [30, 30], iconAnchor: [6, 28] }) }).addTo(map);
+    hintKey = "";
+    wasTrusted = false;
+    readyUntil = 0;
+    navAt = Date.now();
+    compassOk = false;
     const compass = await compassOn();
+    compassOk = compass;
     if (!compass) toast("Compass not allowed. The map and distance still work");
+    drawHint();
     startGps(false);
     try { wakeLock = await navigator.wakeLock.request("screen"); } catch {}
     fitNav();
@@ -2322,7 +2400,6 @@
     if (mode === "quick") { await restamp(); return keepPhoto(); }
     $("photoSave").hidden = false;
     if ($("photoStrip")) $("photoStrip").hidden = true;
-    if ($("stampHead")) $("stampHead").hidden = false;
     drawStampOpts();
     await restamp();
     // Sharing needs a fresh tap (the camera one has expired by now), so show it with a button.
@@ -2375,7 +2452,6 @@
     if (stampOn.has("reserve") && j.reserve) lines.push({ t: j.reserve, f: small });
     const mine = stampOn.has("line") && j.line;
     if (mine) lines.push({ t: mine, f: `700 ${u}px -apple-system, sans-serif` });
-    let zoomRect = null;
     if (lines.length) {
       // The team's stamp: a "FIELD NOTES" mark over the details and a spruce bar down the
       // side, so a stamped photo is recognisable wherever it's been sent
@@ -2402,19 +2478,6 @@
         if (l.sp && "letterSpacing" in ctx) { ctx.letterSpacing = l.sp + "px"; ctx.fillText(l.t, m + bar + pad, y); ctx.letterSpacing = "0px"; }
         else ctx.fillText(l.t, m + bar + pad, y);
         y += lh(l);
-      }
-      zoomRect = { x: 0, y: Math.max(0, top - m), w: Math.min(c.width, w + m * 2), h: Math.min(c.height, h + m * 2) };
-    }
-    // The stamp close up under the photo: on a phone screen the real one is too small to check
-    const z = $("stampZoom");
-    if (z) {
-      z.hidden = !zoomRect;
-      if (zoomRect) {
-        const k = Math.min(1, 720 / zoomRect.w), zc = document.createElement("canvas");
-        zc.width = Math.round(zoomRect.w * k);
-        zc.height = Math.round(zoomRect.h * k);
-        zc.getContext("2d").drawImage(c, zoomRect.x, zoomRect.y, zoomRect.w, zoomRect.h, 0, 0, zc.width, zc.height);
-        z.src = zc.toDataURL("image/jpeg", 0.85);
       }
     }
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
@@ -2455,8 +2518,6 @@
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
     $("photoSave").hidden = true;
-    if ($("stampHead")) $("stampHead").hidden = true;
-    if ($("stampZoom")) $("stampZoom").hidden = true;
     const strip = $("photoStrip");
     if (strip) {
       for (const im of strip.querySelectorAll("img")) if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);
@@ -2643,14 +2704,26 @@
   })();
 
   // ---------- go ----------
-  window.addEventListener("resize", () => { layout(); fitRef(); update(); });
-  // Every launch opens on the team's patch
+  window.addEventListener("resize", () => { measureGap(); layout(); fitRef(); update(); });
+  // Every launch opens on the team's patch: all seven reserves, Hallsenna to Gait Barrows and
+  // Walney to Blelham, in the clear space between the reserve chips and the panel. It starts
+  // over the whole of Cumbria and glides down onto them. A touch stops the glide where it is;
+  // if the phone won't animate (Low Power Mode can stop it) it simply lands after 3 s.
+  const RESERVES = L.latLngBounds([[54.1229, -3.4460], [54.3983, -2.7904]]);
   const openOnPatch = () => {
     layout();
-    // All seven team reserves, Hallsenna to Gait Barrows and Walney to Blelham, in the clear
-    // space between the reserve chips and the panel, with room for their name badges
-    map.fitBounds([[54.1229, -3.4460], [54.3983, -2.7904]], {
-      paddingTopLeft: [52, 118], paddingBottomRight: [52, sheet.offsetHeight + 24], animate: false });  };
+    const pad = { paddingTopLeft: [52, 118], paddingBottomRight: [52, sheet.offsetHeight + 24] };
+    if (launchQ || matchMedia("(prefers-reduced-motion: reduce)").matches) return map.fitBounds(RESERVES, { ...pad, animate: false });
+    map.fitBounds([[54.0, -3.65], [55.15, -2.25]], { ...pad, animate: false });
+    let touched = false;
+    map.getContainer().addEventListener("pointerdown", () => (touched = true), { once: true });
+    setTimeout(() => {
+      if (touched) return;
+      map.flyToBounds(RESERVES, { ...pad, duration: 1.8, easeLinearity: 0.2 });
+      const goal = map.getBoundsZoom(RESERVES, false, L.point(104, 118 + sheet.offsetHeight + 24));
+      setTimeout(() => { if (!touched && Math.abs(map.getZoom() - goal) > 0.2) map.fitBounds(RESERVES, { ...pad, animate: false }); }, 3000);
+    }, 500);
+  };
   for (const step of [() => setPrec(digits), openOnPatch, drawPins, drawGrid, loadOSTN, loadNNR, () => { if (!navigator.onLine) goOffline(); }]) {
     try { step(); } catch (e) { console.error(e); }
   }
