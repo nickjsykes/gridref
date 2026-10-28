@@ -18,8 +18,6 @@
     // - osKey: a free OpenData key straight to OS, which stops at zoom 16 and stretches after
     ...(OS_PROXY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`${OS_PROXY}/outdoor/{z}/{x}/{y}.png`, { maxNativeZoom: 20, maxZoom: 20, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } }
       : OS_KEY ? { outdoor: { name: "OS Outdoor", layer: L.tileLayer(`https://api.os.uk/maps/raster/v1/zxy/Outdoor_3857/{z}/{x}/{y}.png?key=${OS_KEY}`, { maxNativeZoom: 16, maxZoom: 19, crossOrigin: true, attribution: "Contains OS data © Crown copyright and database rights 2026" }) } } : {}),
-    // On trial: OpenStreetMap, drawn to zoom 19. In the Lakes it often has walls, gates and stiles
-    osm: { name: "OpenStreetMap (trial)", layer: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap contributors" }) },
     os: { name: "OS map (offline)", layer: L.tileLayer("maps/{z}/{x}/{y}.webp", { minZoom: 10, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK }) },
   };
   const start = store.get("view", { lat: 54.25, lon: -2.95, z: 11 });
@@ -84,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "152"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "153"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2072,7 +2070,7 @@
   }
   // Phones often claim to be online with no usable signal, so also watch for map tiles
   // failing to load: several in a few seconds means no signal.
-  for (const k of ["outdoor", "aerial", "osm"].filter((x) => LAYERS[x])) {
+  for (const k of ["outdoor", "aerial"].filter((x) => LAYERS[x])) {
     LAYERS[k].layer.on("tileerror", () => {
       const now = Date.now();
       tileErrors = tileErrors.filter((t) => now - t < 6000).concat(now);
