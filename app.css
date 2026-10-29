@@ -648,3 +648,15 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mksyms button.on { border-color: var(--green); background: var(--panel); }
 .mksyms button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
 .mksym { filter: drop-shadow(0 1px 2px rgba(0,0,0,.35)); }
+.card .btns[hidden] { display: none; }
+.card .btns.three { grid-template-columns: 1.15fr .85fr 1fr; }
+.card .btns.one { grid-template-columns: 1fr; }
+.maplist { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+.mapitem { display: flex; gap: 10px; align-items: flex-start; }
+.mapitem img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); flex: none; }
+.mapitem > div { flex: 1; min-width: 0; }
+.mapitem b { display: block; font: 700 15px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mapitem small { display: block; font: 12.5px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0 6px; }
+.mapacts { display: flex; gap: 6px; }
+.mapacts button { flex: 1; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
+.mapacts button.danger { color: var(--danger); }

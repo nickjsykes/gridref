@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "180"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "181"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1137,6 +1137,16 @@
       }
       rows.push(...folders.values());
       rows.sort((a, b) => (a.at < b.at ? 1 : -1));
+    }
+    // Saved maps: one row at the top of the notebook, opening the list
+    const nMaps = savedMaps().length;
+    if (!folder && !selecting && nMaps) {
+      const row = document.createElement("div");
+      row.className = "item folderrow";
+      row.innerHTML = `<span class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg></span><div class="main"><div class="line1"><span class="name">Saved maps</span></div><div class="meta">${nMaps} map${nMaps > 1 ? "s" : ""}</div></div><span class="chev">›</span>`;
+      row.onclick = showMaps;
+      if (list.firstChild && list.querySelector(".empty")) list.innerHTML = "";
+      list.appendChild(row);
     }
     let lastDay = null;
     for (const r of rows) {
@@ -2674,8 +2684,8 @@
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
   const mkDrawLayer = L.layerGroup();
-  function startMaker(list) {
-    if (!list.length) return toast("Pick at least one point");
+  function startMaker(list, reopening) {
+    if (!list.length && !reopening) return toast("Pick at least one point");
     closeDrawer();
     maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], me: false, prevLayer: current, sym: "parking" };
     $("maker").hidden = false;
@@ -2686,6 +2696,10 @@
     $("mkMe").classList.remove("on");
     $("mkOrient").textContent = "Landscape";
     placeFrame();
+    mkSet = [];
+    mkSendLabel();
+    $("mkTitle").value = $("mkNote").value = "";
+    if (!list.length) return drawPins();
     // Fit the picked points in the frame
     const b = L.latLngBounds(list.flatMap((p) => (p.pts ? p.pts : [[p.lat, p.lon]])));
     const f = frameRect(), box = map.getContainer().getBoundingClientRect(), m = 40;
@@ -2699,6 +2713,8 @@
     map.removeLayer(mkDrawLayer);
     map.dragging.enable();
     maker = null;
+    mkSet = [];
+    mkCur = null;
     drawPins();
     layout();
   }
@@ -2836,37 +2852,139 @@
   };
 
   // ---------- the picture ----------
+  // A set of maps goes out together (e.g. roads to the reserve, then the paths on it): Add
+  // another keeps this one and goes back to frame the next; Save keeps the set in the
+  // notebook; Share sends the whole set at once
+  let mkCur = null, mkSet = [];
+  const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Send (${mkSet.length} ready)` : "Send"; };
+  function mkMode(made) {
+    $("mkBtnsMake").hidden = made;
+    $("mkBtnsDone").hidden = !made;
+    $("mkPreview").hidden = !made;
+    const n = mkSet.length + (made ? 1 : 0);
+    $("mkCount").hidden = n < 2;
+    $("mkCount").textContent = `${n} maps in this set`;
+  }
   $("mkSend").onclick = () => {
     layersEl.style.display = "none";
     const res = viewedReserve(), d = new Date();
     if (!$("mkTitle").value) $("mkTitle").value = `${res || "Map"} · ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
-    $("mkPreview").hidden = true;
-    $("mkShare").textContent = "Make picture";
-    mkBlob = null;
+    mkCur = null;
+    $("mkMake").textContent = "Make picture";
+    mkMode(false);
     $("mkSendModal").hidden = false;
   };
-  let mkBlob = null;
   $("mkSendCancel").onclick = () => { $("mkSendModal").hidden = true; };
-  $("mkTitle").oninput = $("mkNote").oninput = () => { mkBlob = null; $("mkShare").textContent = "Make picture"; };
+  $("mkTitle").oninput = $("mkNote").oninput = () => { if (mkCur) { mkCur = null; mkMode(false); } };
+  // Everything needed to make this map again, or open it to change it
+  function mapDef(title, note) {
+    const f = frameRect(), box = map.getContainer().getBoundingClientRect();
+    const nw = map.containerPointToLatLng([f.left - box.left, f.top - box.top]), se = map.containerPointToLatLng([f.right - box.left, f.bottom - box.top]);
+    return {
+      id: maker.editId || "map" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString(), title, note, orient: maker.orient,
+      nw: [nw.lat, nw.lng], se: [se.lat, se.lng], layer: current, shade: shadeOn, me: maker.me,
+      keys: [...maker.keys], off: [...maker.off], drawn: maker.drawn.map(({ type, colour, pts, text, sym }) => ({ type, colour, pts: pts.map((q) => [q.lat, q.lng]), text, sym })),
+    };
+  }
   $("mkSendForm").onsubmit = async (e) => {
     e.preventDefault();
-    if (!mkBlob) {
-      $("mkShare").textContent = "Making…";
-      try { mkBlob = await renderMap($("mkTitle").value.trim(), $("mkNote").value.trim()); }
-      catch (err) { console.warn("map", err); $("mkShare").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
-      $("mkPreview").src = URL.createObjectURL(mkBlob);
-      $("mkPreview").hidden = false;
-      $("mkShare").textContent = "Share";
-      return;
-    }
-    const name = ($("mkTitle").value.trim() || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40) + ".jpg";
-    const file = new File([mkBlob], name, { type: "image/jpeg" });
-    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); } catch {} return; }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(mkBlob);
-    a.download = name;
-    a.click();
+    $("mkMake").textContent = "Making…";
+    const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
+    try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
+    catch (err) { console.warn("map", err); $("mkMake").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
+    $("mkPreview").src = URL.createObjectURL(mkCur.blob);
+    mkMode(true);
   };
+  $("mkAnother").onclick = () => {
+    mkSet.push(mkCur);
+    mkCur = null;
+    maker.editId = null; // the next map is a new one, even when this one was opened to change it
+    $("mkSendModal").hidden = true;
+    $("mkTitle").value = "";
+    mkSendLabel();
+    toast(`Map ${mkSet.length} kept. Frame the next one`);
+  };
+  const mapFile = (m, i) => new File([m.blob], `${String(i + 1).padStart(2, "0")}-${(m.def.title || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40)}.jpg`, { type: "image/jpeg" });
+  const theSet = () => mkSet.concat(mkCur ? [mkCur] : []);
+  $("mkShareSet").onclick = async () => {
+    const files = theSet().map(mapFile);
+    if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files }); } catch {} return; }
+    for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
+  };
+  $("mkSaveSet").onclick = async () => {
+    const set = theSet();
+    try { for (const m of set) await saveMap(m.def, m.blob); }
+    catch { return toast("Couldn't save: the phone may be out of space"); }
+    toast(set.length > 1 ? `${set.length} maps saved to the notebook` : "Map saved to the notebook");
+  };
+
+  // ---------- saved maps ----------
+  // The picture is kept with the photos (on this phone); what made it, beside the notebook,
+  // so a saved map can be sent again or opened to change it
+  const savedMaps = () => store.get("maps", []);
+  async function saveMap(def, blob) {
+    await photoDB.put("map:" + def.id, blob);
+    const maps = savedMaps().filter((m) => m.id !== def.id);
+    maps.unshift(def);
+    if (!store.set("maps", maps)) throw new Error("full");
+  }
+  function showDrawn(d) {
+    d.layer = L.layerGroup().addTo(mkDrawLayer);
+    if (d.type === "pen") d.layer.addLayer(casing(d.pts, d.colour, 5));
+    if (d.type === "arrow") drawArrow(d);
+    if (d.type === "text") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(d.text)}</span>` }) }).addTo(d.layer);
+    if (d.type === "sym") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
+  }
+  function editMap(def) {
+    $("mapsModal").hidden = true;
+    const list = points.filter((p) => def.keys.includes(keyOf(p)));
+    if (def.layer !== current && LAYERS[def.layer]) setBase(def.layer);
+    startMaker(list, true);
+    maker.editId = def.id;
+    maker.orient = def.orient;
+    $("mkOrient").textContent = def.orient === "portrait" ? "Landscape" : "Portrait";
+    placeFrame();
+    maker.off = new Set(def.off);
+    maker.me = def.me;
+    $("mkMe").textContent = def.me ? "Me: on" : "Me: off";
+    $("mkMe").classList.toggle("on", !!def.me);
+    for (const d of def.drawn) { const x = { ...d, pts: d.pts.map((q) => L.latLng(q[0], q[1])) }; showDrawn(x); maker.drawn.push(x); }
+    const f = frameRect(), box = map.getContainer().getBoundingClientRect();
+    map.fitBounds([def.nw, def.se], { paddingTopLeft: [f.left - box.left, f.top - box.top], paddingBottomRight: [box.right - f.right, box.bottom - f.bottom], animate: false });
+    $("mkTitle").value = def.title;
+    $("mkNote").value = def.note;
+    drawPins();
+  }
+  async function showMaps() {
+    const maps = savedMaps(), list = $("mapList");
+    list.innerHTML = maps.length ? "" : '<p class="w3wnote">No saved maps.</p>';
+    for (const def of maps) {
+      const row = document.createElement("div");
+      row.className = "mapitem";
+      row.innerHTML = `<img alt=""><div><b></b><small></small><div class="mapacts"><button type="button" data-a="share">Share</button><button type="button" data-a="edit">Edit</button><button type="button" data-a="del" class="danger">Delete</button></div></div>`;
+      row.querySelector("b").textContent = def.title || "Map";
+      row.querySelector("small").textContent = `${dayLabel(def.at)} · ${def.orient}${def.note ? " · " + def.note : ""}`;
+      photoDB.get("map:" + def.id).then((b) => { if (b) row.querySelector("img").src = URL.createObjectURL(b); }).catch(() => {});
+      row.onclick = async (e) => {
+        const a = e.target.closest("button[data-a]");
+        if (!a) return;
+        if (a.dataset.a === "edit") return editMap(def);
+        if (a.dataset.a === "del") {
+          if (!confirm(`Delete the map "${def.title || "Map"}"?`)) return;
+          store.set("maps", savedMaps().filter((m) => m.id !== def.id));
+          photoDB.del("map:" + def.id).catch(() => {});
+          return showMaps();
+        }
+        const blob = await photoDB.get("map:" + def.id).catch(() => null);
+        if (!blob) return toast("The picture's missing. Edit it to make it again");
+        const files = [mapFile({ blob, def }, 0)];
+        if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files }); } catch {} }
+      };
+      list.appendChild(row);
+    }
+    $("mapsModal").hidden = false;
+  }
+  $("mapsClose").onclick = () => { $("mapsModal").hidden = true; if ($("drawer").classList.contains("open")) openDrawer(); };
   const loadImg = (src) => new Promise((ok) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
   // Tiles for a layer at zoom z: our own fetch (not the screen's), so the picture is sharp at
   // its full size whatever the phone's screen
