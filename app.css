@@ -654,7 +654,7 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .card .btns[hidden] { display: none; }
 .card .btns.three { grid-template-columns: 1.15fr .85fr 1fr; }
 .card .btns.one { grid-template-columns: 1fr; }
-.maplist { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+.maplist { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; }
 .mapitem { display: flex; gap: 10px; align-items: flex-start; }
 .mapitem img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); flex: none; }
 .mapitem > div { flex: 1; min-width: 0; }
@@ -684,3 +684,11 @@ body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's 
 .chips { padding-bottom: 8px; }
 .mkcols button { width: 36px; height: 36px; }
 .mapacts button { padding: 11px 4px; }
+/* Notebook | Maps: two tabs, equal footing. Each tab has its own list and its own buttons */
+.dtabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 10px 16px 2px; padding: 3px; border-radius: 12px; background: var(--green-soft); flex: none; }
+.dtabs[hidden] { display: none; }
+.dtabs button { border: 0; border-radius: 9px; padding: 9px; font: 600 15px var(--sans); background: none; color: var(--muted); }
+.dtabs button.on { background: var(--panel); color: var(--green); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+.drawer.maps-tab #list, .drawer.maps-tab #resFilter, .drawer.maps-tab #backup, .drawer.maps-tab footer .nb { display: none; }
+.drawer:not(.maps-tab) #mapList, .drawer:not(.maps-tab) footer .mp { display: none; }
+.drawer footer button.primary { background: var(--green); color: var(--panel); }

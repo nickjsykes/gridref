@@ -15,8 +15,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=194">
-<link rel="stylesheet" href="app.css?v=194">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=195">
+<link rel="stylesheet" href="app.css?v=195">
 </head>
 <body>
 <div id="map"></div>
@@ -128,15 +128,17 @@
     <h2 class="dtitle"><span id="dTitle">Notebook</span> <small id="dSub">(on this phone only)</small></h2>
     <button id="closeDrawer">Done</button>
   </header>
+  <div class="dtabs" id="dTabs" role="tablist"><button type="button" role="tab" data-tab="notes" class="on">Notebook</button><button type="button" role="tab" data-tab="maps">Maps</button></div>
   <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
   <div class="chiprow res" id="resFilter" hidden></div>
   <div class="list" id="list"></div>
+  <div class="list maplist" id="mapList"></div>
   <p class="backup" id="backup"></p>
   <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
   <footer>
-    <button id="importBtn">Import</button>
-    <button id="exportBtn">Export</button>
-    <button id="makeMapBtn">Make a map</button>
+    <button id="importBtn" class="nb">Import</button>
+    <button id="exportBtn" class="nb">Export</button>
+    <button id="makeMapBtn" class="mp primary">Make a map</button>
     <input type="file" id="importFile" accept=".csv,.zip,text/csv,text/plain,application/zip" hidden>
   </footer>
 </div>
@@ -267,22 +269,15 @@
     <div class="btns three" id="mkBtnsDone" hidden><button type="button" id="mkAnother">Add another</button><button type="button" id="mkSaveSet">Save</button><button type="button" class="primary" id="mkShareSet">Send (1)</button></div>
   </form>
 </div>
-<div class="modal" id="mapsModal" hidden>
-  <div class="card">
-    <div class="im-title"><b>Saved maps</b></div>
-    <div class="maplist" id="mapList"></div>
-    <div class="btns one"><button type="button" id="mapsClose">Close</button></div>
-  </div>
-</div>
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=194"></script>
-<script src="config.js?v=194"></script>
-<script src="osgb.js?v=194"></script>
-<script src="parse.js?v=194"></script>
-<script src="zip.js?v=194"></script>
-<script src="exif.js?v=194"></script>
-<script src="local.js?v=194"></script>
-<script src="app.js?v=194"></script>
+<script src="vendor/leaflet/leaflet.js?v=195"></script>
+<script src="config.js?v=195"></script>
+<script src="osgb.js?v=195"></script>
+<script src="parse.js?v=195"></script>
+<script src="zip.js?v=195"></script>
+<script src="exif.js?v=195"></script>
+<script src="local.js?v=195"></script>
+<script src="app.js?v=195"></script>
 </body>
 </html>

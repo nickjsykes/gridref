@@ -1,7 +1,7 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v194";
+const CACHE = "gridref-v195";
 const TILES = "gridref-tiles";
 const MAPS = "gridref-maps"; // the offline OS map pack and boundary data: kept across updates
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles

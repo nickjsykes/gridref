@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "194"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "195"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1054,7 +1054,7 @@
     }
     return best;
   }
-  $("listBtn").onclick = () => { resF = viewedReserve(); openDrawer(); };
+  $("listBtn").onclick = () => { resF = viewedReserve(); dTab = "notes"; openDrawer(); };
 
   function ago(iso) {
     if (!iso) return "never";
@@ -1110,9 +1110,26 @@
     return Object.entries(n).filter(([, v]) => v).map(([k, v]) => `${v} ${KIND_WORD[k].toLowerCase().replace(/s$/, v > 1 ? "s" : "")}`).join(", ");
   }
   const empty = (html) => `<div class="empty"><i class="tex"></i><p>${html}</p></div>`;
+  // Two tabs: the notebook's entries, and the saved maps (picking points for a map uses the
+  // notebook tab, so the tabs step aside in a folder or while picking)
+  let dTab = "notes";
+  $("dTabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b && b.dataset.tab !== dTab) { dTab = b.dataset.tab; openDrawer(); } };
   function openDrawer() {
     fresh();
     $("keepBar").hidden = true;
+    const mapsTab = dTab === "maps" && !folder && !selecting, nMaps = savedMaps().length;
+    $("dTabs").hidden = !!(folder || selecting);
+    for (const b of $("dTabs").children) b.classList.toggle("on", b.dataset.tab === (mapsTab ? "maps" : "notes"));
+    $("dTabs").lastChild.textContent = nMaps ? `Maps (${nMaps})` : "Maps";
+    $("drawer").classList.toggle("maps-tab", mapsTab);
+    if (mapsTab) {
+      $("dTitle").textContent = "Notebook";
+      $("dSub").textContent = "(on this phone only)";
+      $("folderBack").hidden = $("folderActs").hidden = true;
+      renderMaps();
+      $("drawer").classList.add("open");
+      return;
+    }
     if (folder && !points.some((p) => p.folder === folder)) folder = null;
     const scope = folder ? points.filter((p) => p.folder === folder) : points;
     // Which reserve each entry is in (worked out now, so imports and old entries get it too)
@@ -1148,16 +1165,6 @@
       }
       rows.push(...folders.values());
       rows.sort((a, b) => (a.at < b.at ? 1 : -1));
-    }
-    // Saved maps: one row at the top of the notebook, opening the list
-    const nMaps = savedMaps().length;
-    if (!folder && !selecting && nMaps) {
-      const row = document.createElement("div");
-      row.className = "item folderrow";
-      row.innerHTML = `<span class="mk"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 6.5 9 4l6 2.5L21 4v13.5L15 20l-6-2.5L3 20Z"/><path d="M9 4v13.5M15 6.5V20"/></svg></span><div class="main"><div class="line1"><span class="name">Saved maps</span></div><div class="meta">${nMaps} map${nMaps > 1 ? "s" : ""}</div></div><span class="chev">›</span>`;
-      row.onclick = showMaps;
-      if (list.firstChild && list.querySelector(".empty")) list.innerHTML = "";
-      list.appendChild(row);
     }
     let lastDay = null;
     for (const r of rows) {
@@ -2809,6 +2816,7 @@
     fresh();
     if (!points.length) return toast("Nothing saved yet");
     // Pick in the notebook: nothing ticked, so you choose exactly what goes on the map
+    dTab = "notes";
     selecting = "map";
     picked.clear();
     $("drawer").classList.add("selecting");
@@ -3060,12 +3068,12 @@
       try { await navigator.share({ files }); } catch { return; } // backed out of the share sheet: stay
     } else for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
     await saved;
-    mkFinish(n > 1 ? `${n} maps sent, and saved in the notebook` : "Map sent, and saved in the notebook");
+    mkFinish(n > 1 ? `${n} maps sent, and saved in Maps` : "Map sent, and saved in Maps");
   };
   $("mkSaveSet").onclick = async () => {
     const n = theSet().length;
     await saveSet();
-    if (theSet().every((m) => m.saved)) mkFinish(n > 1 ? `${n} maps saved in the notebook` : "Map saved in the notebook");
+    if (theSet().every((m) => m.saved)) mkFinish(n > 1 ? `${n} maps saved in Maps` : "Map saved in Maps");
   };
   // Back from the picture to the map: this picture is dropped (you're going to change it);
   // maps already added to the set stay
@@ -3089,7 +3097,6 @@
     if (d.type === "sym") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
   }
   function editMap(def) {
-    $("mapsModal").hidden = true;
     const list = points.filter((p) => def.keys.includes(keyOf(p)));
     if (def.layer !== current && LAYERS[def.layer]) setBase(def.layer);
     startMaker(list, true);
@@ -3108,9 +3115,9 @@
     $("mkNote").value = def.note;
     drawPins();
   }
-  async function showMaps() {
+  function renderMaps() {
     const maps = savedMaps(), list = $("mapList");
-    list.innerHTML = maps.length ? "" : '<p class="w3wnote">No saved maps.</p>';
+    list.innerHTML = maps.length ? "" : empty("No saved maps yet.<br>Tap <b>Make a map</b> to pick points, frame them, draw on them and send them to anyone.");
     for (const def of maps) {
       const row = document.createElement("div");
       row.className = "mapitem";
@@ -3126,7 +3133,7 @@
           if (!confirm(`Delete the map "${def.title || "Map"}"?`)) return;
           store.set("maps", savedMaps().filter((m) => m.id !== def.id));
           photoDB.del("map:" + def.id).catch(() => {});
-          return showMaps();
+          return openDrawer();
         }
         const blob = await photoDB.get("map:" + def.id).catch(() => null);
         if (!blob) return toast("The picture's missing. Edit it to make it again");
@@ -3134,15 +3141,12 @@
         if (!(navigator.canShare && navigator.canShare({ files }))) return toast("Sharing isn't available here");
         try { await navigator.share({ files }); } catch { return; } // backed out: stay in the list
         // Sent: the job's done, back to the main map
-        $("mapsModal").hidden = true;
         closeDrawer();
         toast("Map sent", 2400);
       };
       list.appendChild(row);
     }
-    $("mapsModal").hidden = false;
   }
-  $("mapsClose").onclick = () => { $("mapsModal").hidden = true; if ($("drawer").classList.contains("open")) openDrawer(); };
   const loadImg = (src) => new Promise((ok) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
   // Tiles for a layer at zoom z: our own fetch (not the screen's), so the picture is sharp at
   // its full size whatever the phone's screen
