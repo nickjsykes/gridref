@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "179"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "180"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2642,7 +2642,7 @@
   }
   const EGGS = {
     john: plovers,
-    joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "scurry", sign: "Can't wait to meet you, Joe!" }),
+    joe: () => spread({ code: "1006114", start: atGrid(317280, 473060), svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "scurry", sign: "Can't wait to meet you, Joe!" }),
     mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly", glitch: wolfGlitch, sign: "Thanks Mike!" }),
     tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 45, how: "scurry", habitat: "wood", sign: "Thanks Tracy!",
       keep: (ll, s) => pieceOf(reserve("1006126"), ll) === pieceOf(reserve("1006126"), s) }), // the top block (Roudsea Wood) only
@@ -2657,12 +2657,27 @@
   // ---------- make a map: pick points, frame it, draw on it, send it as a picture ----------
   // For contractors and volunteers: a picture works on any phone, offline once received, and
   // prints. Grid lines and refs, a scale bar, north and the copyright lines go on every one.
+  // OS-style map symbols for the maker: simple, bold, each on its own tile so it reads on any map
+  const SYM_BG = '<rect x="1" y="1" width="22" height="22" rx="4" fill="#fff" stroke="#1b1a15" stroke-width="1.5"/>';
+  const SYMBOLS = {
+    parking: { name: "Parking", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><path d="M8.5 18.5V5.5h4.3a3.7 3.7 0 0 1 0 7.4H8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>' },
+    gate: { name: "Gate", svg: SYM_BG + '<path d="M5 5.5v13M19 5.5v13M5 8.5h14M5 12h14M5 15.5h14M5 15.5 19 8.5" stroke="#1b1a15" stroke-width="1.7" fill="none" stroke-linecap="round"/>' },
+    stile: { name: "Stile", svg: SYM_BG + '<path d="M7 5v14M17 5v14M4 15h16M7 10h10" stroke="#1b1a15" stroke-width="2" fill="none" stroke-linecap="round"/>' },
+    barn: { name: "Barn", svg: SYM_BG + '<path d="M4 19.5V10l8-5 8 5v9.5Z" fill="#5a574d"/><path d="M10 19.5v-5h4v5" fill="#fff"/>' },
+    toilets: { name: "Toilets", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#fff">WC</text>' },
+    meet: { name: "Meeting point", short: "Meet", svg: SYM_BG + '<path d="M7.5 19.5v-15" stroke="#1b1a15" stroke-width="2" stroke-linecap="round"/><path d="M8.5 4.5h10l-3 4 3 4h-10Z" fill="#2f9e44"/>' },
+    hazard: { name: "Hazard", svg: '<path d="M12 1.8 22.8 21H1.2Z" fill="#fcc419" stroke="#1b1a15" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 8.5v6" stroke="#1b1a15" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="#1b1a15"/>' },
+    water: { name: "Water", svg: SYM_BG + '<path d="M12 4c3 4.5 5 7.3 5 10a5 5 0 0 1-10 0c0-2.7 2-5.5 5-10Z" fill="#1c7ed6"/>' },
+    bridge: { name: "Bridge", svg: SYM_BG + '<path d="M3 10.5h18M3 16c3-4.5 15-4.5 18 0" stroke="#1b1a15" stroke-width="2" fill="none"/><path d="M6.5 10.5v3M17.5 10.5v3M12 10.5v1.5" stroke="#1b1a15" stroke-width="1.6"/>' },
+    firstaid: { name: "First aid", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 6v12M6 12h12" stroke="#fff" stroke-width="3.4"/>' },
+  };
+  const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
   const mkDrawLayer = L.layerGroup();
   function startMaker(list) {
     if (!list.length) return toast("Pick at least one point");
     closeDrawer();
-    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], me: false, prevLayer: current };
+    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], me: false, prevLayer: current, sym: "parking" };
     $("maker").hidden = false;
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
@@ -2703,15 +2718,12 @@
   $("makeMapBtn").onclick = () => {
     fresh();
     if (!points.length) return toast("Nothing saved yet");
-    // Pick in the notebook, starting with everything showing (the reserve you're on) ticked
+    // Pick in the notebook: nothing ticked, so you choose exactly what goes on the map
     selecting = "map";
     picked.clear();
     $("drawer").classList.add("selecting");
     openDrawer();
-    const resOf = (p) => { const c = centreOf(p); return reserveShort(L.latLng(c.lat, c.lon)); };
-    for (const p of points) if ((!folder || p.folder === folder) && (!resF || resOf(p) === resF)) picked.add(keyOf(p));
-    openDrawer();
-    toast("Untick any to leave off, then Make map");
+    toast("Tick what goes on the map, then Make map");
   };
   $("mkCancel").onclick = endMaker;
   $("mkOrient").onclick = () => {
@@ -2744,8 +2756,17 @@
     maker.tool = t;
     for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === t);
     $("maker").classList.toggle("drawing", t !== "move");
-    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes." }[t];
+    $("mkSyms").hidden = t !== "sym";
+    placeFrame(); // the symbol palette makes the bar taller: keep the whole frame in view
+    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
   }
+  $("mkSyms").innerHTML = Object.entries(SYMBOLS).map(([k, v]) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${v.short || v.name}</span></button>`).join("");
+  $("mkSyms").onclick = (e) => {
+    const b = e.target.closest("button[data-s]");
+    if (!b) return;
+    maker.sym = b.dataset.s;
+    for (const x of $("mkSyms").children) x.classList.toggle("on", x === b);
+  };
   $("mkUndo").onclick = () => { const d = maker.drawn.pop(); if (d) mkDrawLayer.removeLayer(d.layer); else toast("Nothing to undo"); };
 
   // Drawing: kept as map positions, so it stays put as the map moves and is drawn again,
@@ -2770,6 +2791,12 @@
   $("mkDraw").addEventListener("pointerdown", (e) => {
     if (!maker || maker.tool === "move") return;
     e.preventDefault();
+    if (maker.tool === "sym") {
+      const d = { type: "sym", sym: maker.sym, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
+      L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
+      maker.drawn.push(d);
+      return;
+    }
     if (maker.tool === "text") { mkTextAt = llAt(e); $("mkTextIn").value = ""; $("mkTextModal").hidden = false; setTimeout(() => $("mkTextIn").focus(), 50); return; }
     $("mkDraw").setPointerCapture(e.pointerId);
     stroke = { type: maker.tool, colour: maker.colour, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
@@ -2928,14 +2955,8 @@
       line(ring, p.colour === "white" ? "#2b2b2b" : "#fff", 9);
       line(ring, c, 5);
     }
-    const shapeImg = async (p) => loadImg("data:image/svg+xml," + encodeURIComponent(shapeSvg(p.shape, p.colour, 40).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ')));
-    for (const p of chosen) {
-      const c = centreOf(p), at = P(p.kind === "line" ? midOf(p) : [c.lat, c.lon]);
-      if (!p.pts) { const img = await shapeImg(p); if (img) ctx.drawImage(img, at.x - 20, at.y - 20, 40, 40); }
-      halo(p.name, at.x + 26, at.y - 10, "700 24px -apple-system, system-ui, sans-serif", "#1b1a15");
-      halo(OSGB.gridRef(c.e, c.n, 8), at.x + 26, at.y + 16, "600 20px ui-monospace, Menlo, monospace", "#1b1a15");
-    }
-    // Drawings
+    const svgImg = (svg) => loadImg("data:image/svg+xml," + encodeURIComponent(svg.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ')));
+    // Lines and arrows first, so symbols and names sit on top of them
     for (const d of maker.drawn) {
       const pts = d.pts.map((q) => P(q)), edge = d.colour === "#fcc419" ? "#2b2b2b" : "#fff";
       if (d.type === "pen") { line(pts, edge, 13); line(pts, d.colour, 8); }
@@ -2944,7 +2965,67 @@
         const head = [{ x: b.x - s * Math.cos(ang + 0.45), y: b.y - s * Math.sin(ang + 0.45) }, b, { x: b.x - s * Math.cos(ang - 0.45), y: b.y - s * Math.sin(ang - 0.45) }];
         line([a, b], edge, 13); line(head, edge, 13); line([a, b], d.colour, 8); line(head, d.colour, 8);
       }
-      if (d.type === "text") halo(d.text, pts[0].x, pts[0].y, "800 30px -apple-system, system-ui, sans-serif", d.colour, "center");
+    }
+    // Names never sit on a point, a symbol, another name or the key: everything already on the
+    // map is a box to keep clear of, and each name takes the first free spot of eight around
+    // its point (right, left, above, below, then the corners), or the least crowded one
+    const taken = [], hit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+    const overlap = (a) => taken.reduce((t, b) => t + (hit(a, b) ? (Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * (Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)) : 0), 0);
+    const inArea = (a) => a.x >= area.x + 4 && a.y >= area.y + 4 && a.x + a.w <= area.x + area.w - 4 && a.y + a.h <= area.y + area.h - 4;
+    taken.push({ x: area.x, y: area.y, w: 54, h: 38 }); // the square letters
+    const marks = chosen.map((p) => { const c = centreOf(p); return { p, c, at: P(p.kind === "line" ? midOf(p) : [c.lat, c.lon]) }; });
+    for (const m of marks) if (!m.p.pts) taken.push({ x: m.at.x - 22, y: m.at.y - 22, w: 44, h: 44 });
+    const syms = maker.drawn.filter((d) => d.type === "sym").map((d) => ({ d, at: P(d.pts[0]) }));
+    for (const s of syms) taken.push({ x: s.at.x - 24, y: s.at.y - 24, w: 48, h: 48 });
+    for (const d of maker.drawn) if (d.type === "text") {
+      ctx.font = "800 30px -apple-system, system-ui, sans-serif";
+      const at = P(d.pts[0]), w = ctx.measureText(d.text).width + 10;
+      taken.push({ x: at.x - w / 2, y: at.y - 20, w, h: 40 });
+    }
+    // The key: every symbol used, in a white box in the bottom-left corner of the map
+    const used = [...new Set(syms.map((s) => s.d.sym))];
+    let key = null;
+    if (used.length) {
+      ctx.font = "600 20px -apple-system, system-ui, sans-serif";
+      const items = used.map((k) => ({ k, w: 36 + ctx.measureText(SYMBOLS[k].name).width + 22 })), rows = [[]], maxW = area.w * 0.62;
+      let rowW = 0;
+      for (const it of items) { if (rowW + it.w > maxW && rows[rows.length - 1].length) { rows.push([]); rowW = 0; } rows[rows.length - 1].push(it); rowW += it.w; }
+      const w = Math.max(...rows.map((r) => r.reduce((t, it) => t + it.w, 0))) + 14, h = rows.length * 42 + 12;
+      key = { x: area.x + 10, y: area.y + area.h - h - 10, w, h, rows };
+      taken.push(key);
+    }
+    for (const m of marks) {
+      const name = m.p.name, ref = OSGB.gridRef(m.c.e, m.c.n, 8);
+      ctx.font = "700 24px -apple-system, system-ui, sans-serif";
+      const w1 = ctx.measureText(name).width;
+      ctx.font = "600 20px ui-monospace, Menlo, monospace";
+      const w = Math.max(w1, ctx.measureText(ref).width) + 10, h = 54, g = m.p.pts ? 8 : 24, { x, y } = m.at;
+      const spots = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g], [x + g - 6, y - g - h + 6], [x + g - 6, y + g - 6], [x - g - w + 6, y - g - h + 6], [x - g - w + 6, y + g - 6]]
+        .map(([bx, by]) => ({ x: bx, y: by, w, h }));
+      const best = spots.find((b) => inArea(b) && !overlap(b)) || spots.filter(inArea).sort((a, b) => overlap(a) - overlap(b))[0] || spots[0];
+      taken.push(best);
+      halo(name, best.x + 5, best.y + 15, "700 24px -apple-system, system-ui, sans-serif", "#1b1a15");
+      halo(ref, best.x + 5, best.y + 40, "600 20px ui-monospace, Menlo, monospace", "#1b1a15");
+    }
+    // Point markers and symbols on top, then the drawn labels
+    for (const m of marks) if (!m.p.pts) { const img = await svgImg(shapeSvg(m.p.shape, m.p.colour, 40)); if (img) ctx.drawImage(img, m.at.x - 20, m.at.y - 20, 40, 40); }
+    for (const s of syms) { const img = await svgImg(symSvg(s.d.sym, 44)); if (img) ctx.drawImage(img, s.at.x - 22, s.at.y - 22, 44, 44); }
+    for (const d of maker.drawn) if (d.type === "text") { const at = P(d.pts[0]); halo(d.text, at.x, at.y, "800 30px -apple-system, system-ui, sans-serif", d.colour, "center"); }
+    if (key) {
+      ctx.fillStyle = "rgba(255,255,255,.93)"; ctx.strokeStyle = "#1b1a15"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.roundRect(key.x, key.y, key.w, key.h, 8); ctx.fill(); ctx.stroke();
+      let ky = key.y + 8;
+      for (const row of key.rows) {
+        let kx = key.x + 8;
+        for (const it of row) {
+          const img = await svgImg(symSvg(it.k, 30));
+          if (img) ctx.drawImage(img, kx, ky + 3, 30, 30);
+          ctx.font = "600 20px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "#1b1a15"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+          ctx.fillText(SYMBOLS[it.k].name, kx + 36, ky + 19);
+          kx += it.w;
+        }
+        ky += 42;
+      }
     }
     if (maker.me && here) {
       const p = P([here.lat, here.lon]);
