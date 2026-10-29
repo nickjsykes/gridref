@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "168"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "169"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2429,8 +2429,8 @@
     w.style.transformBox = "view-box";
     return w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 110 + Math.random() * 40, iterations: Infinity, direction: "alternate" });
   }
-  // Mike's Timberwolf moment: reality glitches, the screen goes black with a huge wolf, twice,
-  // for a blink each, then everything's normal again as if nothing happened
+  // Mike's Timberwolf moment: reality glitches, the screen goes black with a huge wolf for two
+  // quick blinks, a pause, then one last flicker, and everything's normal as if nothing happened
   async function wolfGlitch() {
     const g = document.createElement("div");
     g.className = "wolfglitch";
@@ -2446,8 +2446,8 @@
     await blink(110, -6);
     await sleep(90);
     await blink(60, 9);
-    await sleep(420);
-    await blink(170, -3);
+    await sleep(900); // long enough to think it's over
+    await blink(45, -3); // so he knows he saw something
     g.remove();
   }
   const startEgg = () => { following = false; $("locBtn").classList.remove("on"); eggPins.clearLayers(); };
