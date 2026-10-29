@@ -664,3 +664,7 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mapacts button { flex: 1; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
 .mapacts button.danger { color: var(--danger); }
 body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's bar */
+.mkback[hidden] { display: none; }
+.mkback { align-self: flex-start; border: 0; background: none; padding: 2px 0; font: 600 15px var(--sans); color: var(--green); }
+.card .btns button:disabled { opacity: .75; }
+.toast { z-index: 1400; } /* over the cards too, so messages from a card are seen */

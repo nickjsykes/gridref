@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "183"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "184"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2744,7 +2744,11 @@
     openDrawer();
     toast("Tick what goes on the map, then Make map");
   };
-  $("mkCancel").onclick = endMaker;
+  $("mkCancel").onclick = () => {
+    const unsaved = mkSet.filter((m) => !m.saved).length;
+    if (unsaved && !confirm(`Close without saving? ${unsaved} map${unsaved > 1 ? "s" : ""} not saved or sent will be lost.`)) return;
+    endMaker();
+  };
   $("mkOrient").onclick = () => {
     maker.orient = maker.orient === "portrait" ? "landscape" : "portrait";
     $("mkOrient").textContent = maker.orient === "portrait" ? "Landscape" : "Portrait";
@@ -2886,19 +2890,28 @@
   // ---------- the picture ----------
   // A set of maps goes out together (e.g. roads to the reserve, then the paths on it): Add
   // another keeps this one and goes back to frame the next; Save keeps the set in the
-  // notebook; Share sends the whole set at once
+  // notebook; Send sends the whole set at once, and saves it too
   let mkCur = null, mkSet = [];
   const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Make (${mkSet.length} ready)` : "Make"; };
   // Made: every map in the set side by side, swipe to review them, the newest showing
   function mkMode(made) {
     $("mkBtnsMake").hidden = made;
     $("mkBtnsDone").hidden = !made;
+    $("mkBackMap").hidden = !made; // before a picture is made, the Back button does this
     const box = $("mkPreviews"), set = made ? theSet() : [];
     box.hidden = !made;
     box.innerHTML = set.map(() => '<img alt="A map in this set">').join("");
     set.forEach((m, i) => { m.url = m.url || URL.createObjectURL(m.blob); box.children[i].src = m.url; });
     $("mkCount").hidden = set.length < 2;
+    $("mkShareSet").textContent = `Send (${set.length})`;
+    mkSavedLabel();
     if (made) requestAnimationFrame(() => { box.scrollLeft = box.scrollWidth; mkWhich(); });
+  }
+  // Save says so on the button (a toast would sit behind the card)
+  function mkSavedLabel() {
+    const all = theSet().length && theSet().every((m) => m.saved);
+    $("mkSaveSet").textContent = all ? "Saved ✓" : "Save";
+    $("mkSaveSet").disabled = !!all;
   }
   function mkWhich() {
     const box = $("mkPreviews"), n = box.children.length, i = Math.round(box.scrollLeft / (box.clientWidth || 1));
@@ -2945,17 +2958,23 @@
   };
   const mapFile = (m, i) => new File([m.blob], `${String(i + 1).padStart(2, "0")}-${(m.def.title || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40)}.jpg`, { type: "image/jpeg" });
   const theSet = () => mkSet.concat(mkCur ? [mkCur] : []);
+  async function saveSet() {
+    try { for (const m of theSet()) if (!m.saved) { await saveMap(m.def, m.blob); m.saved = true; } }
+    catch { toast("Couldn't save: the phone may be out of space"); }
+    mkSavedLabel();
+  }
   $("mkShareSet").onclick = async () => {
     const files = theSet().map(mapFile);
+    // Saved as well, so a sent map can always be found again. Not waited for: the share
+    // sheet has to open straight from the tap or the iPhone refuses it
+    saveSet();
     if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files }); } catch {} return; }
     for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
   };
-  $("mkSaveSet").onclick = async () => {
-    const set = theSet();
-    try { for (const m of set) await saveMap(m.def, m.blob); }
-    catch { return toast("Couldn't save: the phone may be out of space"); }
-    toast(set.length > 1 ? `${set.length} maps saved to the notebook` : "Map saved to the notebook");
-  };
+  $("mkSaveSet").onclick = saveSet;
+  // Back from the picture to the map: this picture is dropped (you're going to change it);
+  // maps already added to the set stay
+  $("mkBackMap").onclick = () => { mkCur = null; $("mkSendModal").hidden = true; };
 
   // ---------- saved maps ----------
   // The picture is kept with the photos (on this phone); what made it, beside the notebook,
