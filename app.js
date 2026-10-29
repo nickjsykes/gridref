@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "195"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "196"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2355,6 +2355,10 @@
     }
   }
   map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); closeUp(); drawResLabels(); });
+  // The zoom level beside the © (small), so a view can be described as grid ref + zoom
+  const showZoom = () => map.attributionControl.getContainer().setAttribute("data-z", "z" + map.getZoom().toFixed(1));
+  map.on("zoomend", showZoom);
+  showZoom();
   // Fit a reserve into the biggest clear space on screen: nothing over it, not even the
   // see-through buttons. Two ways to fit: the full width down to the tops of the corner
   // buttons, or the gap between the two button columns down to the panel. A wide reserve
@@ -2384,11 +2388,43 @@
   function hideEdge(code, hide) {
     nnrLayer.eachLayer((l) => { if (l._path && l.feature.properties.REF_CODE === code) l._path.style.strokeOpacity = hide ? 0 : ""; });
   }
+  // A reserve's own places: after opening the reserve they show as small chips for a few
+  // seconds; one tap goes there. The grid ref is the middle of the view wanted, with its zoom
+  const PLACES = {
+    "1006058": [{ name: "Barn", ref: "SD 4831 7746", zoom: 17.5 }], // Gait Barrows
+  };
+  let subTimer = null;
+  function showPlaces(code) {
+    const el = $("subChips"), list = PLACES[code] || [];
+    clearTimeout(subTimer);
+    el.classList.remove("show");
+    if (!list.length) return (el.hidden = true);
+    el.innerHTML = "";
+    for (const p of list) {
+      const b = document.createElement("button");
+      b.textContent = p.name;
+      b.onclick = () => {
+        const g = OSGB.parseGridRef(p.ref), ll = g && OSGB.gridToWgs84(g.e, g.n);
+        el.classList.remove("show");
+        if (!ll) return;
+        following = false;
+        $("locBtn").classList.remove("on");
+        map.flyTo(map.unproject(map.project([ll.lat, ll.lon], p.zoom).add([0, map.getSize().y / 2 - crossPt().y]), p.zoom), p.zoom, { duration: 0.9 });
+      };
+      el.appendChild(b);
+    }
+    el.hidden = false;
+    requestAnimationFrame(() => el.classList.add("show"));
+    const hide = () => { el.classList.remove("show"); subTimer = setTimeout(() => (el.hidden = true), 300); };
+    subTimer = setTimeout(hide, 3500);
+    el.onpointerdown = () => { clearTimeout(subTimer); subTimer = setTimeout(hide, 3500); }; // still choosing: keep them
+  }
   async function goReserve(f) {
     const code = f.properties.REF_CODE;
     following = false;
     $("locBtn").classList.remove("on");
     hideEdge(code, true);
+    showPlaces(code);
     await fitClear(L.geoJSON(f).getBounds(), true);
     drawOn(code);
   }
@@ -3969,10 +4005,6 @@
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
-  // First launch: say what the screen shows (anyone not shown the app could read out the
-  // cross's grid ref as where they are). Once, after the opening glide
-  if (!store.get("tipSeen", false) && !launchQ) setTimeout(() => { $("tip").hidden = false; }, 2600);
-  $("tipClose").onclick = () => { $("tip").hidden = true; store.set("tipSeen", true); };
   layout();
   update();
   // Any browser (Edge and Chrome on iPhone have no service worker): ask GitHub which
