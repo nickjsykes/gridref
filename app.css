@@ -660,3 +660,4 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mapacts { display: flex; gap: 6px; }
 .mapacts button { flex: 1; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
 .mapacts button.danger { color: var(--danger); }
+body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's bar */

@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "181"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "182"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -419,7 +419,8 @@
   map.on("click", (e) => {
     layersEl.style.display = "none";
     $("results").style.display = "none";
-    if (nav || maker) return;
+    if (nav) return;
+    if (maker) return mkTap(e);
     const now = Date.now(), again = lastTap && now - lastTap.t < 400 && e.containerPoint.distanceTo(lastTap.p) < 40;
     if (again) { panTo(lastTap.ll, Math.min(map.getZoom() + 1, map.getMaxZoom())); lastTap = null; return; }
     if (reserveTap && reserveTap(e)) { lastTap = null; return; }
@@ -816,11 +817,11 @@
         const c = COLOURS[pt.colour] || COLOURS.orange, area = pt.kind === "area";
         const Shape = area ? L.polygon : L.polyline, casing = pt.colour === "white" ? "#2b2b2b" : "#fff";
         Shape(pt.pts, { color: casing, weight: W[0], opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false, className: off })
-          .on("click", () => openFeature(pt))
+          .on("click", (e) => openFeature(pt, e))
           .addTo(pinLayer);
         // An invisible band 30 px wide along the edge: a thumb-sized target for a thin line
         Shape(pt.pts, { color: "#000", weight: 30, opacity: 0.001, fill: false, lineJoin: "round", lineCap: "round", bubblingMouseEvents: false })
-          .on("click", () => openFeature(pt))
+          .on("click", (e) => openFeature(pt, e))
           .addTo(pinLayer);
         Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false, className: off }).addTo(pinLayer);
         if (!many && lastZone === "near" && pt.pts.length <= 80)
@@ -829,7 +830,7 @@
         if (!many && lastZone !== "far")
           for (const ph of photosOf(pt)) if (okLL(ph.lat, ph.lon))
             L.marker([ph.lat, ph.lon], { icon: L.divIcon({ className: "", html: `<div class="photodot">${CAMERA_SVG}</div>`, iconSize: [20, 20], iconAnchor: [10, 10] }) })
-              .on("click", () => openFeature(pt))
+              .on("click", (e) => openFeature(pt, e))
               .addTo(pinLayer);
         continue;
       }
@@ -838,7 +839,7 @@
       (many
         ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas, bubblingMouseEvents: false })
         : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin " + off, html: shapeSvg(pt.shape, pt.colour, 18) + badge, iconSize: [18, 18], iconAnchor: [9, 9] }) }))
-        .on("click", () => openFeature(pt))
+        .on("click", (e) => openFeature(pt, e))
         .addTo(pinLayer);
     } catch {}
   }
@@ -858,8 +859,10 @@
   }
   // Tap something: it comes in close. A point to zoom 17; a line or area as big as fits
   // the clear map (up to 18), never further out than you already were
-  function openFeature(pt) {
-    if (maker) { const k = keyOf(pt); maker.off.has(k) ? maker.off.delete(k) : maker.off.add(k); return drawPins(); }
+  function openFeature(pt, e) {
+    // Making a map: a drawing on top of the mark wins (it's removed); otherwise the mark is
+    // left off the map, or put back
+    if (maker) { if (e && mkTap(e)) return; const k = keyOf(pt); maker.off.has(k) ? maker.off.delete(k) : maker.off.add(k); return drawPins(); }
     if (measure || nav || moving) return;
     const shape = pt.kind === "line" || pt.kind === "area";
     const c = centreOf(pt), to = pt.kind === "line" ? midOf(pt) : L.latLng(c.lat, c.lon);
@@ -2687,7 +2690,7 @@
   function startMaker(list, reopening) {
     if (!list.length && !reopening) return toast("Pick at least one point");
     closeDrawer();
-    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], me: false, prevLayer: current, sym: "parking" };
+    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
     $("maker").hidden = false;
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
@@ -2774,7 +2777,7 @@
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
     placeFrame(); // the symbol palette makes the bar taller: keep the whole frame in view
-    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
+    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off, or a drawing to remove it.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
   }
   $("mkSyms").innerHTML = Object.entries(SYMBOLS).map(([k, v]) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${v.short || v.name}</span></button>`).join("");
   $("mkSyms").onclick = (e) => {
@@ -2783,14 +2786,43 @@
     maker.sym = b.dataset.s;
     for (const x of $("mkSyms").children) x.classList.toggle("on", x === b);
   };
-  $("mkUndo").onclick = () => { const d = maker.drawn.pop(); if (d) mkDrawLayer.removeLayer(d.layer); else toast("Nothing to undo"); };
+  // Undo steps back through everything drawn and removed, so a drawing removed by mistake
+  // comes back
+  function addDrawn(d) { maker.drawn.push(d); maker.history.push({ op: "add", d }); }
+  $("mkUndo").onclick = () => {
+    const h = maker.history.pop();
+    if (!h) return toast("Nothing to undo");
+    if (h.op === "add") { mkDrawLayer.removeLayer(h.d.layer); maker.drawn = maker.drawn.filter((x) => x !== h.d); return; }
+    mkDrawLayer.addLayer(h.d.layer);
+    maker.drawn.splice(Math.min(h.at, maker.drawn.length), 0, h.d);
+    if (h.d.type === "arrow") drawArrow(h.d);
+  };
+  // In Move, a tap on a drawing, arrow, label or symbol removes it (Undo brings it back)
+  function mkTap(e) {
+    if (maker.tool !== "move") return false;
+    const p = e.containerPoint;
+    let best = null, bestD = 16;
+    for (const d of maker.drawn) {
+      const pts = d.pts.map((q) => map.latLngToContainerPoint(q));
+      let dist = Infinity;
+      if (d.type === "sym") dist = pts[0].distanceTo(p) - 12;
+      else if (d.type === "text") dist = Math.abs(p.x - pts[0].x) < d.text.length * 5 + 8 && Math.abs(p.y - pts[0].y) < 16 ? 0 : Infinity;
+      else for (let i = 1; i < pts.length; i++) dist = Math.min(dist, L.LineUtil.pointToSegmentDistance(p, pts[i - 1], pts[i]));
+      if (dist < bestD) { bestD = dist; best = d; }
+    }
+    if (!best) return false;
+    const at = maker.drawn.indexOf(best);
+    maker.drawn.splice(at, 1);
+    mkDrawLayer.removeLayer(best.layer);
+    maker.history.push({ op: "del", d: best, at });
+    haptic();
+    toast("Removed. Undo brings it back");
+    return true;
+  }
 
   // Drawing: kept as map positions, so it stays put as the map moves and is drawn again,
-  // sharp, in the picture
-  const casing = (ll, colour, weight) => L.layerGroup([
-    L.polyline(ll, { color: colour === "#fcc419" ? "#2b2b2b" : "#fff", weight: weight + 4, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }),
-    L.polyline(ll, { color: colour, weight, lineCap: "round", lineJoin: "round", interactive: false }),
-  ]);
+  // sharp, in the picture. Plain colour, no outline, so lines meet and join up neatly
+  const ink = (ll, colour, weight) => L.polyline(ll, { color: colour, weight, lineCap: "round", lineJoin: "round", interactive: false });
   function arrowHead(a, b, size) { // in projected px at the current zoom: two barbs at b
     const pa = map.latLngToLayerPoint(a), pb = map.latLngToLayerPoint(b), ang = Math.atan2(pb.y - pa.y, pb.x - pa.x);
     const barb = (d) => map.layerPointToLatLng(L.point(pb.x - size * Math.cos(ang + d), pb.y - size * Math.sin(ang + d)));
@@ -2798,8 +2830,8 @@
   }
   function drawArrow(d) {
     d.layer.clearLayers();
-    d.layer.addLayer(casing([d.pts[0], d.pts[1]], d.colour, 5));
-    d.layer.addLayer(casing(arrowHead(d.pts[0], d.pts[1], 18), d.colour, 5));
+    d.layer.addLayer(ink([d.pts[0], d.pts[1]], d.colour, 5));
+    d.layer.addLayer(ink(arrowHead(d.pts[0], d.pts[1], 18), d.colour, 5));
   }
   map.on("zoomend", () => { if (maker) for (const d of maker.drawn) if (d.type === "arrow") drawArrow(d); });
   let stroke = null;
@@ -2810,7 +2842,7 @@
     if (maker.tool === "sym") {
       const d = { type: "sym", sym: maker.sym, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
       L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
-      maker.drawn.push(d);
+      addDrawn(d);
       return;
     }
     if (maker.tool === "text") { mkTextAt = llAt(e); $("mkTextIn").value = ""; $("mkTextModal").hidden = false; setTimeout(() => $("mkTextIn").focus(), 50); return; }
@@ -2825,7 +2857,7 @@
       const last = map.latLngToContainerPoint(stroke.pts[stroke.pts.length - 1]), p = map.latLngToContainerPoint(ll);
       if (last.distanceTo(p) < 3) return;
       stroke.pts.push(ll);
-      stroke.layer.clearLayers().addLayer(casing(stroke.pts, stroke.colour, 5));
+      stroke.layer.clearLayers().addLayer(ink(stroke.pts, stroke.colour, 5));
     } else { stroke.pts[1] = ll; drawArrow(stroke); }
   });
   const endStroke = () => {
@@ -2834,7 +2866,7 @@
     stroke = null;
     const big = s.pts.length > 1 && map.latLngToContainerPoint(s.pts[0]).distanceTo(map.latLngToContainerPoint(s.pts[s.pts.length - 1])) > 6;
     if (s.type === "pen" ? s.pts.length < 2 : !big) { mkDrawLayer.removeLayer(s.layer); return; }
-    maker.drawn.push(s);
+    addDrawn(s);
   };
   $("mkDraw").addEventListener("pointerup", endStroke);
   $("mkDraw").addEventListener("pointercancel", endStroke);
@@ -2848,7 +2880,7 @@
     if (!text || !mkTextAt) return;
     const d = { type: "text", colour: maker.colour, pts: [mkTextAt], text, layer: L.layerGroup().addTo(mkDrawLayer) };
     L.marker(mkTextAt, { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(text)}</span>` }) }).addTo(d.layer);
-    maker.drawn.push(d);
+    addDrawn(d);
   };
 
   // ---------- the picture ----------
@@ -2856,7 +2888,7 @@
   // another keeps this one and goes back to frame the next; Save keeps the set in the
   // notebook; Share sends the whole set at once
   let mkCur = null, mkSet = [];
-  const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Send (${mkSet.length} ready)` : "Send"; };
+  const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Make (${mkSet.length} ready)` : "Make"; };
   function mkMode(made) {
     $("mkBtnsMake").hidden = made;
     $("mkBtnsDone").hidden = !made;
@@ -2930,7 +2962,7 @@
   }
   function showDrawn(d) {
     d.layer = L.layerGroup().addTo(mkDrawLayer);
-    if (d.type === "pen") d.layer.addLayer(casing(d.pts, d.colour, 5));
+    if (d.type === "pen") d.layer.addLayer(ink(d.pts, d.colour, 5));
     if (d.type === "arrow") drawArrow(d);
     if (d.type === "text") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(d.text)}</span>` }) }).addTo(d.layer);
     if (d.type === "sym") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
@@ -3076,12 +3108,12 @@
     const svgImg = (svg) => loadImg("data:image/svg+xml," + encodeURIComponent(svg.replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ')));
     // Lines and arrows first, so symbols and names sit on top of them
     for (const d of maker.drawn) {
-      const pts = d.pts.map((q) => P(q)), edge = d.colour === "#fcc419" ? "#2b2b2b" : "#fff";
-      if (d.type === "pen") { line(pts, edge, 13); line(pts, d.colour, 8); }
+      const pts = d.pts.map((q) => P(q));
+      if (d.type === "pen") line(pts, d.colour, 8);
       if (d.type === "arrow") {
         const [a, b] = pts, ang = Math.atan2(b.y - a.y, b.x - a.x), s = 34;
         const head = [{ x: b.x - s * Math.cos(ang + 0.45), y: b.y - s * Math.sin(ang + 0.45) }, b, { x: b.x - s * Math.cos(ang - 0.45), y: b.y - s * Math.sin(ang - 0.45) }];
-        line([a, b], edge, 13); line(head, edge, 13); line([a, b], d.colour, 8); line(head, d.colour, 8);
+        line([a, b], d.colour, 8); line(head, d.colour, 8);
       }
     }
     // Names never sit on a point, a symbol, another name or the key: everything already on the
