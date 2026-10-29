@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "199"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "200"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2437,11 +2437,13 @@
       { name: "Entrance", ref: "SD 1689 7154", zoom: 17.6 },
     ],
   };
-  // A place's view is framed for a look round, so the cross isn't on the barn itself: its
-  // grid ref is blurred, and Share, Navigate and copying wait, until the map's moved
+  // A place's view is framed for a look round, so the cross isn't on the barn itself: the
+  // grid ref's spot quietly says "Barn" instead, and Share, Navigate and copying wait, until
+  // the map's moved (a ref here would look right but be the view's middle, not the barn)
   function placeView(name) {
     sheet.classList.add("placeview");
-    $("placeNote").textContent = `${name}: move the map to read a grid ref`;
+    $("placeNote").innerHTML = `<b></b><small>move the map for a grid ref</small>`;
+    $("placeNote").querySelector("b").textContent = name;
     map.once("movestart", () => sheet.classList.remove("placeview"));
   }
   sheet.addEventListener("click", (e) => {

@@ -696,8 +696,10 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 /* the zoom level, small, beside the closed © (for telling Nick which view you mean) */
 #map .leaflet-control-attribution:not(.open)::before { content: "© " attr(data-z); }
 /* After a place jump (Barn, Car park…): the cross is the view's middle, not the place, so
-   the grid ref is blurred with a note until the map's moved */
+   the grid ref's spot shows the place's name instead, quietly, until the map's moved */
 .refline { position: relative; }
 .placenote { display: none; }
-.sheet.placeview .ref, .sheet.placeview .rows .v { filter: blur(7px); opacity: .45; }
-.sheet.placeview .placenote { display: grid; place-items: center; position: absolute; inset: 0; padding: 0 12px; text-align: center; font: 600 15px var(--sans); color: var(--ink); pointer-events: none; }
+.sheet.placeview .ref, .sheet.placeview .rows .v { visibility: hidden; }
+.sheet.placeview .placenote { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: absolute; inset: 0; text-align: center; pointer-events: none; }
+.placenote b { font: 700 26px var(--sans); color: var(--ink); }
+.placenote small { font: 13px var(--sans); color: var(--muted); }
