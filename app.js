@@ -37,6 +37,15 @@
     clearTimeout(c._t);
     if (c.classList.contains("open")) c._t = setTimeout(() => c.classList.remove("open"), 6000);
   });
+  // Detail held as you zoom out, like OS's map lock: from 16 up to 17, OS Outdoor shows the
+  // zoom-17 tiles (where OS MasterMap detail starts: fences, buildings, field edges), shrunk,
+  // over its usual simpler ones, so the detail lasts a little further out. Premium tiles only,
+  // so only through the proxy; it comes and goes with OS Outdoor
+  if (OS_PROXY && LAYERS.outdoor) {
+    const o = LAYERS.outdoor.layer, hold = L.tileLayer(o._url, { ...o.options, minNativeZoom: 17, maxNativeZoom: 17, minZoom: 16, maxZoom: 16.99 });
+    o.on("add", () => hold.addTo(map).setZIndex(o.options.zIndex || 1));
+    o.on("remove", () => map.removeLayer(hold));
+  }
   let current = LAYERS.outdoor ? "outdoor" : "os"; // every launch starts on OS Outdoor (or the offline OS map without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
   // Zoom no further than the chosen map goes (the shading on its own isn't a map)
@@ -82,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "186"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "187"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
