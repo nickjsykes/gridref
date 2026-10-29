@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "188"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "189"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -302,6 +302,7 @@
     const ref = $("ref");
     if (ref.classList.contains("off")) { ref.style.fontSize = ""; return; }
     const room = ref.parentElement.clientWidth - 20; // less the 8 px padding each side
+    if (room <= 0) return; // the panel's hidden (making a map): size it when it's back
     ref.style.fontSize = Math.max(20, Math.min(large ? 72 : 38, room / (ref.textContent.length * 0.62))) + "px";
   }
 
@@ -2736,6 +2737,7 @@
     mkCur = null;
     drawPins();
     layout();
+    fitRef();
   }
   // The frame: the picture's map area at the picture's shape, as big as fits between the top
   // bar and the tool bar
@@ -2917,7 +2919,7 @@
     $("mkReady").textContent = `${mkSet.length} ready ›`;
   };
   // The card does one job at a time:
-  //   "make":  title, note, Make picture (Make on the toolbar)
+  //   "make":  title, note, Make map (Make on the toolbar)
   //   "made":  the new picture with the rest of the set; Add another, Save or Send
   //   "ready": just the maps waiting (the "n ready" button); Save or Send them
   function mkMode(mode) {
@@ -2954,7 +2956,7 @@
     const res = viewedReserve(), d = new Date();
     if (!$("mkTitle").value) $("mkTitle").value = `${res || "Map"} · ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
     mkCur = null;
-    $("mkMake").textContent = "Make picture";
+    $("mkMake").textContent = "Make map";
     mkMode("make");
     $("mkSendModal").hidden = false;
   };
@@ -2975,7 +2977,7 @@
     $("mkMake").textContent = "Making…";
     const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
     try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
-    catch (err) { console.warn("map", err); $("mkMake").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
+    catch (err) { console.warn("map", err); $("mkMake").textContent = "Make map"; return toast("Couldn't make the picture. Try again with signal"); }
     mkMode("made");
   };
   $("mkAnother").onclick = () => {
@@ -2994,15 +2996,24 @@
     catch { toast("Couldn't save: the phone may be out of space"); }
     mkSavedLabel();
   }
+  // Sent or saved, the job's done: back to the main map
+  function mkFinish(msg) { $("mkSendModal").hidden = true; endMaker(); toast(msg, 2600); }
   $("mkShareSet").onclick = async () => {
-    const files = theSet().map(mapFile);
+    const files = theSet().map(mapFile), n = files.length;
     // Saved as well, so a sent map can always be found again. Not waited for: the share
     // sheet has to open straight from the tap or the iPhone refuses it
-    saveSet();
-    if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files }); } catch {} return; }
-    for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
+    const saved = saveSet();
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try { await navigator.share({ files }); } catch { return; } // backed out of the share sheet: stay
+    } else for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
+    await saved;
+    mkFinish(n > 1 ? `${n} maps sent, and saved in the notebook` : "Map sent, and saved in the notebook");
   };
-  $("mkSaveSet").onclick = saveSet;
+  $("mkSaveSet").onclick = async () => {
+    const n = theSet().length;
+    await saveSet();
+    if (theSet().every((m) => m.saved)) mkFinish(n > 1 ? `${n} maps saved in the notebook` : "Map saved in the notebook");
+  };
   // Back from the picture to the map: this picture is dropped (you're going to change it);
   // maps already added to the set stay
   $("mkBackMap").onclick = () => { mkCur = null; $("mkSendModal").hidden = true; };
@@ -3534,6 +3545,7 @@
     // Hold +: no screen in between, stamped your usual way and saved
     if (mode === "quick") { await restamp(); return keepPhoto(); }
     $("photoSave").hidden = false;
+    $("photoClose").textContent = "Cancel"; // a new photo: Cancel leaves it unsaved
     if ($("photoStrip")) $("photoStrip").hidden = true;
     drawStampOpts();
     await restamp();
@@ -3653,6 +3665,7 @@
     $("stampOpts").hidden = true;
     $("stampLine").hidden = true;
     $("photoSave").hidden = true;
+    $("photoClose").textContent = "Close"; // just looking
     const strip = $("photoStrip");
     if (strip) {
       for (const im of strip.querySelectorAll("img")) if (im.src.startsWith("blob:")) URL.revokeObjectURL(im.src);

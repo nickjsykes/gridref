@@ -135,7 +135,7 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .drawer header { gap: 10px; }
 .drawer h2.dtitle { flex: 1; min-width: 0; font-size: clamp(21px, 7vw, 26px); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dtitle small { color: var(--muted); font: 400 clamp(11.5px, 3.5vw, 13px) var(--sans); letter-spacing: 0; }
-.drawer header .back { font-size: 30px; line-height: 1; padding: 0 6px 4px 0; }
+.drawer header .back { padding: 6px 8px 6px 0; } /* "‹ Back", as everywhere a step goes back */
 .chiprow { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; scrollbar-width: none; flex: none; }
 .chiprow::-webkit-scrollbar { display: none; }
 .chiprow:last-of-type, .chiprow + .chiprow { padding-bottom: 8px; }
@@ -337,6 +337,13 @@ body.large .results button .gr { font-size: 23px; }
 .pick button { flex: 1 1 0; min-width: 0; max-width: 44px; aspect-ratio: 1; border-radius: 10px; border: 2px solid var(--line); background: var(--panel); display: grid; place-items: center; padding: 0; }
 .pick button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--panel) inset; }
 .pick svg { width: 24px; height: 24px; }
+/* Buttons, the same everywhere:
+   - a popup that does something: grey Cancel on the left (closes it, nothing changes), and
+     one green verb on the right for what happens (Save, Send, Export, Add, Make map). Delete
+     is red and always asks
+   - a popup that's only for looking: one Close
+   - a whole screen or mode (notebook, measure, navigate, map maker): Done, back to the map
+   - one step back inside a flow: "‹ Back", top left */
 .card .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .card .btns button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
 .card .btns .primary { background: var(--green); color: var(--panel); }

@@ -26,3 +26,17 @@ Static files only, no build step: `index.html` (layout), `app.css` (styles, ligh
   Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
 - **NNR boundaries**: live from Natural England's National Nature Reserves (England) feature service every time the app has signal; `data/nnr.geojson` is the copy shipped for first use offline (refresh it with the query URL in `index.html`, `NNR_LIVE`).
 - **Other build scripts**: `build_ostn15.py` (OSTN15 table), `fetch_tides.py` (tides, run by the workflow), `draw_icon.py` (home-screen icon), `draw_art.py` (empty-notebook contour texture).
+
+## Buttons
+
+One rule everywhere, so nobody has to learn each screen:
+
+- **A popup that does something:** grey **Cancel** on the left (closes it, nothing changes) and
+  one green verb on the right for what happens (**Save**, **Send**, **Export**, **Add**, **Make
+  map**). **Delete** is red and always asks.
+- **A popup that's only for looking** (what3words, saved maps): one **Close**.
+- **A whole screen or mode** (notebook, measure, navigate, map maker): **Done** takes you back to
+  the map.
+- **One step back inside a flow** (a folder back to the notebook, a map picture back to the map):
+  **‹ Back**, top left.
+
