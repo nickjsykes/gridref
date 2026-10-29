@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "193"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "194"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1458,13 +1458,22 @@
       return { id, lat: null, lon: null };
     });
     fresh();
-    // Already here? The same name saved at the same moment (exact, as a backup carries it),
-    // or the same name at the same grid ref (a metre either way: worked out again from the
-    // exported lat/long, the ref can round a metre off, and a restore then doubled it)
-    const seen = new Set(points.map((p) => p.name + "|" + p.at));
-    const near = new Set(points.flatMap((p) => [-1, 0, 1].flatMap((de) => [-1, 0, 1].map((dn) => p.name + "|" + (p.e + de) + "|" + (p.n + dn)))));
-    const dupe = (x) => seen.has(x.name + "|" + x.at) || near.has(x.name + "|" + x.e + "|" + x.n);
-    const keep = (x) => { seen.add(x.name + "|" + x.at); near.add(x.name + "|" + x.e + "|" + x.n); };
+    // Already here (or twice in this file)? Any CSV, ours or anyone's: the same name saved at
+    // the same moment (exact, as a backup carries it), or the same name (ignoring case and
+    // spaces) close by. "Close" follows the grid ref's precision: a 6-figure ref is the middle
+    // of a 100 m square, so "Box 12" at SD 335 817 is the one at SD 3351 8172 up to 75 m away;
+    // otherwise 15 m (a restore's refs can round a metre off). Not wider: two gates both
+    // called "Gate" 60 m apart are two gates
+    const nameKey = (x) => String(x.name).toLowerCase().replace(/\s+/g, " ").trim();
+    const seen = new Set(points.map((p) => nameKey(p) + "|" + p.at)), byName = new Map();
+    const remember = (x) => { const k = nameKey(x); (byName.get(k) || byName.set(k, []).get(k)).push([x.e, x.n]); seen.add(k + "|" + x.at); };
+    points.forEach(remember);
+    // (the saved-time match only when the file gives a time: rows without one all get "now",
+    // and two different gates would then look like one)
+    const timed = iAt >= 0;
+    const dupe = (x, tol = 15) => (timed && seen.has(nameKey(x) + "|" + x.at)) || (byName.get(nameKey(x)) || []).some(([e, n]) => Math.hypot(e - x.e, n - x.n) <= tol);
+    const keep = remember;
+    let dupes = 0;
     let added = 0, skipped = 0;
     for (const r of rows.slice(1)) {
       const get = (i) => (i >= 0 ? (r[i] || "").trim() : "");
@@ -1479,7 +1488,7 @@
           at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
           colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange" };
         if (folderOf(get)) shp.folder = folderOf(get);
-        if (dupe(shp)) { skipped++; continue; }
+        if (dupe(shp)) { dupes++; continue; }
         keep(shp);
         const phs = withPics(get); // only now: a skipped duplicate's photos aren't stored again
         if (phs.length) shp.photos = phs;
@@ -1488,7 +1497,7 @@
         continue;
       }
       let ll = null;
-      if (get(iLat) && get(iLon) && !isNaN(+get(iLat)) && !isNaN(+get(iLon))) ll = { lat: +get(iLat), lon: +get(iLon) };
+      if (get(iLat) && get(iLon) && !isNaN(+get(iLat)) && !isNaN(+get(iLon))) ll = { lat: +get(iLat), lon: +get(iLon), fromLatLon: true };
       else if (get(iRef)) ll = GridSearch.parse(get(iRef)).find((x) => x.lat != null) || null;
       else if (get(iE) && get(iN) && OSGB.inGrid(+get(iE), +get(iN))) ll = OSGB.gridToWgs84(+get(iE), +get(iN));
       if (!ll || !okLL(ll.lat, ll.lon)) { skipped++; continue; }
@@ -1498,7 +1507,8 @@
         notes: get(iNotes), colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange", shape: SHAPES[get(iShape).toLowerCase()] ? get(iShape).toLowerCase() : "circle" };
       if (folderOf(get)) pt.folder = folderOf(get);
       if (get(iType) === "point" || get(iType) === "photo") pt.kind = "point"; // old exports had photo rows
-      if (dupe(pt)) { skipped++; continue; }
+      const coarse = !ll.fromLatLon && get(iRef) ? (OSGB.parseGridRef(get(iRef)) || {}).size || 0 : 0;
+      if (dupe(pt, Math.max(15, coarse * 0.75))) { dupes++; continue; }
       keep(pt);
       // From one of our zips: bring its pictures back too (only for what's actually added)
       const phs = withPics(get);
@@ -1508,7 +1518,7 @@
     }
     points.sort((a, b) => (a.at < b.at ? 1 : -1));
     if (added) { persist(); savePoints(); }
-    return { added, skipped, pendingPhotos, folder: points.find((p) => p.folder && folderName && p.folder === folderName) ? folderName : null };
+    return { added, skipped, dupes, pendingPhotos, folder: points.find((p) => p.folder && folderName && p.folder === folderName) ? folderName : null };
   }
   window.__importCSV = importCSV; // for testing
   $("importBtn").onclick = () => $("importFile").click();
@@ -1546,7 +1556,8 @@
     const nPh = res.pendingPhotos ? res.pendingPhotos.length : 0;
     const said = [res.added ? `Imported ${res.added}` + (res.folder ? ` into "${res.folder}"` : "") + (nPh ? ` (${nPh} photo${nPh > 1 ? "s" : ""})` : "") : "",
       res.maps ? `${res.maps} saved map${res.maps > 1 ? "s" : ""} back` : ""].filter(Boolean).join(", ");
-    toast((said || "Nothing new to import") + (res.skipped ? `. ${res.skipped} already here or unreadable` : ""), 3500);
+    const extra = [res.dupes ? `${res.dupes} already in the notebook, skipped` : "", res.skipped ? `${res.skipped} row${res.skipped > 1 ? "s" : ""} couldn't be read` : ""].filter(Boolean).join(". ");
+    toast((said || "Nothing new to import") + (extra ? `. ${extra}` : ""), 4000);
   };
 
   // ---------- search ----------
