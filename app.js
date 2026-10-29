@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "191"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "193"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1336,12 +1336,18 @@
     if (!list.length) return toast("Nothing picked to export");
     const day = new Date().toISOString().slice(0, 10);
     const photos = withPhotos ? list.flatMap(photosOf) : [];
+    // The full backup (everything, with photos) takes the saved maps too
+    const maps = withPhotos && list.length === points.length ? savedMaps() : [];
     let file;
-    if (photos.length) {
+    if (photos.length || maps.length) {
       // A zip: both data files (so it restores and opens anywhere) plus the photos themselves
-      toast(`Packing ${photos.length} photo${photos.length > 1 ? "s" : ""}…`);
+      toast(`Packing ${photos.length} photo${photos.length === 1 ? "" : "s"}${maps.length ? ` and ${maps.length} map${maps.length > 1 ? "s" : ""}` : ""}…`);
       const files = [{ name: `field-notes-${day}.csv`, data: toCSV(list) }, { name: `field-notes-${day}.geojson`, data: toGeoJSON(list) }];
       for (const ph of photos) { try { const b = await photoDB.get(ph.id); if (b) files.push({ name: `photos/${ph.id}.jpg`, data: b }); } catch {} }
+      if (maps.length) {
+        files.push({ name: "maps/maps.json", data: JSON.stringify(maps) });
+        for (const m of maps) { try { const b = await photoDB.get("map:" + m.id); if (b) files.push({ name: `maps/${m.id}.jpg`, data: b }); } catch {} }
+      }
       file = new File([await Zip.make(files)], `field-notes-${day}.zip`, { type: "application/zip" });
     } else {
       file = fmt === "geojson"
@@ -1370,6 +1376,8 @@
     for (const r of document.querySelectorAll('#exportModal input[name="exs"]')) r.checked = r.value === "all";
     for (const r of document.querySelectorAll('#exportModal input[name="exf"]')) r.checked = r.value === "csv";
     $("exPhotos").checked = false;
+    // The full backup: everything with photos also carries the saved maps
+    $("exPhotosLbl").textContent = savedMaps().length ? "Include photos and saved maps" : "Include photos";
     $("exportModal").hidden = false;
   };
   $("exCancel").onclick = () => { $("exportModal").hidden = true; };
@@ -1450,7 +1458,13 @@
       return { id, lat: null, lon: null };
     });
     fresh();
-    const seen = new Set(points.map((p) => p.name + "|" + p.e + "|" + p.n));
+    // Already here? The same name saved at the same moment (exact, as a backup carries it),
+    // or the same name at the same grid ref (a metre either way: worked out again from the
+    // exported lat/long, the ref can round a metre off, and a restore then doubled it)
+    const seen = new Set(points.map((p) => p.name + "|" + p.at));
+    const near = new Set(points.flatMap((p) => [-1, 0, 1].flatMap((de) => [-1, 0, 1].map((dn) => p.name + "|" + (p.e + de) + "|" + (p.n + dn)))));
+    const dupe = (x) => seen.has(x.name + "|" + x.at) || near.has(x.name + "|" + x.e + "|" + x.n);
+    const keep = (x) => { seen.add(x.name + "|" + x.at); near.add(x.name + "|" + x.e + "|" + x.n); };
     let added = 0, skipped = 0;
     for (const r of rows.slice(1)) {
       const get = (i) => (i >= 0 ? (r[i] || "").trim() : "");
@@ -1465,11 +1479,10 @@
           at: get(iAt) && !isNaN(Date.parse(get(iAt))) ? new Date(get(iAt)).toISOString() : new Date().toISOString(), acc: null, notes: get(iNotes),
           colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange" };
         if (folderOf(get)) shp.folder = folderOf(get);
-        const phs = withPics(get);
+        if (dupe(shp)) { skipped++; continue; }
+        keep(shp);
+        const phs = withPics(get); // only now: a skipped duplicate's photos aren't stored again
         if (phs.length) shp.photos = phs;
-        const key = shp.name + "|" + shp.e + "|" + shp.n;
-        if (seen.has(key)) { skipped++; continue; }
-        seen.add(key);
         points.push(shp);
         added++;
         continue;
@@ -1485,12 +1498,11 @@
         notes: get(iNotes), colour: COLOURS[get(iColour).toLowerCase()] ? get(iColour).toLowerCase() : "orange", shape: SHAPES[get(iShape).toLowerCase()] ? get(iShape).toLowerCase() : "circle" };
       if (folderOf(get)) pt.folder = folderOf(get);
       if (get(iType) === "point" || get(iType) === "photo") pt.kind = "point"; // old exports had photo rows
-      // From one of our zips: bring its pictures back too
+      if (dupe(pt)) { skipped++; continue; }
+      keep(pt);
+      // From one of our zips: bring its pictures back too (only for what's actually added)
       const phs = withPics(get);
       if (phs.length) { pt.photos = phs; if (get(iType) === "photo") pt.colour = COLOURS[get(iColour).toLowerCase()] ? pt.colour : "black"; }
-      const key = pt.name + "|" + pt.e + "|" + pt.n;
-      if (seen.has(key)) { skipped++; continue; }
-      seen.add(key);
       points.push(pt);
       added++;
     }
@@ -1514,11 +1526,27 @@
       const photos = new Map(entries.filter((x) => /\.jpe?g$/i.test(x.name)).map((x) => [x.name, x.data]));
       res = importCSV(new TextDecoder().decode(csv.data), photos, folderName);
       for (const ph of res.pendingPhotos) { try { await photoDB.put(ph.id, new Blob([ph.data], { type: "image/jpeg" })); } catch {} }
+      // Saved maps from a backup: any not already here come back, pictures and all
+      const mj = entries.find((x) => x.name === "maps/maps.json");
+      if (mj) try {
+        const have = new Set(savedMaps().map((m) => m.id)), back = [];
+        for (const m of JSON.parse(new TextDecoder().decode(mj.data))) {
+          const pic = entries.find((x) => x.name === `maps/${m.id}.jpg`);
+          if (!m.id || have.has(m.id) || !pic) continue;
+          await photoDB.put("map:" + m.id, new Blob([pic.data], { type: "image/jpeg" }));
+          back.push(m);
+        }
+        if (back.length) { store.set("maps", savedMaps().concat(back)); res.maps = back.length; }
+      } catch {}
     } else res = importCSV(await f.text(), null, folderName);
     // Open the folder it went into, so you see what came in
     if (res.added && res.folder) { folder = res.folder; resF = ""; }
     openDrawer();
-    toast(`Imported ${res.added}` + (res.added && res.folder ? ` into "${res.folder}"` : "") + (res.pendingPhotos && res.pendingPhotos.length ? ` (${res.pendingPhotos.length} photos)` : "") + (res.skipped ? `, skipped ${res.skipped}` : ""));
+    // "Imported 3 into "Boxes" (2 photos), 1 saved map. 16 already here"
+    const nPh = res.pendingPhotos ? res.pendingPhotos.length : 0;
+    const said = [res.added ? `Imported ${res.added}` + (res.folder ? ` into "${res.folder}"` : "") + (nPh ? ` (${nPh} photo${nPh > 1 ? "s" : ""})` : "") : "",
+      res.maps ? `${res.maps} saved map${res.maps > 1 ? "s" : ""} back` : ""].filter(Boolean).join(", ");
+    toast((said || "Nothing new to import") + (res.skipped ? `. ${res.skipped} already here or unreadable` : ""), 3500);
   };
 
   // ---------- search ----------
@@ -2134,12 +2162,23 @@
     if (pack.state !== "ready") downloadPack();
   }
   // Phones often claim to be online with no usable signal, so also watch for map tiles
-  // failing to load: several in a few seconds means no signal.
+  // failing to load: several in a few seconds might mean no signal. But tiles also fail
+  // where a map has none (OS stops at Britain's edge), so first check: if a tiny request
+  // to our own site gets through, there's signal and the tiles were just missing.
+  let checking = false;
   for (const k of ["outdoor", "aerial"].filter((x) => LAYERS[x])) {
-    LAYERS[k].layer.on("tileerror", () => {
+    LAYERS[k].layer.on("tileerror", async () => {
       const now = Date.now();
       tileErrors = tileErrors.filter((t) => now - t < 6000).concat(now);
-      if (tileErrors.length >= 4) goOffline();
+      if (tileErrors.length < 4 || offlineMode || checking) return;
+      checking = true;
+      const signal = await Promise.race([
+        fetch("version.json", { cache: "no-store" }).then((r) => r.ok, () => false),
+        new Promise((r) => setTimeout(() => r(false), 5000)),
+      ]);
+      checking = false;
+      tileErrors = [];
+      if (!signal) goOffline();
     });
   }
   window.addEventListener("offline", goOffline);
@@ -3915,22 +3954,34 @@
     try { step(); } catch (e) { console.error(e); }
   }
   setTimeout(() => { if (navigator.onLine) downloadPack(); }, 4000);
+  // First launch: say what the screen shows (anyone not shown the app could read out the
+  // cross's grid ref as where they are). Once, after the opening glide
+  if (!store.get("tipSeen", false) && !launchQ) setTimeout(() => { $("tip").hidden = false; }, 2600);
+  $("tipClose").onclick = () => { $("tip").hidden = true; store.set("tipSeen", true); };
   layout();
   update();
   // Any browser (Edge and Chrome on iPhone have no service worker): ask GitHub which
   // version is current and, if this page is older, load the new one. The ?v= makes the
   // browser fetch a fresh page instead of reusing its cached copy.
   // Only one reload per update, whichever notices first (two at once could freeze an iPhone app)
-  let reloading = false;
+  let reloading = false, waiting = null;
+  // Never mid-job: an update waits while you're measuring or walking a line, making a map,
+  // navigating, moving a point, or have a popup or the notebook open, and lands the next time
+  // you're back on the plain map (a reload would throw that work away)
+  const busy = () => !!(measure || maker || nav || moving || document.querySelector(".modal:not([hidden])") || $("drawer").classList.contains("open"));
+  function applyUpdate(v) {
+    if (reloading) return;
+    if (busy()) { waiting = v; return; }
+    reloading = true;
+    const u = new URLSearchParams(location.search);
+    if (v) u.set("v", v);
+    location.replace(location.pathname + "?" + u);
+  }
+  setInterval(() => { if (waiting !== null && !busy()) applyUpdate(waiting); }, 3000);
   async function checkVersion() {
     try {
       const j = await (await fetch("version.json", { cache: "no-store" })).json();
-      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v) && !reloading) {
-        reloading = true;
-        const u = new URLSearchParams(location.search);
-        u.set("v", j.v);
-        location.replace(location.pathname + "?" + u);
-      }
+      if (j.v && j.v !== VERSION && !location.search.includes("v=" + j.v)) applyUpdate(j.v);
     } catch {}
   }
   checkVersion();
@@ -3939,7 +3990,7 @@
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (hadController && !reloading) { reloading = true; location.reload(); }
+      if (hadController) applyUpdate(""); // waits too, if you're mid-job
     });
     navigator.serviceWorker.register("sw.js").then((r) => r.update()).catch(() => {});
     // Check for a new version whenever the app comes back to the front

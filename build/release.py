@@ -4,7 +4,8 @@
 
 Updates: VERSION in app.js, the ?v= on the scripts and styles index.html loads (so a phone never runs
 a new page with old scripts from its memory cache), version.json (what open copies check
-to reload themselves) and CACHE in sw.js (so the service worker installs fresh files).
+to reload themselves), CACHE in sw.js (so the service worker installs fresh files) and DATA in
+sw.js (fingerprints of the big data files, so they're only fetched again when they change).
 """
 import re, subprocess, sys
 from pathlib import Path
@@ -36,5 +37,10 @@ html = re.sub(r'((?:src|href)="(?:vendor/leaflet/leaflet\.(?:js|css)|config\.js|
 index.write_text(html, "utf-8", newline="\n")
 (ROOT / "version.json").write_text(f'{{"v":"{new}"}}\n', "utf-8", newline="\n")
 sw = ROOT / "sw.js"
-sw.write_text(re.sub(r'const CACHE = "gridref-v\d+";', f'const CACHE = "gridref-v{new}";', sw.read_text("utf-8")), "utf-8", newline="\n")
+swcode = re.sub(r'const CACHE = "gridref-v\d+";', f'const CACHE = "gridref-v{new}";', sw.read_text("utf-8"))
+# Fingerprint the big data files, so phones only fetch one again when its contents change
+import hashlib, json
+data = {f: hashlib.sha1((ROOT / f).read_bytes()).hexdigest()[:12] for f in ["data/places.json", "data/postcodes.json", "data/ostn15.json", "data/nnr.geojson"]}
+swcode = re.sub(r'const DATA = \{[^}]*\};', "const DATA = " + json.dumps(data, separators=(",", ":")) + ";", swcode)
+sw.write_text(swcode, "utf-8", newline="\n")
 print(f"version {old} -> {new}")
