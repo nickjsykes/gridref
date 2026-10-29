@@ -261,7 +261,8 @@ body.measuring .measure { display: block; }
 body.measuring:not(.area-mode) .m-area { display: none; }
 body.measuring:not(.area-mode) .m-nums { grid-template-columns: 1fr; }
 body.area-mode .m-len { display: none; }
-.m-btns { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 6px; }
+.m-btns { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr; gap: 6px; }
+.m-btns button.walking { background: #c0392b; color: #fff; } /* recording: red, like the line it draws */
 .m-btns button { border: 0; border-radius: 12px; padding: 10px 4px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .m-btns button svg { width: 22px; height: 22px; }
 .m-btns .primary { background: var(--green); color: var(--panel); }
@@ -372,7 +373,7 @@ body.large .results button .gr { font-size: 23px; }
 .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
 .lidarrow { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-right: 12px; }
 .layers .lidarrow button.tick { width: auto; border: 0; flex: none; }
-.lidarrow input { flex: 1; min-width: 90px; accent-color: var(--green); }
+.lidarrow input { flex: 1; min-width: 90px; accent-color: var(--green); height: 44px; margin: 0; touch-action: none; } /* the whole bar is the touch target */
 .lidarrow span { font: 600 13px var(--sans); color: var(--muted); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 body.large .lidarrow span { font-size: 16px; }
 /* LiDAR ground detail: grey tiles blended onto whatever map is below (mid-grey = no change,
@@ -380,7 +381,6 @@ body.large .lidarrow span { font-size: 16px; }
    The blend sits on the pane, so it reaches the map tiles. */
 .leaflet-shade-pane { mix-blend-mode: hard-light; } /* strength (opacity) comes from the slider */
 .lidar { filter: brightness(.72) contrast(1.35); } /* the EA's shading is pale: bring flat ground to mid-grey (no change) */
-.layers button.ver { color: var(--muted); font-size: 10px; padding: 6px 14px; border-bottom: 0; white-space: normal; } /* wraps rather than widening the menu off a small screen */
 .layers button.on { color: var(--green); font-weight: 700; }
 
 /* reserve chips: one tap to each of the team's reserves */

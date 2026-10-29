@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "158"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "159"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -160,6 +160,16 @@
       if (!shadeOn) { setShade(true); sh.textContent = "☑ LiDAR"; sh.classList.add("on"); }
     };
     sl.onchange = () => store.set("lidarPct", shadePct);
+    // iPhone's own slider only moves if you land on the small knob, and a near miss scrolls the
+    // menu instead. So the whole bar takes the touch: tap anywhere to jump there, then drag.
+    const slide = (e) => {
+      const r = sl.getBoundingClientRect();
+      const v = Math.round(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) * 20) * 5;
+      if (v !== +sl.value) { sl.value = v; sl.oninput(); }
+    };
+    sl.onpointerdown = (e) => { e.preventDefault(); sl.setPointerCapture(e.pointerId); slide(e); };
+    sl.onpointermove = (e) => { if (sl.hasPointerCapture(e.pointerId)) slide(e); };
+    sl.onpointerup = sl.onpointercancel = () => sl.onchange();
     row.append(sh, sl, pct);
     layersEl.appendChild(row);
     if (pack.state === "failed") {
@@ -168,11 +178,6 @@
       off.onclick = () => { layersEl.style.display = "none"; downloadPack(); };
       layersEl.appendChild(off);
     }
-    const ver = document.createElement("button");
-    ver.textContent = `Field Notes ${APP_VERSION} · build ${VERSION} · Nick S for Cumbria NNR`;
-    ver.disabled = true;
-    ver.className = "ver";
-    layersEl.appendChild(ver);
   }
   // Open beside the layers button, bottom edges lined up, never off the top of the screen
   function placeLayerMenu() {
@@ -401,7 +406,13 @@
   });
   map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
-  map.on("click", (e) => { layersEl.style.display = "none"; $("results").style.display = "none"; if (!nav) panTo(e.latlng); });
+  let reserveTap = null; // set with the reserves: zoomed out, a tap on or near one goes to it
+  map.on("click", (e) => {
+    layersEl.style.display = "none";
+    $("results").style.display = "none";
+    if (nav) return;
+    if (!(reserveTap && reserveTap(e))) panTo(e.latlng);
+  });
 
   // ---------- GPS ----------
   let watchId = null, following = false, meDot = null, meRing = null, gpsBlocked = false;
@@ -437,6 +448,7 @@
       first = false;
       update();
       if (nav) drawNav();
+      if (measure && measure.walking) walkStep();
     }, (err) => {
       // A weak or lost signal is usually brief and the watch carries on by itself, so keep
       // following; only a refusal switches GPS off
@@ -2227,7 +2239,7 @@
     for (const f of nnr) if (isTeam(f)) {
       const bb = L.geoJSON(f).getBounds(), below = f.properties.REF_CODE === "1006111";
       const at = L.latLng(below ? bb.getSouth() : bb.getNorth(), bb.getCenter().lng);
-      L.marker(at, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel${below ? " below" : ""}">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
+      L.marker(at, { interactive: false, icon: L.divIcon({ className: "", html: `<div class="reslabel${below ? " below" : ""}" data-code="${f.properties.REF_CODE}">${TEAM.get(f.properties.REF_CODE)}</div>`, iconSize: [0, 0] }) }).addTo(resLabels);
     }
   }
   map.on("zoomend", () => { nnrLayer.setStyle(nnrLayer.options.style); closeUp(); drawResLabels(); });
@@ -2249,6 +2261,39 @@
     const best = fits[0].z >= fits[1].z ? fits[0] : fits[1];
     map.fitBounds(bounds, { paddingTopLeft: best.tl, paddingBottomRight: best.br, maxZoom: 17, animate: false });
   }
+  function goReserve(f) {
+    following = false;
+    $("locBtn").classList.remove("on");
+    fitClear(L.geoJSON(f).getBounds());
+    drawOn(f.properties.REF_CODE);
+  }
+  // On the county view the reserves are small: a tap on one, or within a thumb's width of it,
+  // opens it as its chip would. The nearest wins where two are close (Blelham Bog, North Fen).
+  reserveTap = (e) => {
+    if (map.getZoom() >= CLOSE || !nnr.length) return false;
+    // The name counts as the reserve too: it's what your eye goes to
+    const { clientX: x, clientY: y } = e.originalEvent;
+    for (const el of document.querySelectorAll(".reslabel")) {
+      const r = el.getBoundingClientRect();
+      if (x > r.left - 6 && x < r.right + 6 && y > r.top - 6 && y < r.bottom + 6) {
+        const f = nnr.find((g) => g.properties.REF_CODE === el.dataset.code);
+        if (f) { goReserve(f); return true; }
+      }
+    }
+    const p = e.containerPoint, near = 28;
+    let best = null, bestD = Infinity;
+    for (const f of nnr) {
+      if (!isTeam(f)) continue;
+      const [w, s, ea, n] = f.bbox;
+      const a = map.latLngToContainerPoint([n, w]), b = map.latLngToContainerPoint([s, ea]);
+      const dx = Math.max(a.x - p.x, 0, p.x - b.x), dy = Math.max(a.y - p.y, 0, p.y - b.y);
+      const d = Math.hypot(dx, dy);
+      if (d < bestD) { bestD = d; best = f; }
+    }
+    if (!best || bestD > near) return false;
+    goReserve(best);
+    return true;
+  };
   function drawChips() {
     const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
@@ -2257,12 +2302,7 @@
       if (!f) continue;
       const b = document.createElement("button");
       b.textContent = name;
-      b.onclick = () => {
-        following = false;
-        $("locBtn").classList.remove("on");
-        fitClear(L.geoJSON(f).getBounds());
-        drawOn(code);
-      };
+      b.onclick = () => goReserve(f);
       $("chips").appendChild(b);
     }
     $("chips").scrollLeft = keepScroll;
@@ -2316,7 +2356,8 @@
     mLive.setLatLngs(pts.length ? [pts[pts.length - 1], t] : []);
     mDots.clearLayers();
     // Big enough to see past the crosshair; the first one ringed so you know you've started
-    pts.forEach((p, i) => L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
+    // (walked points are a few metres apart: just the line, no dots, apart from the first)
+    pts.forEach((p, i) => (i && p.walked) || L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     $("mDist").textContent = fmtDist(st.d);
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
@@ -2347,8 +2388,44 @@
   $("measureBtn").onclick = () => startMeasure("line");
   $("areaBtn").onclick = () => startMeasure("area");
   $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); toast(`Point ${measure.pts.length} added`); };
+  // Walk it: the line follows you, a point every few metres as GPS moves. Only while the
+  // screen is on: an iPhone web app gets no GPS when locked or in the background, so the
+  // screen is kept awake, and a gap (if it locks anyway) is joined with a straight line.
+  let walkLock = null;
+  async function keepAwake() { try { walkLock = await navigator.wakeLock.request("screen"); } catch {} }
+  function walkStep() {
+    if (!here || here.acc > 20) return; // a poor fix would put a zigzag in the line
+    const ll = L.latLng(here.lat, here.lon), last = measure.pts[measure.pts.length - 1];
+    ll.walked = true;
+    if (last && last.distanceTo(ll) < Math.max(4, here.acc * 0.6)) return;
+    measure.pts.push(ll);
+    drawMeasure();
+  }
+  function setWalk(on) {
+    if (!measure || !!measure.walking === on) return;
+    measure.walking = on;
+    const b = $("mWalk");
+    b.classList.toggle("walking", on);
+    b.lastChild.textContent = on ? "Stop" : "Walk it";
+    if (on) {
+      startGps(true);
+      keepAwake();
+      walkStep();
+      toast("Walking: points add as you go. Keep the screen on");
+    } else {
+      try { walkLock && walkLock.release(); } catch {}
+      walkLock = null;
+      toast(`Walk stopped: ${measure.pts.length} points, ${fmtDist(mStats(measure.pts).d)}`);
+    }
+  }
+  $("mWalk").onclick = () => setWalk(!(measure && measure.walking));
+  document.addEventListener("visibilitychange", () => {
+    if (!(measure && measure.walking)) return;
+    if (document.visibilityState === "visible") { keepAwake(); toast("Back: the line joins straight across the gap"); }
+  });
   $("mUndo").onclick = () => { if (!measure.pts.length) return; measure.pts.pop(); drawMeasure(); toast(measure.pts.length ? `Back to ${measure.pts.length} point${measure.pts.length > 1 ? "s" : ""}` : "No points"); };
   $("mSave").onclick = () => {
+    setWalk(false);
     const pts = measure.pts, isArea = measure.kind === "area";
     if (pts.length < (isArea ? 3 : 2)) return toast(isArea ? "Add at least 3 corners" : "Add at least 2 points");
     const st = mStats(pts), first = OSGB.wgs84ToGrid(pts[0].lat, pts[0].lng);
@@ -2360,6 +2437,7 @@
     });
   };
   $("mDone").onclick = () => {
+    setWalk(false);
     measure = null;
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
     keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
