@@ -575,3 +575,8 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* easter eggs: drawn over the map, never in the way of a tap */
 .egg { position: fixed; left: 0; z-index: 1500; pointer-events: none; line-height: 0; }
 .egg svg { overflow: visible; }
+/* Walney eggs: animals pinned to the map; John's sign on a stick above one plover */
+.eggpin { pointer-events: none; }
+.eggpin > div { position: relative; line-height: 0; }
+.eggsign { position: absolute; left: 50%; bottom: 30px; transform: translateX(-50%); transform-origin: 50% 100%; background: #fffdf5; color: #3b2a12; border: 2px solid #7a5a2e; border-radius: 4px; padding: 3px 7px; font: 700 13px/1.2 var(--sans); white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,.3); }
+.eggsign::after { content: ""; position: absolute; left: 50%; top: 100%; width: 2px; height: 12px; margin-left: -1px; background: #7a5a2e; }

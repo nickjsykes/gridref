@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "161"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "162"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -824,7 +824,7 @@
       const badge = photosOf(pt).length ? `<i class="pcam">${CAMERA_SVG}</i>` : "";
       (many
         ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas, bubblingMouseEvents: false })
-        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour) + badge, iconSize: [22, 22], iconAnchor: [11, 11] }) }))
+        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour, 18) + badge, iconSize: [18, 18], iconAnchor: [9, 9] }) }))
         .on("click", () => openFeature(pt))
         .addTo(pinLayer);
     } catch {}
@@ -2255,7 +2255,8 @@
   // see-through buttons. Two ways to fit: the full width down to the tops of the corner
   // buttons, or the gap between the two button columns down to the panel. A wide reserve
   // wins in the first, a tall one in the second; whichever lets it come in closer is used.
-  function fitClear(bounds) {
+  // fly: glide there (a reserve chip, a tap on the county view) and resolve once landed
+  function fitClear(bounds, fly) {
     const box = map.getContainer().getBoundingClientRect(), m = 10, r = (el) => el.getBoundingClientRect();
     const left = r(document.querySelector(".fabs.left")), right = r(document.querySelector(".fabs:not(.left)"));
     const attr = document.querySelector(".leaflet-control-attribution");
@@ -2267,13 +2268,25 @@
       { tl: [left.right + m - box.left, top], br: [W - (right.left - m - box.left), H - panel] },
     ].map((o) => ({ ...o, z: map.getBoundsZoom(bounds, false, L.point(o.tl).add(o.br)) }));
     const best = fits[0].z >= fits[1].z ? fits[0] : fits[1];
-    map.fitBounds(bounds, { paddingTopLeft: best.tl, paddingBottomRight: best.br, maxZoom: 17, animate: false });
+    const opts = { paddingTopLeft: best.tl, paddingBottomRight: best.br, maxZoom: 17 };
+    if (!fly || matchMedia("(prefers-reduced-motion: reduce)").matches) { map.fitBounds(bounds, { ...opts, animate: false }); return Promise.resolve(); }
+    return new Promise((done) => {
+      const t = setTimeout(done, 2500); // in case the glide is cut short without a moveend
+      map.once("moveend", () => { clearTimeout(t); done(); });
+      map.flyToBounds(bounds, { ...opts, duration: 1.1, easeLinearity: 0.25 });
+    });
   }
-  function goReserve(f) {
+  // The reserve's own edge stays hidden on the way in, then draws itself round on landing
+  function hideEdge(code, hide) {
+    nnrLayer.eachLayer((l) => { if (l._path && l.feature.properties.REF_CODE === code) l._path.style.strokeOpacity = hide ? 0 : ""; });
+  }
+  async function goReserve(f) {
+    const code = f.properties.REF_CODE;
     following = false;
     $("locBtn").classList.remove("on");
-    fitClear(L.geoJSON(f).getBounds());
-    drawOn(f.properties.REF_CODE);
+    hideEdge(code, true);
+    await fitClear(L.geoJSON(f).getBounds(), true);
+    drawOn(code);
   }
   // On the county view the reserves are small: a tap on one, or within a thumb's width of it,
   // opens it as its chip would. The nearest wins where two are close (Blelham Bog, North Fen).
@@ -2333,38 +2346,155 @@
     return d;
   }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  // John: a ringed plover runs in, puts on its broken-wing act, then runs off
-  async function plover() {
-    const d = eggLayer(EGG_SVG.plover), W = window.innerWidth;
-    d.style.bottom = ground() + "px";
-    const legs = [".l1", ".l2"].map((sel, i) => {
-      const l = d.querySelector(sel);
-      l.style.transformOrigin = "30px 31px";
-      return l.animate([{ transform: "rotate(-14deg)" }, { transform: "rotate(14deg)" }], { duration: 110, iterations: Infinity, direction: "alternate", delay: i * 55 });
-    });
-    const mid = W / 2 - 32;
-    await d.animate([{ transform: "translateX(-70px)" }, { transform: `translateX(${mid}px)` }], { duration: 1100, easing: "ease-out", fill: "forwards" }).finished;
-    legs.forEach((l) => l.pause());
-    const wing = d.querySelector(".wing"), body = d.firstElementChild;
-    wing.style.transformOrigin = "37px 17px";
-    body.style.transformOrigin = "30px 40px";
-    body.animate([{ transform: "rotate(0)" }, { transform: "rotate(9deg)" }], { duration: 250, fill: "forwards" });
-    await wing.animate([{ transform: "rotate(0)" }, { transform: "rotate(-55deg)" }, { transform: "rotate(-30deg)" }, { transform: "rotate(-60deg)" }, { transform: "rotate(-25deg)" }, { transform: "rotate(-58deg)" }, { transform: "rotate(0)" }], { duration: 1500 }).finished;
-    body.animate([{ transform: "rotate(9deg)" }, { transform: "rotate(0)" }], { duration: 150, fill: "forwards" });
-    legs.forEach((l) => l.play());
-    await d.animate([{ transform: `translateX(${mid}px)` }, { transform: `translateX(${W + 20}px)` }], { duration: 800, easing: "ease-in", fill: "forwards" }).finished;
-    d.remove();
+  // John's and Joe's play out on North Walney itself: the map flies there and the animals are
+  // pinned to real places (the shore, the dunes), so they move with the map if it's dragged
+  const WALNEY = "1006114";
+  const walney = () => nnr.find((f) => f.properties.REF_CODE === WALNEY);
+  const polysOf = (f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates);
+  function inside(f, lat, lng) {
+    let n = 0;
+    for (const poly of polysOf(f)) for (const r of poly)
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++)
+        if ((r[i][1] > lat) !== (r[j][1] > lat) && lng < ((r[j][0] - r[i][0]) * (lat - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) n++;
+    return n % 2 === 1;
   }
-  // Joe: a natterjack hops across, a buzz on each landing
-  async function toad() {
-    const d = eggLayer(EGG_SVG.toad), W = window.innerWidth, step = 74;
-    d.style.bottom = ground() + "px";
-    for (let x = -70; x < W + 10; x += step) {
-      await d.animate([{ transform: `translate(${x}px,0)` }, { transform: `translate(${x + step / 2}px,-46px) rotate(-8deg)`, offset: 0.45 }, { transform: `translate(${x + step}px,0)` }], { duration: 420, easing: "ease-in-out", fill: "forwards" }).finished;
-      haptic();
-      await sleep(180);
+  // Land or water? Walney's boundary takes in a lot of estuary, so the animals go only where
+  // the map itself is drawn as land: the pixel under the spot, read from the loaded OS tile.
+  // Blue is water, pale yellow is sand and mud; anything else (white, green) is land. On the
+  // aerial photo, or before tiles load, it can't tell, so it says yes (null = can't tell).
+  const pix = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
+  function landAt(ll) {
+    if (current === "aerial") return null;
+    const box = map.getContainer().getBoundingClientRect(), p = map.latLngToContainerPoint(ll), x = box.left + p.x, y = box.top + p.y;
+    let img = null;
+    for (const t of document.querySelectorAll(".leaflet-tile-pane img.leaflet-tile-loaded")) {
+      const r = t.getBoundingClientRect();
+      if (x >= r.left && x < r.right && y >= r.top && y < r.bottom && r.width > 150) img = t;
     }
-    d.remove();
+    if (!img) return null;
+    try {
+      const r = img.getBoundingClientRect();
+      pix.clearRect(0, 0, 1, 1);
+      pix.drawImage(img, ((x - r.left) * img.naturalWidth) / r.width, ((y - r.top) * img.naturalHeight) / r.height, 1, 1, 0, 0, 1, 1);
+      const [R, G, B] = pix.getImageData(0, 0, 1, 1).data;
+      const water = B > R + 12 && B >= G - 4, sand = R > B + 18 && G > B + 8 && R > 200;
+      return !water && !sand;
+    } catch { return null; }
+  }
+  const isLand = (f, ll) => inside(f, ll.lat, ll.lng) && landAt(ll) !== false;
+  function spotsIn(f, n) {
+    const [w, s, e, nn] = f.bbox, out = [];
+    for (let tries = 0; out.length < n && tries < n * 80; tries++) {
+      const ll = L.latLng(s + Math.random() * (nn - s), w + Math.random() * (e - w));
+      if (isLand(f, ll)) out.push(ll);
+    }
+    return out;
+  }
+  const eggPins = L.layerGroup().addTo(map);
+  const pinEgg = (ll, html, w, h) => {
+    const m = L.marker(ll, { interactive: false, keyboard: false, zIndexOffset: 1000, icon: L.divIcon({ className: "eggpin", html: `<div>${html}</div>`, iconSize: [w, h], iconAnchor: [w / 2, h] }) }).addTo(eggPins);
+    return m.getElement().firstElementChild;
+  };
+  async function clearEggPins(ms = 600) {
+    eggPins.eachLayer((m) => m.getElement() && m.getElement().animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms, fill: "forwards" }));
+    await sleep(ms);
+    eggPins.clearLayers();
+  }
+  const sized = (svg, w, h) => svg.replace(/width="\d+" height="\d+"/, `width="${w}" height="${h}"`);
+  // John: seven ringed plovers come in off the sea, wheel round over the reserve as a flock,
+  // then settle together on the land at the north end, and one of them holds up a sign
+  async function plovers() {
+    const f = walney();
+    if (!f) return;
+    following = false;
+    $("locBtn").classList.remove("on");
+    eggPins.clearLayers();
+    await fitClear(L.geoJSON(f).getBounds(), true);
+    await sleep(400); // tiles in, so land and water can be told apart
+    // Where they land: a patch of land in the northern third, and six more spots close by
+    const [, s, , nn] = f.bbox, north = s + (nn - s) * 0.5, top = s + (nn - s) * 0.82;
+    const land = spotsIn(f, 200).filter((ll) => ll.lat > north && ll.lat < top); // (not the very tip: it sits under the chips)
+    if (!land.length) return;
+    const centre = land[Math.floor(Math.random() * land.length)];
+    const spots = land.sort((a, b) => centre.distanceTo(a) - centre.distanceTo(b)).slice(0, 7);
+    // The flock's path, in screen px around the landing patch: in from the sea (west), a wide
+    // loop and a bit over the reserve, then down. Each bird keeps its own place in the flock
+    // until the last stretch, when it peels off to its own spot.
+    const C = map.latLngToLayerPoint(L.latLngBounds(spots).getCenter());
+    const flock = (t) => {
+      if (t < 0.25) { const u = t / 0.25; return L.point(-330 + 330 * u, -150 + 60 * u); }
+      if (t < 0.8) { const a = Math.PI + ((t - 0.25) / 0.55) * Math.PI * 2.3; return L.point(Math.cos(a) * 120 + 120, Math.sin(a) * 70 - 90); }
+      const u = (t - 0.8) / 0.2, end = L.point(Math.cos(Math.PI * 3.3) * 120 + 120, Math.sin(Math.PI * 3.3) * 70 - 90);
+      return end.multiplyBy(1 - u * u * (3 - 2 * u));
+    };
+    const STEPS = 40, sign = 0;
+    const flights = spots.map((ll, i) => {
+      const el = pinEgg(ll, sized(EGG_SVG.plover, 34, 24), 34, 24);
+      el.querySelectorAll(".l1, .l2").forEach((l) => (l.style.opacity = 0)); // legs tucked in flight
+      const wing = el.querySelector(".wing");
+      wing.style.transformOrigin = "37px 17px";
+      const flap = wing.animate([{ transform: "rotate(0)" }, { transform: "rotate(-70deg)" }], { duration: 130, iterations: Infinity, direction: "alternate", delay: i * 30 });
+      const B = map.latLngToLayerPoint(ll).subtract(C), jx = (Math.random() - 0.5) * 50, jy = (Math.random() - 0.5) * 34;
+      const frames = [];
+      let prev = null;
+      for (let k = 0; k <= STEPS; k++) {
+        const t = k / STEPS, land = t < 0.8 ? 0 : ((t - 0.8) / 0.2) ** 2;
+        const pos = flock(t).add(L.point(jx, jy).multiplyBy(1 - land)).add(B.multiplyBy(land)).subtract(B);
+        const left = prev && pos.x < prev.x - 0.5; // face the way it's flying
+        frames.push({ transform: `translate(${pos.x}px,${pos.y}px) scaleX(${left ? -1 : 1})` });
+        prev = pos;
+      }
+      frames[frames.length - 1].transform = "translate(0,0) scaleX(1)";
+      return el.animate(frames, { duration: 5200, delay: i * 70, easing: "linear", fill: "backwards" }).finished.then(() => {
+        flap.cancel();
+        el.querySelectorAll(".l1, .l2").forEach((l) => (l.style.opacity = ""));
+      });
+    });
+    await Promise.all(flights);
+    const holder = eggPins.getLayers()[sign];
+    if (holder) {
+      const card = document.createElement("div");
+      card.className = "eggsign";
+      card.textContent = "Thanks John!";
+      holder.getElement().firstElementChild.appendChild(card);
+      card.animate([{ transform: "translateX(-50%) scale(0)" }, { transform: "translateX(-50%) scale(1.15)", offset: 0.7 }, { transform: "translateX(-50%) scale(1)" }], { duration: 450, easing: "ease-out", fill: "forwards" });
+      haptic();
+    }
+    await sleep(4500);
+    await clearEggPins();
+  }
+  // Joe: a couple of natterjacks in the dunes, then the map pulls back and they multiply,
+  // hopping out until they're all over the reserve
+  async function natterjacks() {
+    const f = walney();
+    if (!f) return;
+    following = false;
+    $("locBtn").classList.remove("on");
+    eggPins.clearLayers();
+    await fitClear(L.geoJSON(f).getBounds(), true);
+    await sleep(400);
+    const spots = spotsIn(f, 71), home = spots.shift();
+    if (!home) return;
+    await new Promise((done) => { map.once("moveend", done); map.flyTo(home, 16, { duration: 1.2 }); });
+    const pair = [home, spots.reduce((a, b) => (home.distanceTo(b) < home.distanceTo(a) ? b : a))];
+    const hop = (el, n) => el.animate([{ transform: "translateY(0)" }, { transform: "translateY(-14px)", offset: 0.4 }, { transform: "translateY(0)" }], { duration: 380, iterations: n, easing: "ease-in-out" }).finished;
+    const firsts = pair.map((ll) => pinEgg(ll, sized(EGG_SVG.toad, 44, 28), 44, 28));
+    await Promise.all(firsts.map((el, i) => sleep(i * 190).then(() => hop(el, 3))));
+    await fitClear(L.geoJSON(f).getBounds(), true);
+    let i = 0;
+    for (const ll of spots) {
+      const from = pair[i % 2], a = map.latLngToLayerPoint(from), b = map.latLngToLayerPoint(ll);
+      const dx = a.x - b.x, dy = a.y - b.y, el = pinEgg(ll, sized(EGG_SVG.toad, 20, 13), 20, 13);
+      el.animate([
+        { transform: `translate(${dx}px,${dy}px) scale(.3)`, opacity: 0 },
+        { transform: `translate(${dx / 2}px,${dy / 2 - 40}px) scale(.8)`, opacity: 1, offset: 0.5 },
+        { transform: "translate(0,0) scale(1)", opacity: 1 },
+      ], { duration: 650, delay: i * 45, easing: "ease-in-out", fill: "backwards" });
+      if (i % 12 === 0) setTimeout(haptic, i * 45 + 650);
+      i++;
+    }
+    await sleep(i * 45 + 650 + 3000);
+    await clearEggPins();
   }
   // Mike: a Duke of Burgundy lifts off from Gait Barrows (or the middle, if that's off screen)
   async function duke() {
@@ -2441,7 +2571,7 @@
     await sleep(DRAW_MS + 200);
     toast(`The whole patch: ${team.length} reserves, ${Math.round(patchHectares()).toLocaleString("en-GB")} ha`, 4500);
   }
-  const EGGS = { john: plover, joe: toad, mike: duke, tracy: wall, jim: patch };
+  const EGGS = { john: plovers, joe: natterjacks, mike: duke, tracy: wall, jim: patch };
   easterEgg = (text) => {
     const run = EGGS[text.toLowerCase()];
     if (!run) return false;
