@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "171"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "172"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2343,13 +2343,16 @@
       <circle cx="44" cy="19" r="9.5" fill="#d99a42"/><circle cx="41" cy="10.5" r="4" fill="#d99a42"/><circle cx="41" cy="10.5" r="2.2" fill="#e9a99a"/>
       <circle cx="48" cy="18" r="3.1" fill="#111"/><circle cx="49" cy="17" r="1" fill="#fff"/><circle cx="53.3" cy="21.5" r="1.5" fill="#c46a5e"/>
       <path d="M52 22l8-2M52 23l8 1M51 24l7 3" stroke="#6b4a24" stroke-width=".6"/><path d="M24 35l-1 3M37 35l1 3" stroke="#c4822f" stroke-width="3" stroke-linecap="round"/></svg>`,
-    // rosy marsh moth: rosy-brown forewings with darker cross-lines, paler hindwings
-    moth: `<svg viewBox="-24 -18 48 36" width="44" height="33"><g class="wings">
-      <g fill="#e2c9b4"><path d="M0 1-13 5-9 13Z"/><path d="M0 1 13 5 9 13Z"/></g>
-      <g fill="#b9787d" stroke="#7e4d50" stroke-width=".6"><path d="M0-3-21-11-18 5Z"/><path d="M0-3 21-11 18 5Z"/></g>
-      <g stroke="#6e3f43" stroke-width=".9" fill="none"><path d="M-7-5-9 2M-14-8-15 3M7-5 9 2M14-8 15 3"/></g>
-      <g fill="#e7b6b8"><circle cx="-11" cy="-4" r="1.3"/><circle cx="11" cy="-4" r="1.3"/></g></g>
-      <ellipse cx="0" cy="1" rx="1.8" ry="8" fill="#6e4a3a"/><path d="M-1-6q-4-5-8-6M1-6q4-5 8-6" stroke="#6e4a3a" stroke-width=".7" fill="none"/></svg>`,
+    // rosy marsh moth: a moth, not a butterfly. Wings swept back flat over the body in a long
+    // triangle, rosy-brown with darker cross-lines and kidney marks, a furry thorax, and in
+    // flight only a quick shallow whirr (flap "moth"), not a butterfly's wide beat
+    moth: `<svg viewBox="-24 -18 48 36" width="44" height="33"><g class="wings" data-flap="moth">
+      <path d="M0-9C-7-9-15 1-17 15L0 12Z" fill="#a8676c" stroke="#6e3f43" stroke-width=".7"/><path d="M0-9C7-9 15 1 17 15L0 12Z" fill="#9c5d63" stroke="#6e3f43" stroke-width=".7"/>
+      <path d="M-3-7C-7-4-11 3-12 12M3-7C7-4 11 3 12 12" stroke="#d9a3a6" stroke-width="1.2" fill="none"/>
+      <path d="M-4 0-13 4M-3 6-15 10M4 0 13 4M3 6 15 10" stroke="#6e3f43" stroke-width=".8"/>
+      <g fill="#5c3236"><ellipse cx="-7" cy="2.5" rx="1.6" ry="2.4"/><ellipse cx="7" cy="2.5" rx="1.6" ry="2.4"/></g></g>
+      <ellipse cx="0" cy="-8" rx="4.2" ry="4.5" fill="#7a4f45"/><circle cx="0" cy="-12.5" r="2.6" fill="#6a4238"/>
+      <path d="M-1-14q-3-3-7-3M1-14q3-3 7-3" stroke="#6a4238" stroke-width=".8" fill="none"/><path d="M-1 12h2l-1 3Z" fill="#7a4f45"/></svg>`,
   };
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const atGrid = (e, n) => { const ll = OSGB.gridToWgs84(e, n); return L.latLng(ll.lat, ll.lon); };
@@ -2427,7 +2430,9 @@
     const w = el.querySelector(".wings");
     w.style.transformOrigin = "0 0";
     w.style.transformBox = "view-box";
-    return w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 110 + Math.random() * 40, iterations: Infinity, direction: "alternate" });
+    return w.dataset.flap === "moth"
+      ? w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.78)" }], { duration: 45 + Math.random() * 20, iterations: Infinity, direction: "alternate" })
+      : w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 110 + Math.random() * 40, iterations: Infinity, direction: "alternate" });
   }
   // Mike's Timberwolf moment: reality glitches, the screen goes black with a huge wolf for two
   // quick blinks, a pause, then one last flicker, and everything's normal as if nothing happened
