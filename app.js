@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "167"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "168"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2429,6 +2429,27 @@
     w.style.transformBox = "view-box";
     return w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 110 + Math.random() * 40, iterations: Infinity, direction: "alternate" });
   }
+  // Mike's Timberwolf moment: reality glitches, the screen goes black with a huge wolf, twice,
+  // for a blink each, then everything's normal again as if nothing happened
+  async function wolfGlitch() {
+    const g = document.createElement("div");
+    g.className = "wolfglitch";
+    g.innerHTML = `<span>🐺</span>`;
+    document.body.appendChild(g);
+    const blink = async (ms, dx) => {
+      g.style.setProperty("--dx", dx + "px");
+      g.classList.add("on");
+      haptic();
+      await sleep(ms);
+      g.classList.remove("on");
+    };
+    await blink(110, -6);
+    await sleep(90);
+    await blink(60, 9);
+    await sleep(420);
+    await blink(170, -3);
+    g.remove();
+  }
   const startEgg = () => { following = false; $("locBtn").classList.remove("on"); eggPins.clearLayers(); };
 
   // One theme for Joe, Mike, Tracy and Jim: close in on one animal at a spot on the reserve,
@@ -2436,7 +2457,7 @@
   // flying out from it until they're all over the land.
   //   how: "hop" (toads), "scurry" (low quick hops: dormice), "fly" (butterflies, moths)
   //   habitat: "wood" (only the green woodland) or "open" (only outside it), as on the OS map
-  async function spread({ code, start, svg, big, small, count, how, keep, sign, habitat }) {
+  async function spread({ code, start, svg, big, small, count, how, keep, sign, habitat, glitch }) {
     const f = reserve(code);
     if (!f) return;
     startEgg();
@@ -2479,6 +2500,7 @@
       if (how === "hop" && i % 12 === 0) setTimeout(haptic, i * gap + 650);
     });
     await sleep(spots.length * gap + 1100);
+    if (glitch) { await sleep(500); await glitch(); await sleep(500); }
     if (sign) holdSign(first, sign);
     await sleep(4500);
     await clearEggPins();
@@ -2559,7 +2581,7 @@
   const EGGS = {
     john: plovers,
     joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "hop", sign: "Can't wait to meet you, Joe!" }),
-    mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly", sign: "Thanks Mike!" }),
+    mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly", glitch: wolfGlitch, sign: "Thanks Mike!" }),
     tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 45, how: "scurry", habitat: "wood", sign: "Thanks Tracy!",
       keep: (ll, s) => pieceOf(reserve("1006126"), ll) === pieceOf(reserve("1006126"), s) }), // the top block (Roudsea Wood) only
     jim: () => spread({ code: "1006126", start: atGrid(333570, 482630), svg: EGG_SVG.moth, big: [44, 33], small: [20, 15], count: 60, how: "fly", habitat: "open", sign: "Thanks Jim!", keep: (ll, s) => ll.lat < s.lat && ll.lng > s.lng - 0.001 }),
