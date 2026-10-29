@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "166"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "167"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2559,7 +2559,7 @@
   const EGGS = {
     john: plovers,
     joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "hop", sign: "Can't wait to meet you, Joe!" }),
-    mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly" }),
+    mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly", sign: "Thanks Mike!" }),
     tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 45, how: "scurry", habitat: "wood", sign: "Thanks Tracy!",
       keep: (ll, s) => pieceOf(reserve("1006126"), ll) === pieceOf(reserve("1006126"), s) }), // the top block (Roudsea Wood) only
     jim: () => spread({ code: "1006126", start: atGrid(333570, 482630), svg: EGG_SVG.moth, big: [44, 33], small: [20, 15], count: 60, how: "fly", habitat: "open", sign: "Thanks Jim!", keep: (ll, s) => ll.lat < s.lat && ll.lng > s.lng - 0.001 }),
