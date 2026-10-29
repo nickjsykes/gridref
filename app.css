@@ -371,9 +371,11 @@ body.large .results button .gr { font-size: 23px; }
 .grid-label { color: #1d4f8f; font: 600 11px var(--mono); text-shadow: 0 0 3px #fff, 0 0 3px #fff; white-space: nowrap; }
 .layers { position: fixed; z-index: 1001; right: 76px; max-width: calc(100vw - 84px); box-sizing: border-box; max-height: calc(100% - 80px); overflow-y: auto; background: var(--panel); border-radius: 14px; box-shadow: 0 4px 16px rgba(0,0,0,.22); display: none; }
 .layers button { display: block; width: 100%; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: 15px var(--sans); padding: 10px 14px; text-align: left; white-space: nowrap; }
-.lidarrow { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding-right: 12px; }
+.lidarrow { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0 14px 4px 0; }
 .layers .lidarrow button.tick { width: auto; border: 0; flex: none; }
-.lidarrow input { flex: 1; min-width: 90px; accent-color: var(--green); height: 44px; margin: 0; touch-action: none; } /* the whole bar is the touch target */
+/* the slider on its own line under "LiDAR 65%"; width 0 so it never sets the menu's width (it fills the line it gets). The whole bar is the touch target */
+.lidarrow input { order: 3; flex: 0 0 calc(100% - 14px); width: 0; min-width: 0; margin: 0 0 0 14px; accent-color: var(--green); height: 40px; touch-action: none; }
+.lidarrow .tick + input + span { margin-left: auto; }
 .lidarrow span { font: 600 13px var(--sans); color: var(--muted); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 body.large .lidarrow span { font-size: 16px; }
 /* LiDAR ground detail: grey tiles blended onto whatever map is below (mid-grey = no change,
@@ -382,6 +384,9 @@ body.large .lidarrow span { font-size: 16px; }
 .leaflet-shade-pane { mix-blend-mode: hard-light; } /* strength (opacity) comes from the slider */
 .lidar { filter: brightness(.72) contrast(1.35); } /* the EA's shading is pale: bring flat ground to mid-grey (no change) */
 .layers button.on { color: var(--green); font-weight: 700; }
+/* width 0 + min-width 100%: wraps to the menu's width instead of setting it */
+.layers .byline { width: 0; min-width: 100%; box-sizing: border-box; padding: 5px 14px 7px; font: 10px var(--sans); color: var(--muted); }
+#map.county .leaflet-interactive, #map.county .leaflet-overlay-pane canvas { pointer-events: none !important; }
 
 /* reserve chips: one tap to each of the team's reserves */
 .chips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + var(--nudge) + 68px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; }
