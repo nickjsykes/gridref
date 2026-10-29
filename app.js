@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "176"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "177"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -411,11 +411,20 @@
   map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
   let reserveTap = null; // set with the reserves: zoomed out, a tap on or near one goes to it
+  // A tap brings that spot to the crosshair; a second tap there straight after zooms in on it,
+  // one level, so the map can be worked one-handed. Our own double tap rather than Leaflet's:
+  // its zoom centres on the finger, which the first tap has already moved somewhere else.
+  map.doubleClickZoom.disable();
+  let lastTap = null;
   map.on("click", (e) => {
     layersEl.style.display = "none";
     $("results").style.display = "none";
     if (nav) return;
-    if (!(reserveTap && reserveTap(e))) panTo(e.latlng);
+    const now = Date.now(), again = lastTap && now - lastTap.t < 400 && e.containerPoint.distanceTo(lastTap.p) < 40;
+    if (again) { panTo(lastTap.ll, Math.min(map.getZoom() + 1, map.getMaxZoom())); lastTap = null; return; }
+    if (reserveTap && reserveTap(e)) { lastTap = null; return; }
+    lastTap = { t: now, p: e.containerPoint, ll: e.latlng };
+    panTo(e.latlng);
   });
 
   // ---------- GPS ----------

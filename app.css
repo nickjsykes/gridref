@@ -607,3 +607,8 @@ body.large {
 #map .leaflet-bottom.leaflet-left .leaflet-control-attribution:not(.open) { background: color-mix(in srgb, var(--panel) 22%, transparent); box-shadow: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 #map .leaflet-bottom.leaflet-left .leaflet-control-attribution.open { background: var(--glass-menu); }
 #map .leaflet-control-attribution:not(.open)::before { color: var(--ink); opacity: .8; text-shadow: 0 0 3px var(--panel), 0 0 2px var(--panel); }
+/* The location itself (grid ref, lat/long, E/N, what3words) in pure black, or pure white in
+   dark mode: the highest contrast there is, for reading out over a radio or phone */
+:root { --data: #000; }
+@media (prefers-color-scheme: dark) { :root { --data: #fff; } }
+.ref:not(.off), .row .v:not(.dim) { color: var(--data); }
