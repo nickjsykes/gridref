@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "160"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "161"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -476,12 +476,12 @@
   };
 
   // ---------- actions ----------
-  function toast(msg) {
+  function toast(msg, ms = 1800) {
     const t = $("toast");
     t.textContent = msg;
     t.classList.add("show");
     clearTimeout(toast.t);
-    toast.t = setTimeout(() => t.classList.remove("show"), 1800);
+    toast.t = setTimeout(() => t.classList.remove("show"), ms);
   }
   async function copy(text, el, quiet) {
     let ok = false;
@@ -1706,12 +1706,14 @@
     return out;
   }
   let seq = 0, typing;
+  let easterEgg = null; // set with the reserves: a team member's name, searched with Go
   async function search(text, submit) {
     const my = ++seq;
     text = text.trim();
     if (!text) return showResults([]);
-    // Tucked away on purpose: only the exact word "nick" offers it
     if (/^(high |low )?tides?( times?| tables?)?$/i.test(text)) return showTides();
+    if (submit && easterEgg && easterEgg(text)) { $("q").value = ""; $("q").blur(); return showResults([]); }
+    // Tucked away on purpose: only the exact word "nick" offers it
     if (text.toLowerCase() === "nick") return showResults([{ title: "Report bug to Nick…", sub: "Opens an email with this phone's details filled in", feedback: true }]);
     const readings = GridSearch.parse(text);
     // A whole message pasted in: look for a grid ref, lat/long, plus code, postcode or
@@ -2300,6 +2302,152 @@
     goReserve(best);
     return true;
   };
+  // ---------- easter eggs: a team member's name in the search, then Go ----------
+  // A few seconds of something small, drawn here (nothing to download), then gone.
+  const EGG_SVG = {
+    // ringed plover: sandy back, white front, black breast band and mask, orange bill and legs
+    plover: `<svg viewBox="0 0 64 44" width="64" height="44"><g stroke="#e8890c" stroke-width="2.4" stroke-linecap="round"><path class="l1" d="M27 31l-3 11"/><path class="l2" d="M33 31l3 11"/></g>
+      <ellipse cx="30" cy="24" rx="17" ry="10" fill="#fff"/><path d="M13 24c2-9 12-13 22-12l10 2c-6 3-14 5-32 10Z" fill="#a98b66"/>
+      <path class="wing" d="M15 21c7-5 16-6 24-4-7 4-15 6-24 4Z" fill="#8c7152"/><path d="M38 14c4 2 6 6 6 10" stroke="#111" stroke-width="4.5" fill="none"/>
+      <circle cx="46" cy="12" r="7.5" fill="#a98b66"/><path d="M39 11c4-3 9-4 14-1v3h-14Z" fill="#fff"/><path d="M40 13l13 0-1 3-11-1Z" fill="#111"/><path d="M42 7l7-1" stroke="#111" stroke-width="2.4"/>
+      <path d="M53 12l7 1-7 2Z" fill="#e8890c"/><path d="M58 12.6l2 .4-2 .6Z" fill="#111"/><circle cx="48" cy="12.5" r="1.4" fill="#111"/></svg>`,
+    // natterjack toad: olive, warty, the yellow stripe down its back
+    toad: `<svg viewBox="0 0 64 40" width="64" height="40"><path d="M10 34c-6 0-8-4-4-6l8-3M50 33c6 1 9-3 5-5l-7-3" stroke="#5b6b3a" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="32" cy="24" rx="22" ry="12" fill="#6f7f45"/><path d="M12 22c8-7 30-9 40-2" stroke="#e6d23a" stroke-width="2.4" fill="none"/>
+      <g fill="#4f5c2e"><circle cx="20" cy="27" r="2"/><circle cx="28" cy="31" r="1.6"/><circle cx="38" cy="29" r="2"/><circle cx="45" cy="25" r="1.5"/><circle cx="24" cy="18" r="1.4"/></g>
+      <ellipse cx="51" cy="21" rx="9" ry="7" fill="#6f7f45"/><circle cx="51" cy="15.5" r="4" fill="#6f7f45"/><circle cx="51.5" cy="15" r="2.4" fill="#c9a227"/><circle cx="51.9" cy="15" r="1.1" fill="#111"/>
+      <path d="M46 24.5c4 1.5 8 1 12-1.5" stroke="#3d4723" stroke-width="1.4" fill="none"/></svg>`,
+    // Duke of Burgundy: dark brown, chequered orange, white fringe; wings beat from the body
+    duke: `<svg viewBox="-24 -18 48 36" width="56" height="42"><g class="wings"><g fill="#4a2f1e" stroke="#2a1a10" stroke-width=".6">
+      <path d="M0-2C-6-15-20-16-21-7c-1 6 9 8 21 6Z"/><path d="M0 0c-9 1-17 4-15 11 2 5 11 1 15-8Z"/><path d="M0-2C6-15 20-16 21-7c1 6-9 8-21 6Z"/><path d="M0 0c9 1 17 4 15 11-2 5-11 1-15-8Z"/></g>
+      <g fill="#e2892b"><circle cx="-14" cy="-9" r="1.8"/><circle cx="-9" cy="-6" r="1.6"/><circle cx="-16" cy="-4" r="1.4"/><circle cx="-10" cy="5" r="1.6"/><circle cx="-6" cy="8" r="1.3"/><circle cx="14" cy="-9" r="1.8"/><circle cx="9" cy="-6" r="1.6"/><circle cx="16" cy="-4" r="1.4"/><circle cx="10" cy="5" r="1.6"/><circle cx="6" cy="8" r="1.3"/></g>
+      <g fill="#fff"><circle cx="-20" cy="-9" r=".7"/><circle cx="-21" cy="-6" r=".7"/><circle cx="20" cy="-9" r=".7"/><circle cx="21" cy="-6" r=".7"/><circle cx="-14" cy="11" r=".7"/><circle cx="14" cy="11" r=".7"/></g></g>
+      <ellipse cx="0" cy="1" rx="1.6" ry="8" fill="#1d130b"/><path d="M-1-6l-4-6M1-6l4-6" stroke="#1d130b" stroke-width=".7"/></svg>`,
+  };
+  const ground = () => window.innerHeight - sheet.getBoundingClientRect().top + 14; // px up from the bottom: just over the panel
+  function eggLayer(svg) {
+    const d = document.createElement("div");
+    d.className = "egg";
+    d.innerHTML = svg || "";
+    document.body.appendChild(d);
+    return d;
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  // John: a ringed plover runs in, puts on its broken-wing act, then runs off
+  async function plover() {
+    const d = eggLayer(EGG_SVG.plover), W = window.innerWidth;
+    d.style.bottom = ground() + "px";
+    const legs = [".l1", ".l2"].map((sel, i) => {
+      const l = d.querySelector(sel);
+      l.style.transformOrigin = "30px 31px";
+      return l.animate([{ transform: "rotate(-14deg)" }, { transform: "rotate(14deg)" }], { duration: 110, iterations: Infinity, direction: "alternate", delay: i * 55 });
+    });
+    const mid = W / 2 - 32;
+    await d.animate([{ transform: "translateX(-70px)" }, { transform: `translateX(${mid}px)` }], { duration: 1100, easing: "ease-out", fill: "forwards" }).finished;
+    legs.forEach((l) => l.pause());
+    const wing = d.querySelector(".wing"), body = d.firstElementChild;
+    wing.style.transformOrigin = "37px 17px";
+    body.style.transformOrigin = "30px 40px";
+    body.animate([{ transform: "rotate(0)" }, { transform: "rotate(9deg)" }], { duration: 250, fill: "forwards" });
+    await wing.animate([{ transform: "rotate(0)" }, { transform: "rotate(-55deg)" }, { transform: "rotate(-30deg)" }, { transform: "rotate(-60deg)" }, { transform: "rotate(-25deg)" }, { transform: "rotate(-58deg)" }, { transform: "rotate(0)" }], { duration: 1500 }).finished;
+    body.animate([{ transform: "rotate(9deg)" }, { transform: "rotate(0)" }], { duration: 150, fill: "forwards" });
+    legs.forEach((l) => l.play());
+    await d.animate([{ transform: `translateX(${mid}px)` }, { transform: `translateX(${W + 20}px)` }], { duration: 800, easing: "ease-in", fill: "forwards" }).finished;
+    d.remove();
+  }
+  // Joe: a natterjack hops across, a buzz on each landing
+  async function toad() {
+    const d = eggLayer(EGG_SVG.toad), W = window.innerWidth, step = 74;
+    d.style.bottom = ground() + "px";
+    for (let x = -70; x < W + 10; x += step) {
+      await d.animate([{ transform: `translate(${x}px,0)` }, { transform: `translate(${x + step / 2}px,-46px) rotate(-8deg)`, offset: 0.45 }, { transform: `translate(${x + step}px,0)` }], { duration: 420, easing: "ease-in-out", fill: "forwards" }).finished;
+      haptic();
+      await sleep(180);
+    }
+    d.remove();
+  }
+  // Mike: a Duke of Burgundy lifts off from Gait Barrows (or the middle, if that's off screen)
+  async function duke() {
+    const d = eggLayer(EGG_SVG.duke), W = window.innerWidth;
+    const box = map.getContainer().getBoundingClientRect(), floor = sheet.getBoundingClientRect().top - box.top - 40;
+    const gb = nnr.find((f) => f.properties.REF_CODE === "1006058");
+    let p = gb && map.latLngToContainerPoint(L.geoJSON(gb).getBounds().getCenter());
+    if (!p || p.x < 20 || p.x > W - 20 || p.y < 120 || p.y > floor) p = L.point(W / 2, floor - 20);
+    d.style.left = box.left + p.x - 28 + "px";
+    d.style.top = box.top + p.y - 21 + "px";
+    const wings = d.querySelector(".wings");
+    wings.style.transformOrigin = "0 0";
+    wings.style.transformBox = "view-box";
+    wings.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 120, iterations: Infinity, direction: "alternate" });
+    const path = [];
+    for (let i = 0; i <= 10; i++) path.push({ transform: `translate(${i * (W * 0.07) + Math.sin(i * 1.7) * 30}px,${-i * ((p.y + 60) / 8) + Math.cos(i * 2.3) * 22}px) rotate(${Math.sin(i) * 25}deg)` });
+    await d.animate(path, { duration: 3600, easing: "linear", fill: "forwards" }).finished;
+    d.remove();
+  }
+  // Tracy: a wall builds itself along the bottom, and from then on (until the app is closed)
+  // every measured length also says how many walling days it is
+  let wallDays = false;
+  const WALL_PER_DAY = 2; // metres a day: one waller, a full rebuild
+  async function wall() {
+    const W = window.innerWidth, d = eggLayer();
+    d.style.bottom = ground() - 10 + "px";
+    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("width", W);
+    svg.setAttribute("height", 52);
+    d.appendChild(svg);
+    const greys = ["#8d8a82", "#a19d93", "#7b7871", "#b3aea2", "#96938a"], stones = [];
+    const stone = (x, y, w, h) => {
+      const r = document.createElementNS(NS, "rect");
+      for (const [k, v] of Object.entries({ x, y, width: w, height: h, rx: 3, fill: greys[Math.floor(Math.random() * greys.length)], stroke: "#5f5c55", "stroke-width": 1 })) r.setAttribute(k, v);
+      r.style.opacity = 0;
+      svg.appendChild(r);
+      stones.push(r);
+    };
+    // two courses, joints crossed, then the cope: stones on edge along the top
+    for (const y of [38, 25]) for (let x = y === 25 ? -9 : 0; x < W;) { const w = 16 + Math.random() * 14; stone(x, y, w - 1.5, 13); x += w; }
+    for (let x = 2; x < W; x += 9) stone(x, 7, 7.5, 18);
+    stones.forEach((r, i) => r.animate([{ opacity: 0, transform: "translateY(-18px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 220, delay: i * 14, fill: "forwards", easing: "ease-out" }));
+    await sleep(stones.length * 14 + 300);
+    wallDays = true;
+    if (measure) drawMeasure();
+    toast(`Walling mode: measured lines now show walling days (${WALL_PER_DAY} m a day)`, 4500);
+    await sleep(2600);
+    await d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).finished;
+    d.remove();
+  }
+  // Jim: the whole patch, every reserve drawn at once, and how big it all is
+  function patchHectares() {
+    let m2 = 0;
+    const ring = (r) => {
+      const g = r.map(([x, y]) => OSGB.wgs84ToGrid(y, x));
+      let a = 0;
+      for (let i = 0; i < g.length; i++) { const j = (i + 1) % g.length; a += g[i].e * g[j].n - g[j].e * g[i].n; }
+      return Math.abs(a) / 2;
+    };
+    for (const f of nnr) if (isTeam(f)) {
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) m2 += ring(poly[0]) - poly.slice(1).reduce((a, h) => a + ring(h), 0);
+    }
+    return m2 / 10000;
+  }
+  async function patch() {
+    const team = nnr.filter(isTeam);
+    if (!team.length) return;
+    following = false;
+    $("locBtn").classList.remove("on");
+    fitClear(L.geoJSON({ type: "FeatureCollection", features: team }).getBounds());
+    await sleep(60);
+    for (const f of team) drawOn(f.properties.REF_CODE);
+    await sleep(DRAW_MS + 200);
+    toast(`The whole patch: ${team.length} reserves, ${Math.round(patchHectares()).toLocaleString("en-GB")} ha`, 4500);
+  }
+  const EGGS = { john: plover, joe: toad, mike: duke, tracy: wall, jim: patch };
+  easterEgg = (text) => {
+    const run = EGGS[text.toLowerCase()];
+    if (!run) return false;
+    run().catch((err) => { console.warn("easter egg", err); document.querySelectorAll(".egg").forEach((e) => e.remove()); });
+    return true;
+  };
   function drawChips() {
     const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
@@ -2366,6 +2514,7 @@
     pts.forEach((p, i) => (i && p.walked) || L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     $("mDist").textContent = fmtDist(st.d);
+    $("mDist").previousElementSibling.textContent = wallDays && st.d ? `Length · ${st.d / WALL_PER_DAY < 10 ? (st.d / WALL_PER_DAY).toFixed(1) : Math.round(st.d / WALL_PER_DAY).toLocaleString("en-GB")} walling days` : "Length";
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
     $("mArea").textContent = a != null ? `${Math.round(a).toLocaleString("en-GB")} m²` : "—";
     $("mHa").textContent = a != null ? `${(a / 10000).toFixed(a < 100000 ? 2 : 1)} ha` : "—";

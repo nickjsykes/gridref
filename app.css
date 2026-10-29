@@ -572,3 +572,6 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 .results button.tiderow .tdays div + div { margin-top: 3px; }
 .results button.tiderow .tdays span:first-child { font-weight: 700; }
 .results button.tiderow [hidden] { display: none; }
+/* easter eggs: drawn over the map, never in the way of a tap */
+.egg { position: fixed; left: 0; z-index: 1500; pointer-events: none; line-height: 0; }
+.egg svg { overflow: visible; }
