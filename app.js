@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "172"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "173"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2319,22 +2319,35 @@
   // Each plays out on that person's reserve: the map flies there and the animals are pinned to
   // real places, only on land. All drawn here (nothing to download), then gone.
   const EGG_SVG = {
-    // ringed plover: sandy back, white front, black breast band and mask, orange bill and legs
-    plover: `<svg viewBox="0 0 64 44" width="64" height="44"><g stroke="#e8890c" stroke-width="2.4" stroke-linecap="round"><path class="l1" d="M27 31l-3 11"/><path class="l2" d="M33 31l3 11"/></g>
-      <ellipse cx="30" cy="24" rx="17" ry="10" fill="#fff"/><path d="M13 24c2-9 12-13 22-12l10 2c-6 3-14 5-32 10Z" fill="#a98b66"/>
-      <path class="wing" d="M15 21c7-5 16-6 24-4-7 4-15 6-24 4Z" fill="#8c7152"/><path d="M38 14c4 2 6 6 6 10" stroke="#111" stroke-width="4.5" fill="none"/>
-      <circle cx="46" cy="12" r="7.5" fill="#a98b66"/><path d="M39 11c4-3 9-4 14-1v3h-14Z" fill="#fff"/><path d="M40 13l13 0-1 3-11-1Z" fill="#111"/><path d="M42 7l7-1" stroke="#111" stroke-width="2.4"/>
-      <path d="M53 12l7 1-7 2Z" fill="#e8890c"/><path d="M58 12.6l2 .4-2 .6Z" fill="#111"/><circle cx="48" cy="12.5" r="1.4" fill="#111"/></svg>`,
-    // natterjack toad: olive, warty, the yellow stripe down its back
-    toad: `<svg viewBox="0 0 64 40" width="64" height="40"><path d="M10 34c-6 0-8-4-4-6l8-3M50 33c6 1 9-3 5-5l-7-3" stroke="#5b6b3a" stroke-width="5" stroke-linecap="round" fill="none"/>
-      <ellipse cx="32" cy="24" rx="22" ry="12" fill="#6f7f45"/><path d="M12 22c8-7 30-9 40-2" stroke="#e6d23a" stroke-width="2.4" fill="none"/>
-      <g fill="#4f5c2e"><circle cx="20" cy="27" r="2"/><circle cx="28" cy="31" r="1.6"/><circle cx="38" cy="29" r="2"/><circle cx="45" cy="25" r="1.5"/><circle cx="24" cy="18" r="1.4"/></g>
-      <ellipse cx="51" cy="21" rx="9" ry="7" fill="#6f7f45"/><circle cx="51" cy="15.5" r="4" fill="#6f7f45"/><circle cx="51.5" cy="15" r="2.4" fill="#c9a227"/><circle cx="51.9" cy="15" r="1.1" fill="#111"/>
-      <path d="M46 24.5c4 1.5 8 1 12-1.5" stroke="#3d4723" stroke-width="1.4" fill="none"/></svg>`,
+    // ringed plover: sandy-brown back, white below, a full black breast band with a white collar
+    // above it, white forehead under a black crown bar, black mask through the eye, short orange
+    // bill tipped black, orange legs. No yellow eye-ring: that's a little ringed plover
+    plover: `<svg viewBox="0 0 64 44" width="64" height="44"><g stroke="#f08a1c" stroke-width="2.6" stroke-linecap="round"><path class="l1" d="M27 33l-2 9"/><path class="l2" d="M33 33l2 9"/></g>
+      <ellipse cx="30" cy="26" rx="16" ry="9.5" fill="#fff"/>
+      <path d="M8 25C11 16 24 12 36 13c3 3 2 6-2 7-8 2-17 4-26 5Z" fill="#b0916b"/><path d="M8 25 3 23l6-2Z" fill="#6f5a40"/>
+      <path class="wing" d="M14 21c6-5 15-6 22-4-6 3-14 5-22 4Z" fill="#8f7354"/>
+      <path d="M36 14c4 0 9 3 10 9 0 3-1 6-3 6-1-4-3-8-7-11Z" fill="#111"/><path d="M35 12.5c3-1.5 7-1 9 2-3 0-6-1-9-.5Z" fill="#fff"/>
+      <circle cx="46" cy="10" r="7.2" fill="#b0916b"/><path d="M44 3.6c3-.8 6 0 8 2.4l-7 1.2Z" fill="#111"/><path d="M50 6.4c2 .6 3 2 3.4 3.6l-5-.6Z" fill="#fff"/>
+      <path d="M53.5 10.5 44 9.5c-3 .2-4 2.6-3 4.6h6l6.5-1.6Z" fill="#111"/><path d="M41.5 14.5c2 3 7 3.6 11.5.2Z" fill="#fff"/>
+      <circle cx="48" cy="11" r="1.7" fill="#111"/><circle cx="48.5" cy="10.5" r=".45" fill="#fff"/>
+      <path d="M53.5 10.4l6 1.3-6 1.4Z" fill="#f08a1c"/><path d="M57.6 11.3l2 .4-2 .5Z" fill="#111"/></svg>`,
+    // natterjack toad: squat, short-legged and warty, olive with red-brown warts, the thin yellow
+    // stripe down its back, lemon-green eye with a horizontal pupil, legs tucked under (it runs)
+    toad: `<svg viewBox="0 0 64 40" width="64" height="40"><path d="M17 31c-5 3-4 7 3 7h7" stroke="#69713f" stroke-width="5" stroke-linecap="round" fill="none"/>
+      <path d="M8 30c0-10 10-17 24-17 12 0 20 4 23 10 2 5-2 9-9 10H14c-4 0-6-1-6-3Z" fill="#7b8452"/>
+      <path d="M12 20c10-7 26-8 38-3" stroke="#e8d84a" stroke-width="2" fill="none" stroke-linecap="round"/>
+      <g fill="#5d6639"><circle cx="18" cy="25" r="1.8"/><circle cx="26" cy="29" r="1.5"/><circle cx="34" cy="24" r="1.7"/><circle cx="41" cy="28" r="1.4"/><circle cx="22" cy="19" r="1.2"/></g>
+      <g fill="#93603f"><circle cx="30" cy="20" r="1.3"/><circle cx="14" cy="28" r="1.2"/><circle cx="38" cy="19" r="1.1"/></g>
+      <ellipse cx="43" cy="18.5" rx="5" ry="2.4" fill="#6b7446"/><circle cx="49" cy="16.5" r="4" fill="#7b8452"/>
+      <circle cx="49.5" cy="16" r="2.6" fill="#c8d43c"/><ellipse cx="49.6" cy="16" rx="1.9" ry=".75" fill="#111"/>
+      <path d="M46 23.5c3 .4 6-.2 8-2" stroke="#3d4423" stroke-width="1.2" fill="none"/><path d="M44 32l2 6h4" stroke="#69713f" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>`,
     // Duke of Burgundy: dark brown, chequered orange, white fringe; wings beat from the body
     duke: `<svg viewBox="-24 -18 48 36" width="48" height="36"><g class="wings"><g fill="#4a2f1e" stroke="#2a1a10" stroke-width=".6">
       <path d="M0-2C-6-15-20-16-21-7c-1 6 9 8 21 6Z"/><path d="M0 0c-9 1-17 4-15 11 2 5 11 1 15-8Z"/><path d="M0-2C6-15 20-16 21-7c1 6-9 8-21 6Z"/><path d="M0 0c9 1 17 4 15 11-2 5-11 1-15-8Z"/></g>
-      <g fill="#e2892b"><circle cx="-14" cy="-9" r="1.8"/><circle cx="-9" cy="-6" r="1.6"/><circle cx="-16" cy="-4" r="1.4"/><circle cx="-10" cy="5" r="1.6"/><circle cx="-6" cy="8" r="1.3"/><circle cx="14" cy="-9" r="1.8"/><circle cx="9" cy="-6" r="1.6"/><circle cx="16" cy="-4" r="1.4"/><circle cx="10" cy="5" r="1.6"/><circle cx="6" cy="8" r="1.3"/></g>
+      <g fill="#e2892b"><circle cx="-14" cy="-9" r="1.8"/><circle cx="-9" cy="-6" r="1.6"/><circle cx="-16" cy="-4" r="1.4"/><circle cx="-10" cy="5" r="1.6"/><circle cx="-6" cy="8" r="1.3"/><circle cx="14" cy="-9" r="1.8"/><circle cx="9" cy="-6" r="1.6"/><circle cx="16" cy="-4" r="1.4"/><circle cx="10" cy="5" r="1.6"/><circle cx="6" cy="8" r="1.3"/>
+        <circle cx="-18" cy="-10" r="1.3"/><circle cx="-12" cy="-12" r="1.3"/><circle cx="-6" cy="-9" r="1.3"/><circle cx="-12" cy="-3" r="1.3"/><circle cx="-13" cy="7" r="1.3"/><circle cx="-8" cy="10" r="1.2"/>
+        <circle cx="18" cy="-10" r="1.3"/><circle cx="12" cy="-12" r="1.3"/><circle cx="6" cy="-9" r="1.3"/><circle cx="12" cy="-3" r="1.3"/><circle cx="13" cy="7" r="1.3"/><circle cx="8" cy="10" r="1.2"/></g>
+      <g fill="#1d130b"><circle cx="-13" cy="7" r=".5"/><circle cx="-8" cy="10" r=".5"/><circle cx="13" cy="7" r=".5"/><circle cx="8" cy="10" r=".5"/></g>
       <g fill="#fff"><circle cx="-20" cy="-9" r=".7"/><circle cx="-21" cy="-6" r=".7"/><circle cx="20" cy="-9" r=".7"/><circle cx="21" cy="-6" r=".7"/><circle cx="-14" cy="11" r=".7"/><circle cx="14" cy="11" r=".7"/></g></g>
       <ellipse cx="0" cy="1" rx="1.6" ry="8" fill="#1d130b"/><path d="M-1-6l-4-6M1-6l4-6" stroke="#1d130b" stroke-width=".7"/></svg>`,
     // hazel dormouse: golden, big black eyes, a thick furry tail curled up behind
@@ -2472,7 +2485,7 @@
   // One theme for Joe, Mike, Tracy and Jim: close in on one animal at a spot on the reserve,
   // pull back to the whole reserve, and it multiplies, the young ones hopping, scurrying or
   // flying out from it until they're all over the land.
-  //   how: "hop" (toads), "scurry" (low quick hops: dormice), "fly" (butterflies, moths)
+  //   how: "hop", "scurry" (low quick runs: natterjacks, which run rather than hop, and dormice), "fly" (butterflies, moths)
   //   habitat: "wood" (only the green woodland) or "open" (only outside it), as on the OS map
   async function spread({ code, start, svg, big, small, count, how, keep, sign, habitat, glitch }) {
     const f = reserve(code);
@@ -2597,7 +2610,7 @@
   }
   const EGGS = {
     john: plovers,
-    joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "hop", sign: "Can't wait to meet you, Joe!" }),
+    joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "scurry", sign: "Can't wait to meet you, Joe!" }),
     mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly", glitch: wolfGlitch, sign: "Thanks Mike!" }),
     tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 45, how: "scurry", habitat: "wood", sign: "Thanks Tracy!",
       keep: (ll, s) => pieceOf(reserve("1006126"), ll) === pieceOf(reserve("1006126"), s) }), // the top block (Roudsea Wood) only
