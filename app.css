@@ -166,13 +166,6 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .sheetmenu .danger { color: var(--danger); }
 .sheetmenu .cancel { background: none; color: var(--muted); }
 .card .btns.three { grid-template-columns: 1fr 1fr 1.2fr; }
-.featmenu { width: min(160px, calc(50vw - 34px)); }
-.featmenu .fm-title b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.featmenu .fm-title { padding: 10px 14px 6px; border-bottom: 1px solid var(--line); }
-.featmenu .fm-title b { display: block; font-size: 15px; }
-.featmenu button.danger { color: var(--danger); }
-.featmenu .fm-title span:empty { display: none; }
-.featmenu .fm-title span { font: 13px var(--mono); color: var(--muted); }
 .item .thumb { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; background: var(--green-soft); display: block; }
 .photopin { width: 28px; height: 28px; box-sizing: border-box; border-radius: 50%; background: #2b2b2b; border: 3px solid #fff; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.4); }
 .photopin svg { width: 14px; height: 14px; }
@@ -338,11 +331,11 @@ body.large .results button .gr { font-size: 23px; }
 .pick button.on { border-color: var(--ink); box-shadow: 0 0 0 2px var(--panel) inset; }
 .pick svg { width: 24px; height: 24px; }
 /* Buttons, the same everywhere:
-   - a popup that does something: grey Cancel on the left (closes it, nothing changes), and
-     one green verb on the right for what happens (Save, Send, Export, Add, Make map). Delete
-     is red and always asks
+   - anything that makes something (a popup, measuring a line or area, moving a point,
+     making a map): grey Cancel (leave, nothing saved) and one green verb at the end for
+     what happens (Save, Send, Export, Add, Place here, Make map). Delete is red and asks
    - a popup that's only for looking: one Close
-   - a whole screen or mode (notebook, measure, navigate, map maker): Done, back to the map
+   - a screen where nothing gets made (the notebook, navigating): Done, back to the map
    - one step back inside a flow: "‹ Back", top left */
 .card .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .card .btns button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }

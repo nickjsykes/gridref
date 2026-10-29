@@ -31,12 +31,12 @@ Static files only, no build step: `index.html` (layout), `app.css` (styles, ligh
 
 One rule everywhere, so nobody has to learn each screen:
 
-- **A popup that does something:** grey **Cancel** on the left (closes it, nothing changes) and
-  one green verb on the right for what happens (**Save**, **Send**, **Export**, **Add**, **Make
-  map**). **Delete** is red and always asks.
+- **Anything that makes something** (a popup, measuring a line or area, moving a point, making
+  a map): grey **Cancel** (leave, nothing saved) and one green verb at the end for what happens
+  (**Save**, **Send**, **Export**, **Add**, **Place here**, **Make map**). **Delete** is red and
+  always asks.
 - **A popup that's only for looking** (what3words, saved maps): one **Close**.
-- **A whole screen or mode** (notebook, measure, navigate, map maker): **Done** takes you back to
+- **A screen where nothing gets made** (the notebook, navigating): **Done** takes you back to
   the map.
 - **One step back inside a flow** (a folder back to the notebook, a map picture back to the map):
   **‹ Back**, top left.
-

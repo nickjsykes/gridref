@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "190"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "191"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -418,7 +418,7 @@
     clearTimeout(saveView);
     saveView = setTimeout(() => { const c = map.getCenter(); store.set("view", { lat: c.lat, lon: c.lng, z: map.getZoom() }); }, 500);
   });
-  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; $("featMenu").style.display = "none"; });
+  map.on("movestart", () => { layersEl.style.display = "none"; $("results").style.display = "none"; });
   map.on("dragstart", () => { if (following) { following = false; $("locBtn").classList.remove("on"); update(); } });
   let reserveTap = null; // set with the reserves: zoomed out, a tap on or near one goes to it
   // A tap brings that spot to the crosshair; a second tap there straight after zooms in on it,
@@ -891,33 +891,24 @@
       z = Math.min(18, map.getBoundsZoom(L.latLngBounds(pt.pts), false, map.getSize().subtract(room)) - 0.3); // a little slack: it centres on the line, not its box
     }
     z = Math.max(map.getZoom(), Math.min(z, map.getMaxZoom()));
-    if (target().distanceTo(to) < 1 && Math.abs(map.getZoom() - z) < 0.05) return showFeatMenu(pt);
-    map.once("moveend", () => setTimeout(() => showFeatMenu(pt), 0));
+    if (target().distanceTo(to) < 1 && Math.abs(map.getZoom() - z) < 0.05) return openItemMenu(pt, true);
+    map.once("moveend", () => setTimeout(() => openItemMenu(pt, true), 0));
     panTo(to, z);
   }
-  function showFeatMenu(pt) {
-    const m = $("featMenu"), c = centreOf(pt), nPh = photosOf(pt).length;
-    m.innerHTML = "";
-    const head = document.createElement("div");
-    head.className = "fm-title";
-    head.innerHTML = "<b></b><span></span>";
-    head.querySelector("b").textContent = pt.name;
-    head.querySelector("span").textContent = pt.kind === "area" ? fmtArea(shapeStats(pt).area) : pt.kind === "line" ? fmtDist(shapeStats(pt).length) : "";
-    m.appendChild(head);
-    const item = (label, fn) => { const b = document.createElement("button"); b.textContent = label; b.onclick = () => { m.style.display = "none"; fn(); }; m.appendChild(b); };
-    if (nPh) item(nPh > 1 ? `View photos (${nPh})` : "View photo", () => viewPhotos(pt));
-    item("Navigate", () => { const cc = centreOf(pt); navigateTo(cc.lat, cc.lon); });
-    item("Share", () => shareSaved(pt));
-    item("Edit", () => editSaved(pt));
-    item("Delete", () => deleteSaved(pt));
-    m.lastChild.classList.add("danger");
-    m.style.right = "auto";
-    m.style.bottom = "auto";
-    m.style.display = "block";
-    // Beside the crosshair, never on top of the thing you tapped
-    const w = m.offsetWidth, h = m.offsetHeight, cy = crossY(), cx = window.innerWidth / 2;
-    m.style.left = (cx + 26 + w <= window.innerWidth - 8 ? cx + 26 : Math.max(8, cx - 26 - w)) + "px";
-    m.style.top = Math.min(Math.max(100, cy - h / 2), sheet.getBoundingClientRect().top - h - 8) + "px";
+  // Tapping a point on the map opens the same menu as the notebook: name, grid ref, size,
+  // notes, then View photos, Navigate, Share, Edit, Delete (one menu, so nothing's missing
+  // from one of them)
+  function openItemMenu(pt, fromMap) {
+    const c = centreOf(pt), kind = pt.kind || "point", phs = photosOf(pt);
+    const size = kind === "area" ? fmtArea(shapeStats(pt).area) : kind === "line" ? fmtDist(shapeStats(pt).length) : "";
+    menuPt = pt;
+    $("imName").textContent = pt.name;
+    $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (kind === "area" ? " (centre)" : kind === "line" ? " (start)" : "") + (size ? " · " + size : "");
+    $("imView").hidden = !phs.length;
+    $("imView").textContent = phs.length > 1 ? `View photos (${phs.length})` : "View photo";
+    $("imShow").hidden = !!fromMap; // already on it
+    $("imNotes").textContent = pt.notes || "";
+    $("itemMenu").hidden = false;
   }
   const pinCanvas = L.canvas({ padding: 0.3 });
 
@@ -1045,7 +1036,7 @@
     const wasShape = saving.kind && saving.kind !== "point";
     closeSave(true);
     if (savePoints()) toast("✓ Saved " + name + (photos.length ? ` with ${photos.length} photo${photos.length > 1 ? "s" : ""}` : ""));
-    if (wasShape && measure) $("mDone").click(); // back to the map
+    if (wasShape && measure) endMeasure(); // saved: back to the map
   };
   // The notebook opens on the reserve you're looking at (zoomed in, centred on or within one of
   // the team's reserves), otherwise on everything. Roudsea's chip view centres between its two
@@ -1229,13 +1220,7 @@
         row.classList.toggle("picked", picked.has(k));
         return drawSelBar();
       }
-      menuPt = pt;
-      $("imName").textContent = pt.name;
-      $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (kind === "area" ? " (centre)" : kind === "line" ? " (start)" : "");
-      $("imView").hidden = !phs.length;
-      $("imView").textContent = phs.length > 1 ? `View photos (${phs.length})` : "View photo";
-      $("imNotes").textContent = pt.notes || "";
-      $("itemMenu").hidden = false;
+      openItemMenu(pt);
     };
     return row;
   }
@@ -1666,7 +1651,7 @@
     setCompact(true); // just the grid ref; swipe up for the other formats
     // Jump, don't glide: lands at once even if the phone has paused animation (Low Power Mode)
     panTo(L.latLng(it.lat, it.lon), it.zoom || 15, false);
-    offerKeep(it);
+    if (it.tag !== "Notebook") offerKeep(it); // it's already in the notebook
   }
   // "Add to notebook" for a few seconds after a search lands; gone once you move the map
   let keepTimer = null, keepIt = null;
@@ -3458,11 +3443,16 @@
       length: Math.round(st.d), area: isArea ? Math.round(st.area) : null, acc: null,
     });
   };
-  $("mDone").onclick = () => {
+  function endMeasure() {
     setWalk(false);
     measure = null;
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
     keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
+  }
+  // Cancel: leave without saving. A walked or tapped-out line takes effort, so it asks first
+  $("mDone").onclick = () => {
+    if (measure && measure.pts.length >= 2 && !confirm(`Leave without saving this ${measure.kind}?`)) return;
+    endMeasure();
   };
   for (const id of ["mDist", "mArea", "mHa"]) $(id).parentElement.onclick = () => { const v = $(id).textContent; if (v !== "—") copy(v, $(id).parentElement); };
   map.on("move", () => { if (measure) drawMeasure(); });
@@ -3774,7 +3764,6 @@
   }
   function startMove(pt, mode) {
     closeDrawer();
-    $("featMenu").style.display = "none";
     following = false;
     $("locBtn").classList.remove("on");
     const c = centreOf(pt);
