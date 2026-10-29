@@ -385,7 +385,7 @@ body.large .lidarrow span { font-size: 16px; }
 .lidar { filter: brightness(.72) contrast(1.35); } /* the EA's shading is pale: bring flat ground to mid-grey (no change) */
 .layers button.on { color: var(--green); font-weight: 700; }
 /* width 0 + min-width 100%: wraps to the menu's width instead of setting it */
-.layers .byline { width: 0; min-width: 100%; box-sizing: border-box; padding: 5px 14px 7px; font: 10px var(--sans); color: var(--muted); }
+.layers .byline { width: 0; min-width: 100%; box-sizing: border-box; padding: 5px 10px 7px; font: 10px/1.4 var(--sans); color: var(--muted); text-align: center; }
 #map.county .leaflet-interactive, #map.county .leaflet-overlay-pane canvas { pointer-events: none !important; }
 
 /* reserve chips: one tap to each of the team's reserves */

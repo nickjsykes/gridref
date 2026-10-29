@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "173"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "174"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -180,7 +180,7 @@
     }
     const by = document.createElement("div");
     by.className = "byline";
-    by.textContent = "Nick S for Cumbria NNRs";
+    by.innerHTML = `Nick S for Cumbria NNRs<br>Field Notes ${APP_VERSION} · build ${VERSION}`;
     layersEl.appendChild(by);
   }
   // Open beside the layers button, bottom edges lined up, never off the top of the screen
