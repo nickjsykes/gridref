@@ -638,8 +638,11 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mkcols button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--panel); box-shadow: 0 0 0 1px var(--line); padding: 0; }
 .mkcols button.on { box-shadow: 0 0 0 2.5px var(--ink); }
 .mkhint { margin: 0; text-align: center; font: 12.5px var(--sans); color: var(--muted); }
-.mkpreview { width: 100%; border-radius: 8px; border: 1px solid var(--line); max-height: 46vh; object-fit: contain; background: var(--green-soft); }
-.mkpreview[hidden] { display: none; }
+/* the set's pictures in a row: swipe between them, each snaps to the middle */
+.mkpreviews { display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mkpreviews::-webkit-scrollbar { display: none; }
+.mkpreviews[hidden] { display: none; }
+.mkpreviews img { flex: 0 0 100%; width: 100%; max-height: 46vh; object-fit: contain; scroll-snap-align: center; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); box-sizing: border-box; }
 .mklabel { font: 700 15px var(--sans); white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; transform: translate(-50%, -50%); display: inline-block; }
 .pin.mkoff, .leaflet-overlay-pane .mkoff { opacity: .28; }
 .mksyms { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }

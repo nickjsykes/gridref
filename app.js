@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "182"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "183"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2889,14 +2889,22 @@
   // notebook; Share sends the whole set at once
   let mkCur = null, mkSet = [];
   const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Make (${mkSet.length} ready)` : "Make"; };
+  // Made: every map in the set side by side, swipe to review them, the newest showing
   function mkMode(made) {
     $("mkBtnsMake").hidden = made;
     $("mkBtnsDone").hidden = !made;
-    $("mkPreview").hidden = !made;
-    const n = mkSet.length + (made ? 1 : 0);
-    $("mkCount").hidden = n < 2;
-    $("mkCount").textContent = `${n} maps in this set`;
+    const box = $("mkPreviews"), set = made ? theSet() : [];
+    box.hidden = !made;
+    box.innerHTML = set.map(() => '<img alt="A map in this set">').join("");
+    set.forEach((m, i) => { m.url = m.url || URL.createObjectURL(m.blob); box.children[i].src = m.url; });
+    $("mkCount").hidden = set.length < 2;
+    if (made) requestAnimationFrame(() => { box.scrollLeft = box.scrollWidth; mkWhich(); });
   }
+  function mkWhich() {
+    const box = $("mkPreviews"), n = box.children.length, i = Math.round(box.scrollLeft / (box.clientWidth || 1));
+    $("mkCount").textContent = `Map ${Math.min(n, i + 1)} of ${n} · swipe to review`;
+  }
+  $("mkPreviews").addEventListener("scroll", mkWhich, { passive: true });
   $("mkSend").onclick = () => {
     layersEl.style.display = "none";
     const res = viewedReserve(), d = new Date();
@@ -2924,7 +2932,6 @@
     const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
     try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
     catch (err) { console.warn("map", err); $("mkMake").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
-    $("mkPreview").src = URL.createObjectURL(mkCur.blob);
     mkMode(true);
   };
   $("mkAnother").onclick = () => {
