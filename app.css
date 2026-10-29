@@ -669,3 +669,5 @@ body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's 
 .card .btns button:disabled { opacity: .75; }
 .toast { z-index: 1400; } /* over the cards too, so messages from a card are seen */
 .card .btns#mkBtnsDone:not(.three) { grid-template-columns: 1fr 1fr; }
+.mktop .mkready { background: var(--green); color: var(--panel); }
+.mktop [hidden], .card > label[hidden] { display: none; }

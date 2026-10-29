@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "187"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "188"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2910,22 +2910,29 @@
   // another keeps this one and goes back to frame the next; Save keeps the set in the
   // notebook; Send sends the whole set at once, and saves it too
   let mkCur = null, mkSet = [];
-  const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Make (${mkSet.length} ready)` : "Make"; };
-  // Made: every map in the set side by side, swipe to review them, the newest showing
-  // Not made yet, with maps already in the set: they're shown with Save and Send, so you can
-  // send what's ready instead of making another
-  function mkMode(made) {
-    const set = made ? theSet() : mkSet;
-    $("mkBtnsMake").hidden = made;
-    $("mkBtnsDone").hidden = !set.length;
-    $("mkAnother").hidden = !made;
-    $("mkBtnsDone").classList.toggle("three", made);
-    $("mkBackMap").hidden = !made; // before a picture is made, the Back button does this
+  // Maps waiting in the set show in the top bar ("2 ready ›"): tap it to review and send them
+  const mkSendLabel = () => {
+    $("mkHead").hidden = !!mkSet.length;
+    $("mkReady").hidden = !mkSet.length;
+    $("mkReady").textContent = `${mkSet.length} ready ›`;
+  };
+  // The card does one job at a time:
+  //   "make":  title, note, Make picture (Make on the toolbar)
+  //   "made":  the new picture with the rest of the set; Add another, Save or Send
+  //   "ready": just the maps waiting (the "n ready" button); Save or Send them
+  function mkMode(mode) {
+    const set = mode === "made" ? theSet() : mode === "ready" ? mkSet : [];
+    for (const l of $("mkSendForm").querySelectorAll(":scope > label")) l.hidden = mode === "ready";
+    $("mkBtnsMake").hidden = mode !== "make";
+    $("mkBtnsDone").hidden = mode === "make";
+    $("mkAnother").hidden = mode !== "made";
+    $("mkBtnsDone").classList.toggle("three", mode === "made");
+    $("mkBackMap").hidden = mode === "make"; // there, the Back button does this
     const box = $("mkPreviews");
     box.hidden = !set.length;
     box.innerHTML = set.map(() => '<img alt="A map in this set">').join("");
     set.forEach((m, i) => { m.url = m.url || URL.createObjectURL(m.blob); box.children[i].src = m.url; });
-    $("mkCount").hidden = made ? set.length < 2 : !set.length;
+    $("mkCount").hidden = set.length < 2;
     $("mkShareSet").textContent = `Send (${set.length})`;
     mkSavedLabel();
     if (set.length) requestAnimationFrame(() => { box.scrollLeft = box.scrollWidth; mkWhich(); });
@@ -2938,9 +2945,9 @@
   }
   function mkWhich() {
     const box = $("mkPreviews"), n = box.children.length, i = Math.round(box.scrollLeft / (box.clientWidth || 1));
-    $("mkCount").textContent = $("mkBtnsMake").hidden ? `Map ${Math.min(n, i + 1)} of ${n} · swipe to review`
-      : n > 1 ? `${n} maps ready: send them, or make another · map ${Math.min(n, i + 1)} of ${n}` : "1 map ready: send it, or make another";
+    $("mkCount").textContent = `Map ${Math.min(n, i + 1)} of ${n} · swipe to review`;
   }
+  $("mkReady").onclick = () => { layersEl.style.display = "none"; mkCur = null; mkMode("ready"); $("mkSendModal").hidden = false; };
   $("mkPreviews").addEventListener("scroll", mkWhich, { passive: true });
   $("mkSend").onclick = () => {
     layersEl.style.display = "none";
@@ -2948,11 +2955,11 @@
     if (!$("mkTitle").value) $("mkTitle").value = `${res || "Map"} · ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
     mkCur = null;
     $("mkMake").textContent = "Make picture";
-    mkMode(false);
+    mkMode("make");
     $("mkSendModal").hidden = false;
   };
   $("mkSendCancel").onclick = () => { $("mkSendModal").hidden = true; };
-  $("mkTitle").oninput = $("mkNote").oninput = () => { if (mkCur) { mkCur = null; mkMode(false); } };
+  $("mkTitle").oninput = $("mkNote").oninput = () => { if (mkCur) { mkCur = null; mkMode("make"); } };
   // Everything needed to make this map again, or open it to change it
   function mapDef(title, note) {
     const f = frameRect(), box = map.getContainer().getBoundingClientRect();
@@ -2969,7 +2976,7 @@
     const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
     try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
     catch (err) { console.warn("map", err); $("mkMake").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
-    mkMode(true);
+    mkMode("made");
   };
   $("mkAnother").onclick = () => {
     mkSet.push(mkCur);
