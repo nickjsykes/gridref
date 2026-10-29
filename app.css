@@ -580,7 +580,7 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
 /* Mike's wolf: a blink of black with a huge, slightly torn wolf, like reality skipping */
 .wolfglitch { position: fixed; inset: 0; z-index: 3000; background: #000; display: none; place-items: center; overflow: hidden; pointer-events: none; }
 .wolfglitch.on { display: grid; }
-.wolfglitch span { font-size: 78vmin; line-height: 1; transform: translateX(var(--dx, 0)) skewX(-4deg);
+.wolfglitch span { font-size: 96vmin; line-height: 1; transform: translateX(var(--dx, 0)) skewX(-4deg);
   text-shadow: 9px 0 0 rgba(255,0,60,.85), -9px 0 0 rgba(0,240,255,.85);
   clip-path: polygon(0 0, 100% 0, 100% 38%, 92% 38%, 92% 44%, 100% 44%, 100% 100%, 0 100%, 0 71%, 7% 71%, 7% 66%, 0 66%); }
 .wolfglitch::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 2px, transparent 2px 5px); }
