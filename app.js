@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "162"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "163"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2316,7 +2316,8 @@
     return true;
   };
   // ---------- easter eggs: a team member's name in the search, then Go ----------
-  // A few seconds of something small, drawn here (nothing to download), then gone.
+  // Each plays out on that person's reserve: the map flies there and the animals are pinned to
+  // real places, only on land. All drawn here (nothing to download), then gone.
   const EGG_SVG = {
     // ringed plover: sandy back, white front, black breast band and mask, orange bill and legs
     plover: `<svg viewBox="0 0 64 44" width="64" height="44"><g stroke="#e8890c" stroke-width="2.4" stroke-linecap="round"><path class="l1" d="M27 31l-3 11"/><path class="l2" d="M33 31l3 11"/></g>
@@ -2331,25 +2332,28 @@
       <ellipse cx="51" cy="21" rx="9" ry="7" fill="#6f7f45"/><circle cx="51" cy="15.5" r="4" fill="#6f7f45"/><circle cx="51.5" cy="15" r="2.4" fill="#c9a227"/><circle cx="51.9" cy="15" r="1.1" fill="#111"/>
       <path d="M46 24.5c4 1.5 8 1 12-1.5" stroke="#3d4723" stroke-width="1.4" fill="none"/></svg>`,
     // Duke of Burgundy: dark brown, chequered orange, white fringe; wings beat from the body
-    duke: `<svg viewBox="-24 -18 48 36" width="56" height="42"><g class="wings"><g fill="#4a2f1e" stroke="#2a1a10" stroke-width=".6">
+    duke: `<svg viewBox="-24 -18 48 36" width="48" height="36"><g class="wings"><g fill="#4a2f1e" stroke="#2a1a10" stroke-width=".6">
       <path d="M0-2C-6-15-20-16-21-7c-1 6 9 8 21 6Z"/><path d="M0 0c-9 1-17 4-15 11 2 5 11 1 15-8Z"/><path d="M0-2C6-15 20-16 21-7c1 6-9 8-21 6Z"/><path d="M0 0c9 1 17 4 15 11-2 5-11 1-15-8Z"/></g>
       <g fill="#e2892b"><circle cx="-14" cy="-9" r="1.8"/><circle cx="-9" cy="-6" r="1.6"/><circle cx="-16" cy="-4" r="1.4"/><circle cx="-10" cy="5" r="1.6"/><circle cx="-6" cy="8" r="1.3"/><circle cx="14" cy="-9" r="1.8"/><circle cx="9" cy="-6" r="1.6"/><circle cx="16" cy="-4" r="1.4"/><circle cx="10" cy="5" r="1.6"/><circle cx="6" cy="8" r="1.3"/></g>
       <g fill="#fff"><circle cx="-20" cy="-9" r=".7"/><circle cx="-21" cy="-6" r=".7"/><circle cx="20" cy="-9" r=".7"/><circle cx="21" cy="-6" r=".7"/><circle cx="-14" cy="11" r=".7"/><circle cx="14" cy="11" r=".7"/></g></g>
       <ellipse cx="0" cy="1" rx="1.6" ry="8" fill="#1d130b"/><path d="M-1-6l-4-6M1-6l4-6" stroke="#1d130b" stroke-width=".7"/></svg>`,
+    // hazel dormouse: golden, big black eyes, a thick furry tail curled up behind
+    dormouse: `<svg viewBox="0 0 64 40" width="64" height="40"><path d="M16 27c-9 1-14-4-12-11 1-4 5-6 8-4" stroke="#c4822f" stroke-width="7.5" stroke-linecap="round" fill="none"/>
+      <ellipse cx="30" cy="26" rx="16" ry="10.5" fill="#d99a42"/><ellipse cx="32" cy="31" rx="11" ry="4.5" fill="#f3dcae"/>
+      <circle cx="44" cy="19" r="9.5" fill="#d99a42"/><circle cx="41" cy="10.5" r="4" fill="#d99a42"/><circle cx="41" cy="10.5" r="2.2" fill="#e9a99a"/>
+      <circle cx="48" cy="18" r="3.1" fill="#111"/><circle cx="49" cy="17" r="1" fill="#fff"/><circle cx="53.3" cy="21.5" r="1.5" fill="#c46a5e"/>
+      <path d="M52 22l8-2M52 23l8 1M51 24l7 3" stroke="#6b4a24" stroke-width=".6"/><path d="M24 35l-1 3M37 35l1 3" stroke="#c4822f" stroke-width="3" stroke-linecap="round"/></svg>`,
+    // rosy marsh moth: rosy-brown forewings with darker cross-lines, paler hindwings
+    moth: `<svg viewBox="-24 -18 48 36" width="44" height="33"><g class="wings">
+      <g fill="#e2c9b4"><path d="M0 1-13 5-9 13Z"/><path d="M0 1 13 5 9 13Z"/></g>
+      <g fill="#b9787d" stroke="#7e4d50" stroke-width=".6"><path d="M0-3-21-11-18 5Z"/><path d="M0-3 21-11 18 5Z"/></g>
+      <g stroke="#6e3f43" stroke-width=".9" fill="none"><path d="M-7-5-9 2M-14-8-15 3M7-5 9 2M14-8 15 3"/></g>
+      <g fill="#e7b6b8"><circle cx="-11" cy="-4" r="1.3"/><circle cx="11" cy="-4" r="1.3"/></g></g>
+      <ellipse cx="0" cy="1" rx="1.8" ry="8" fill="#6e4a3a"/><path d="M-1-6q-4-5-8-6M1-6q4-5 8-6" stroke="#6e4a3a" stroke-width=".7" fill="none"/></svg>`,
   };
-  const ground = () => window.innerHeight - sheet.getBoundingClientRect().top + 14; // px up from the bottom: just over the panel
-  function eggLayer(svg) {
-    const d = document.createElement("div");
-    d.className = "egg";
-    d.innerHTML = svg || "";
-    document.body.appendChild(d);
-    return d;
-  }
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  // John's and Joe's play out on North Walney itself: the map flies there and the animals are
-  // pinned to real places (the shore, the dunes), so they move with the map if it's dragged
-  const WALNEY = "1006114";
-  const walney = () => nnr.find((f) => f.properties.REF_CODE === WALNEY);
+  const atGrid = (e, n) => { const ll = OSGB.gridToWgs84(e, n); return L.latLng(ll.lat, ll.lon); };
+  const reserve = (code) => nnr.find((f) => f.properties.REF_CODE === code);
   const polysOf = (f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates);
   function inside(f, lat, lng) {
     let n = 0;
@@ -2363,7 +2367,7 @@
   // Blue is water, pale yellow is sand and mud; anything else (white, green) is land. On the
   // aerial photo, or before tiles load, it can't tell, so it says yes (null = can't tell).
   const pix = document.createElement("canvas").getContext("2d", { willReadFrequently: true });
-  function landAt(ll) {
+  function rgbAt(ll) {
     if (current === "aerial") return null;
     const box = map.getContainer().getBoundingClientRect(), p = map.latLngToContainerPoint(ll), x = box.left + p.x, y = box.top + p.y;
     let img = null;
@@ -2376,17 +2380,23 @@
       const r = img.getBoundingClientRect();
       pix.clearRect(0, 0, 1, 1);
       pix.drawImage(img, ((x - r.left) * img.naturalWidth) / r.width, ((y - r.top) * img.naturalHeight) / r.height, 1, 1, 0, 0, 1, 1);
-      const [R, G, B] = pix.getImageData(0, 0, 1, 1).data;
-      const water = B > R + 12 && B >= G - 4, sand = R > B + 18 && G > B + 8 && R > 200;
-      return !water && !sand;
+      return pix.getImageData(0, 0, 1, 1).data;
     } catch { return null; }
   }
-  const isLand = (f, ll) => inside(f, ll.lat, ll.lng) && landAt(ll) !== false;
-  function spotsIn(f, n) {
+  function landAt(ll) {
+    const c = rgbAt(ll);
+    if (!c) return null;
+    const [R, G, B] = c, water = B > R + 12 && B >= G - 4, sand = R > B + 18 && G > B + 8 && R > 200;
+    return !water && !sand;
+  }
+  // Woodland is drawn green: dormice keep to it, the moss moths keep out of it
+  const woodAt = (ll) => { const c = rgbAt(ll); return c ? c[1] > c[0] + 8 && c[1] > c[2] : null; };
+  // n spots on land in the reserve (and passing `keep`, e.g. south of the start)
+  function spotsIn(f, n, keep = () => true) {
     const [w, s, e, nn] = f.bbox, out = [];
-    for (let tries = 0; out.length < n && tries < n * 80; tries++) {
+    for (let tries = 0; out.length < n && tries < n * 120; tries++) {
       const ll = L.latLng(s + Math.random() * (nn - s), w + Math.random() * (e - w));
-      if (isLand(f, ll)) out.push(ll);
+      if (keep(ll) && inside(f, ll.lat, ll.lng) && landAt(ll) !== false) out.push(ll);
     }
     return out;
   }
@@ -2401,181 +2411,159 @@
     eggPins.clearLayers();
   }
   const sized = (svg, w, h) => svg.replace(/width="\d+" height="\d+"/, `width="${w}" height="${h}"`);
-  // John: seven ringed plovers come in off the sea, wheel round over the reserve as a flock,
-  // then settle together on the land at the north end, and one of them holds up a sign
-  async function plovers() {
-    const f = walney();
+  const flyTo = (ll, z) => new Promise((done) => { const t = setTimeout(done, 3000); map.once("moveend", () => { clearTimeout(t); done(); }); map.flyTo(ll, z, { duration: 1.2 }); });
+  function holdSign(el, text) {
+    const card = document.createElement("div");
+    card.className = "eggsign";
+    card.textContent = text;
+    el.appendChild(card);
+    card.animate([{ transform: "translateX(-50%) scale(0)" }, { transform: "translateX(-50%) scale(1.15)", offset: 0.7 }, { transform: "translateX(-50%) scale(1)" }], { duration: 450, easing: "ease-out", fill: "forwards" });
+    haptic();
+  }
+  function flapping(el) { // wings beating from the body (butterfly, moth)
+    const w = el.querySelector(".wings");
+    w.style.transformOrigin = "0 0";
+    w.style.transformBox = "view-box";
+    return w.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 110 + Math.random() * 40, iterations: Infinity, direction: "alternate" });
+  }
+  const startEgg = () => { following = false; $("locBtn").classList.remove("on"); eggPins.clearLayers(); };
+
+  // One theme for Joe, Mike, Tracy and Jim: close in on one animal at a spot on the reserve,
+  // pull back to the whole reserve, and it multiplies, the young ones hopping, scurrying or
+  // flying out from it until they're all over the land.
+  //   how: "hop" (toads), "scurry" (low quick hops: dormice), "fly" (butterflies, moths)
+  //   habitat: "wood" (only the green woodland) or "open" (only outside it), as on the OS map
+  async function spread({ code, start, svg, big, small, count, how, keep, sign, habitat }) {
+    const f = reserve(code);
     if (!f) return;
-    following = false;
-    $("locBtn").classList.remove("on");
-    eggPins.clearLayers();
+    startEgg();
+    if (!start) { // no spot given: anywhere on its land, picked from the whole-reserve view
+      await fitClear(L.geoJSON(f).getBounds(), true);
+      await sleep(400);
+      [start] = spotsIn(f, 1);
+      if (!start) return;
+    }
+    await flyTo(start, 16);
+    const first = pinEgg(start, sized(svg, ...big), ...big);
+    if (how === "fly") {
+      flapping(first);
+      await first.animate([{ transform: "translate(0,0)" }, { transform: "translate(-30px,-24px) rotate(-10deg)" }, { transform: "translate(18px,-38px) rotate(8deg)" }, { transform: "translate(28px,-10px)" }, { transform: "translate(0,0)" }], { duration: 1800, easing: "ease-in-out" }).finished;
+    } else {
+      const h = how === "scurry" ? 8 : 14;
+      await first.animate([{ transform: "translateY(0)" }, { transform: `translateY(-${h}px)`, offset: 0.4 }, { transform: "translateY(0)" }], { duration: how === "scurry" ? 260 : 380, iterations: how === "scurry" ? 5 : 3, easing: "ease-in-out" }).finished;
+    }
     await fitClear(L.geoJSON(f).getBounds(), true);
     await sleep(400); // tiles in, so land and water can be told apart
-    // Where they land: a patch of land in the northern third, and six more spots close by
-    const [, s, , nn] = f.bbox, north = s + (nn - s) * 0.5, top = s + (nn - s) * 0.82;
-    const land = spotsIn(f, 200).filter((ll) => ll.lat > north && ll.lat < top); // (not the very tip: it sits under the chips)
-    if (!land.length) return;
-    const centre = land[Math.floor(Math.random() * land.length)];
-    const spots = land.sort((a, b) => centre.distanceTo(a) - centre.distanceTo(b)).slice(0, 7);
-    // The flock's path, in screen px around the landing patch: in from the sea (west), a wide
-    // loop and a bit over the reserve, then down. Each bird keeps its own place in the flock
-    // until the last stretch, when it peels off to its own spot.
-    const C = map.latLngToLayerPoint(L.latLngBounds(spots).getCenter());
-    const flock = (t) => {
-      if (t < 0.25) { const u = t / 0.25; return L.point(-330 + 330 * u, -150 + 60 * u); }
-      if (t < 0.8) { const a = Math.PI + ((t - 0.25) / 0.55) * Math.PI * 2.3; return L.point(Math.cos(a) * 120 + 120, Math.sin(a) * 70 - 90); }
-      const u = (t - 0.8) / 0.2, end = L.point(Math.cos(Math.PI * 3.3) * 120 + 120, Math.sin(Math.PI * 3.3) * 70 - 90);
-      return end.multiplyBy(1 - u * u * (3 - 2 * u));
-    };
-    const STEPS = 40, sign = 0;
+    const spots = spotsIn(f, count, (ll) => (!keep || keep(ll, start)) && (!habitat || woodAt(ll) !== (habitat === "open")));
+    const S = map.latLngToLayerPoint(start), gap = how === "fly" ? 55 : 45;
+    spots.forEach((ll, i) => {
+      const b = map.latLngToLayerPoint(ll), dx = S.x - b.x, dy = S.y - b.y;
+      const el = pinEgg(ll, sized(svg, ...small), ...small);
+      let frames;
+      if (how === "fly") {
+        flapping(el);
+        const wob = (k) => Math.sin(k * 2.1 + i) * 18;
+        frames = [0, 0.25, 0.5, 0.75, 1].map((k) => ({ transform: `translate(${dx * (1 - k) + (k < 1 ? wob(k * 4) : 0)}px,${dy * (1 - k) - (k > 0 && k < 1 ? 30 + wob(k * 3) : 0)}px) scale(${0.4 + 0.6 * k})`, opacity: k ? 1 : 0 }));
+      } else {
+        const lift = how === "scurry" ? 14 : 40;
+        frames = [
+          { transform: `translate(${dx}px,${dy}px) scale(.3)`, opacity: 0 },
+          { transform: `translate(${dx / 2}px,${dy / 2 - lift}px) scale(.8)`, opacity: 1, offset: 0.5 },
+          { transform: "translate(0,0) scale(1)", opacity: 1 },
+        ];
+      }
+      el.animate(frames, { duration: how === "fly" ? 1100 : how === "scurry" ? 500 : 650, delay: i * gap, easing: "ease-in-out", fill: "backwards" });
+      if (how === "hop" && i % 12 === 0) setTimeout(haptic, i * gap + 650);
+    });
+    await sleep(spots.length * gap + 1100);
+    if (sign) holdSign(first, sign);
+    await sleep(4500);
+    await clearEggPins();
+  }
+
+  // John: seven ringed plovers come in off the sea, fly along Walney's north shore and back,
+  // then settle together on the shore near SD 1750 7340, and one holds up a sign
+  async function plovers() {
+    startEgg();
+    const T = atGrid(317500, 473400);
+    await flyTo(T, 15);
+    await sleep(500); // tiles in, so the shore can be found
+    // The shoreline: for each step east-west, the northernmost land (scanning down from the sea)
+    const line = [];
+    for (let k = -12; k <= 9; k++) {
+      const lng = T.lng + k * 0.0011;
+      for (let lat = T.lat + 0.006; lat > T.lat - 0.006; lat -= 0.00012) {
+        const land = landAt(L.latLng(lat, lng));
+        if (land) { line.push(L.latLng(lat + 0.0003, lng)); break; }
+        if (land === null && lat < T.lat) break;
+      }
+    }
+    // Landing spots: land within about 120 m of the grid ref
+    const spots = [];
+    for (let tries = 0; spots.length < 7 && tries < 600; tries++) {
+      const ll = L.latLng(T.lat + (Math.random() - 0.5) * 0.0022, T.lng + (Math.random() - 0.5) * 0.0036);
+      if (landAt(ll) !== false) spots.push(ll);
+    }
+    if (!spots.length) return;
+    // The flock's route in layer px: in from the sea to the west end of the shore, east along
+    // it just off the beach, a turn out over the water, back west along it, then down
+    const px = (ll) => map.latLngToLayerPoint(ll);
+    const C = px(L.latLngBounds(spots).getCenter());
+    const shore = line.length >= 3 ? line.map(px) : [C.add([-200, -40]), C.add([0, -50]), C.add([200, -40])];
+    const route = [shore[0].add([-240, -110]), ...shore.map((p) => p.add([0, -14])), shore[shore.length - 1].add([70, -60]),
+      ...shore.slice().reverse().map((p) => p.add([0, -48])).filter((p) => p.x > C.x - 30), C.add([0, -40])];
+    // Catmull-Rom through the route, then even steps by distance, so the flock flies at a steady speed
+    const dense = [];
+    for (let i = 0; i < route.length - 1; i++) {
+      const p0 = route[Math.max(0, i - 1)], p1 = route[i], p2 = route[i + 1], p3 = route[Math.min(route.length - 1, i + 2)];
+      for (let u = 0; u < 1; u += 0.1) {
+        const u2 = u * u, u3 = u2 * u, c = (a, b, cc, d) => 0.5 * (2 * b + (-a + cc) * u + (2 * a - 5 * b + 4 * cc - d) * u2 + (-a + 3 * b - 3 * cc + d) * u3);
+        dense.push(L.point(c(p0.x, p1.x, p2.x, p3.x), c(p0.y, p1.y, p2.y, p3.y)));
+      }
+    }
+    dense.push(route[route.length - 1]);
+    const lens = [0];
+    for (let i = 1; i < dense.length; i++) lens.push(lens[i - 1] + dense[i].distanceTo(dense[i - 1]));
+    const total = lens[lens.length - 1], at = (d) => { let i = lens.findIndex((l) => l >= d); if (i <= 0) return dense[0]; const k = (d - lens[i - 1]) / (lens[i] - lens[i - 1] || 1); return dense[i - 1].add(dense[i].subtract(dense[i - 1]).multiplyBy(k)); };
+    const STEPS = 60, FLY = Math.min(9000, Math.max(5000, total * 6));
+    const nearest = spots.reduce((a, b) => (T.distanceTo(b) < T.distanceTo(a) ? b : a));
     const flights = spots.map((ll, i) => {
       const el = pinEgg(ll, sized(EGG_SVG.plover, 34, 24), 34, 24);
       el.querySelectorAll(".l1, .l2").forEach((l) => (l.style.opacity = 0)); // legs tucked in flight
       const wing = el.querySelector(".wing");
       wing.style.transformOrigin = "37px 17px";
       const flap = wing.animate([{ transform: "rotate(0)" }, { transform: "rotate(-70deg)" }], { duration: 130, iterations: Infinity, direction: "alternate", delay: i * 30 });
-      const B = map.latLngToLayerPoint(ll).subtract(C), jx = (Math.random() - 0.5) * 50, jy = (Math.random() - 0.5) * 34;
-      const frames = [];
+      const B = px(ll), jit = L.point((Math.random() - 0.5) * 44, (Math.random() - 0.5) * 26), frames = [];
       let prev = null;
       for (let k = 0; k <= STEPS; k++) {
-        const t = k / STEPS, land = t < 0.8 ? 0 : ((t - 0.8) / 0.2) ** 2;
-        const pos = flock(t).add(L.point(jx, jy).multiplyBy(1 - land)).add(B.multiplyBy(land)).subtract(B);
+        const t = k / STEPS, land = t < 0.85 ? 0 : ((t - 0.85) / 0.15) ** 2;
+        const pos = at(total * Math.min(1, t / 0.85)).add(jit).multiplyBy(1 - land).add(B.multiplyBy(land));
         const left = prev && pos.x < prev.x - 0.5; // face the way it's flying
-        frames.push({ transform: `translate(${pos.x}px,${pos.y}px) scaleX(${left ? -1 : 1})` });
+        frames.push({ transform: `translate(${pos.x - B.x}px,${pos.y - B.y}px) scaleX(${left ? -1 : 1})` });
         prev = pos;
       }
       frames[frames.length - 1].transform = "translate(0,0) scaleX(1)";
-      return el.animate(frames, { duration: 5200, delay: i * 70, easing: "linear", fill: "backwards" }).finished.then(() => {
+      return el.animate(frames, { duration: FLY, delay: i * 70, easing: "linear", fill: "backwards" }).finished.then(() => {
         flap.cancel();
         el.querySelectorAll(".l1, .l2").forEach((l) => (l.style.opacity = ""));
+        if (ll === nearest) holdSign(el, "Thanks John!");
       });
     });
     await Promise.all(flights);
-    const holder = eggPins.getLayers()[sign];
-    if (holder) {
-      const card = document.createElement("div");
-      card.className = "eggsign";
-      card.textContent = "Thanks John!";
-      holder.getElement().firstElementChild.appendChild(card);
-      card.animate([{ transform: "translateX(-50%) scale(0)" }, { transform: "translateX(-50%) scale(1.15)", offset: 0.7 }, { transform: "translateX(-50%) scale(1)" }], { duration: 450, easing: "ease-out", fill: "forwards" });
-      haptic();
-    }
     await sleep(4500);
     await clearEggPins();
   }
-  // Joe: a couple of natterjacks in the dunes, then the map pulls back and they multiply,
-  // hopping out until they're all over the reserve
-  async function natterjacks() {
-    const f = walney();
-    if (!f) return;
-    following = false;
-    $("locBtn").classList.remove("on");
-    eggPins.clearLayers();
-    await fitClear(L.geoJSON(f).getBounds(), true);
-    await sleep(400);
-    const spots = spotsIn(f, 71), home = spots.shift();
-    if (!home) return;
-    await new Promise((done) => { map.once("moveend", done); map.flyTo(home, 16, { duration: 1.2 }); });
-    const pair = [home, spots.reduce((a, b) => (home.distanceTo(b) < home.distanceTo(a) ? b : a))];
-    const hop = (el, n) => el.animate([{ transform: "translateY(0)" }, { transform: "translateY(-14px)", offset: 0.4 }, { transform: "translateY(0)" }], { duration: 380, iterations: n, easing: "ease-in-out" }).finished;
-    const firsts = pair.map((ll) => pinEgg(ll, sized(EGG_SVG.toad, 44, 28), 44, 28));
-    await Promise.all(firsts.map((el, i) => sleep(i * 190).then(() => hop(el, 3))));
-    await fitClear(L.geoJSON(f).getBounds(), true);
-    let i = 0;
-    for (const ll of spots) {
-      const from = pair[i % 2], a = map.latLngToLayerPoint(from), b = map.latLngToLayerPoint(ll);
-      const dx = a.x - b.x, dy = a.y - b.y, el = pinEgg(ll, sized(EGG_SVG.toad, 20, 13), 20, 13);
-      el.animate([
-        { transform: `translate(${dx}px,${dy}px) scale(.3)`, opacity: 0 },
-        { transform: `translate(${dx / 2}px,${dy / 2 - 40}px) scale(.8)`, opacity: 1, offset: 0.5 },
-        { transform: "translate(0,0) scale(1)", opacity: 1 },
-      ], { duration: 650, delay: i * 45, easing: "ease-in-out", fill: "backwards" });
-      if (i % 12 === 0) setTimeout(haptic, i * 45 + 650);
-      i++;
-    }
-    await sleep(i * 45 + 650 + 3000);
-    await clearEggPins();
-  }
-  // Mike: a Duke of Burgundy lifts off from Gait Barrows (or the middle, if that's off screen)
-  async function duke() {
-    const d = eggLayer(EGG_SVG.duke), W = window.innerWidth;
-    const box = map.getContainer().getBoundingClientRect(), floor = sheet.getBoundingClientRect().top - box.top - 40;
-    const gb = nnr.find((f) => f.properties.REF_CODE === "1006058");
-    let p = gb && map.latLngToContainerPoint(L.geoJSON(gb).getBounds().getCenter());
-    if (!p || p.x < 20 || p.x > W - 20 || p.y < 120 || p.y > floor) p = L.point(W / 2, floor - 20);
-    d.style.left = box.left + p.x - 28 + "px";
-    d.style.top = box.top + p.y - 21 + "px";
-    const wings = d.querySelector(".wings");
-    wings.style.transformOrigin = "0 0";
-    wings.style.transformBox = "view-box";
-    wings.animate([{ transform: "scaleX(1)" }, { transform: "scaleX(.2)" }], { duration: 120, iterations: Infinity, direction: "alternate" });
-    const path = [];
-    for (let i = 0; i <= 10; i++) path.push({ transform: `translate(${i * (W * 0.07) + Math.sin(i * 1.7) * 30}px,${-i * ((p.y + 60) / 8) + Math.cos(i * 2.3) * 22}px) rotate(${Math.sin(i) * 25}deg)` });
-    await d.animate(path, { duration: 3600, easing: "linear", fill: "forwards" }).finished;
-    d.remove();
-  }
-  // Tracy: a wall builds itself along the bottom, and from then on (until the app is closed)
-  // every measured length also says how many walling days it is
-  let wallDays = false;
-  const WALL_PER_DAY = 2; // metres a day: one waller, a full rebuild
-  async function wall() {
-    const W = window.innerWidth, d = eggLayer();
-    d.style.bottom = ground() - 10 + "px";
-    const NS = "http://www.w3.org/2000/svg", svg = document.createElementNS(NS, "svg");
-    svg.setAttribute("width", W);
-    svg.setAttribute("height", 52);
-    d.appendChild(svg);
-    const greys = ["#8d8a82", "#a19d93", "#7b7871", "#b3aea2", "#96938a"], stones = [];
-    const stone = (x, y, w, h) => {
-      const r = document.createElementNS(NS, "rect");
-      for (const [k, v] of Object.entries({ x, y, width: w, height: h, rx: 3, fill: greys[Math.floor(Math.random() * greys.length)], stroke: "#5f5c55", "stroke-width": 1 })) r.setAttribute(k, v);
-      r.style.opacity = 0;
-      svg.appendChild(r);
-      stones.push(r);
-    };
-    // two courses, joints crossed, then the cope: stones on edge along the top
-    for (const y of [38, 25]) for (let x = y === 25 ? -9 : 0; x < W;) { const w = 16 + Math.random() * 14; stone(x, y, w - 1.5, 13); x += w; }
-    for (let x = 2; x < W; x += 9) stone(x, 7, 7.5, 18);
-    stones.forEach((r, i) => r.animate([{ opacity: 0, transform: "translateY(-18px)" }, { opacity: 1, transform: "translateY(0)" }], { duration: 220, delay: i * 14, fill: "forwards", easing: "ease-out" }));
-    await sleep(stones.length * 14 + 300);
-    wallDays = true;
-    if (measure) drawMeasure();
-    toast(`Walling mode: measured lines now show walling days (${WALL_PER_DAY} m a day)`, 4500);
-    await sleep(2600);
-    await d.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 600, fill: "forwards" }).finished;
-    d.remove();
-  }
-  // Jim: the whole patch, every reserve drawn at once, and how big it all is
-  function patchHectares() {
-    let m2 = 0;
-    const ring = (r) => {
-      const g = r.map(([x, y]) => OSGB.wgs84ToGrid(y, x));
-      let a = 0;
-      for (let i = 0; i < g.length; i++) { const j = (i + 1) % g.length; a += g[i].e * g[j].n - g[j].e * g[i].n; }
-      return Math.abs(a) / 2;
-    };
-    for (const f of nnr) if (isTeam(f)) {
-      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
-      for (const poly of polys) m2 += ring(poly[0]) - poly.slice(1).reduce((a, h) => a + ring(h), 0);
-    }
-    return m2 / 10000;
-  }
-  async function patch() {
-    const team = nnr.filter(isTeam);
-    if (!team.length) return;
-    following = false;
-    $("locBtn").classList.remove("on");
-    fitClear(L.geoJSON({ type: "FeatureCollection", features: team }).getBounds());
-    await sleep(60);
-    for (const f of team) drawOn(f.properties.REF_CODE);
-    await sleep(DRAW_MS + 200);
-    toast(`The whole patch: ${team.length} reserves, ${Math.round(patchHectares()).toLocaleString("en-GB")} ha`, 4500);
-  }
-  const EGGS = { john: plovers, joe: natterjacks, mike: duke, tracy: wall, jim: patch };
+  const EGGS = {
+    john: plovers,
+    joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "hop", sign: "Can't wait to meet you, Joe!" }),
+    mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly" }),
+    tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 60, how: "scurry", habitat: "wood" }),
+    jim: () => spread({ code: "1006126", start: atGrid(333570, 482630), svg: EGG_SVG.moth, big: [44, 33], small: [20, 15], count: 60, how: "fly", habitat: "open", keep: (ll, s) => ll.lat < s.lat && ll.lng > s.lng - 0.001 }),
+  };
   easterEgg = (text) => {
     const run = EGGS[text.toLowerCase()];
     if (!run) return false;
-    run().catch((err) => { console.warn("easter egg", err); document.querySelectorAll(".egg").forEach((e) => e.remove()); });
+    run().catch((err) => { console.warn("easter egg", err); eggPins.clearLayers(); });
     return true;
   };
   function drawChips() {
@@ -2644,7 +2632,6 @@
     pts.forEach((p, i) => (i && p.walked) || L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     $("mDist").textContent = fmtDist(st.d);
-    $("mDist").previousElementSibling.textContent = wallDays && st.d ? `Length · ${st.d / WALL_PER_DAY < 10 ? (st.d / WALL_PER_DAY).toFixed(1) : Math.round(st.d / WALL_PER_DAY).toLocaleString("en-GB")} walling days` : "Length";
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
     $("mArea").textContent = a != null ? `${Math.round(a).toLocaleString("en-GB")} m²` : "—";
     $("mHa").textContent = a != null ? `${(a / 10000).toFixed(a < 100000 ? 2 : 1)} ha` : "—";
