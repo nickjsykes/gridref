@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "185"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "186"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -862,7 +862,14 @@
   function openFeature(pt, e) {
     // Making a map: a drawing on top of the mark wins (it's removed); otherwise the mark is
     // left off the map, or put back
-    if (maker) { if (e && mkTap(e)) return; const k = keyOf(pt); maker.off.has(k) ? maker.off.delete(k) : maker.off.add(k); return drawPins(); }
+    if (maker) {
+      if (e && mkTap(e)) return;
+      const k = keyOf(pt), hide = !maker.off.has(k);
+      hide ? maker.off.add(k) : maker.off.delete(k);
+      maker.history.push({ op: "pt", k });
+      toast(hide ? `${pt.name}: left off this map. Undo brings it back` : `${pt.name}: back on the map`);
+      return drawPins();
+    }
     if (measure || nav || moving) return;
     const shape = pt.kind === "line" || pt.kind === "area";
     const c = centreOf(pt), to = pt.kind === "line" ? midOf(pt) : L.latLng(c.lat, c.lon);
@@ -2518,11 +2525,11 @@
       await sleep(ms);
       g.classList.remove("on");
     };
-    await blink(110, -6);
-    await sleep(90);
-    await blink(60, 9);
+    await blink(320, -6); // long enough to see it's a wolf
+    await sleep(110);
+    await blink(160, 9);
     await sleep(900); // long enough to think it's over
-    await blink(45, -3); // so he knows he saw something
+    await blink(110, -3); // so he knows he saw something
     g.remove();
   }
   const startEgg = () => { following = false; $("locBtn").classList.remove("on"); eggPins.clearLayers(); };
@@ -2781,7 +2788,8 @@
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
     placeFrame(); // the symbol palette makes the bar taller: keep the whole frame in view
-    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off, or a drawing to remove it.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
+    if (t === "move" && maker.drawn.length + maker.keys.size) toast("Move: a tap hides a point or deletes a drawing", 3200);
+    $("mkHint").textContent = { move: "Move: pan and zoom to fill the frame. A tap hides a point or deletes a drawing; Undo brings it back.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
   }
   $("mkSyms").innerHTML = Object.entries(SYMBOLS).map(([k, v]) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${v.short || v.name}</span></button>`).join("");
   $("mkSyms").onclick = (e) => {
@@ -2796,6 +2804,7 @@
   $("mkUndo").onclick = () => {
     const h = maker.history.pop();
     if (!h) return toast("Nothing to undo");
+    if (h.op === "pt") { maker.off.has(h.k) ? maker.off.delete(h.k) : maker.off.add(h.k); return drawPins(); }
     if (h.op === "add") { mkDrawLayer.removeLayer(h.d.layer); maker.drawn = maker.drawn.filter((x) => x !== h.d); return; }
     mkDrawLayer.addLayer(h.d.layer);
     maker.drawn.splice(Math.min(h.at, maker.drawn.length), 0, h.d);
