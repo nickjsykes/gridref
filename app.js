@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "163"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "164"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2355,13 +2355,16 @@
   const atGrid = (e, n) => { const ll = OSGB.gridToWgs84(e, n); return L.latLng(ll.lat, ll.lon); };
   const reserve = (code) => nnr.find((f) => f.properties.REF_CODE === code);
   const polysOf = (f) => (f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates);
-  function inside(f, lat, lng) {
+  function inPoly(poly, lat, lng) {
     let n = 0;
-    for (const poly of polysOf(f)) for (const r of poly)
+    for (const r of poly)
       for (let i = 0, j = r.length - 1; i < r.length; j = i++)
         if ((r[i][1] > lat) !== (r[j][1] > lat) && lng < ((r[j][0] - r[i][0]) * (lat - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) n++;
     return n % 2 === 1;
   }
+  const inside = (f, lat, lng) => polysOf(f).some((poly) => inPoly(poly, lat, lng));
+  // Which piece of a reserve a spot is in (Roudsea is two blocks): -1 if none
+  const pieceOf = (f, ll) => polysOf(f).findIndex((poly) => inPoly(poly, ll.lat, ll.lng));
   // Land or water? Walney's boundary takes in a lot of estuary, so the animals go only where
   // the map itself is drawn as land: the pixel under the spot, read from the loaded OS tile.
   // Blue is water, pale yellow is sand and mud; anything else (white, green) is land. On the
@@ -2557,7 +2560,8 @@
     john: plovers,
     joe: () => spread({ code: "1006114", svg: EGG_SVG.toad, big: [44, 28], small: [20, 13], count: 70, how: "hop", sign: "Can't wait to meet you, Joe!" }),
     mike: () => spread({ code: "1006058", start: atGrid(348130, 477310), svg: EGG_SVG.duke, big: [48, 36], small: [22, 17], count: 60, how: "fly" }),
-    tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 60, how: "scurry", habitat: "wood" }),
+    tracy: () => spread({ code: "1006126", start: atGrid(333560, 481650), svg: EGG_SVG.dormouse, big: [44, 28], small: [20, 13], count: 45, how: "scurry", habitat: "wood",
+      keep: (ll, s) => pieceOf(reserve("1006126"), ll) === pieceOf(reserve("1006126"), s) }), // the top block (Roudsea Wood) only
     jim: () => spread({ code: "1006126", start: atGrid(333570, 482630), svg: EGG_SVG.moth, big: [44, 33], small: [20, 15], count: 60, how: "fly", habitat: "open", keep: (ll, s) => ll.lat < s.lat && ll.lng > s.lng - 0.001 }),
   };
   easterEgg = (text) => {
