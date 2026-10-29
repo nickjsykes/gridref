@@ -471,9 +471,7 @@ body.adding .chips { visibility: hidden; } /* the menu may need their room on a 
 
 /* Two families, two see-through pills: the notebook on the left (open it, add to it), the map
    on the right (where am I, which map). Frosted so the map shows through. */
-.pill { display: flex; flex-direction: column; border-radius: 26px; padding: 2px;
-  background: color-mix(in srgb, var(--panel) 58%, transparent); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4);
-  box-shadow: 0 1px 8px rgba(0,0,0,.16), inset 0 0 0 .5px rgba(255,255,255,.35); }
+.pill { display: flex; flex-direction: column; border-radius: 26px; padding: 2px; }
 .pill .fab { background: transparent; box-shadow: none; }
 .pill .fab + .fab::before { content: ""; position: absolute; top: 0; left: 12px; right: 12px; height: 1px; background: color-mix(in srgb, var(--ink) 15%, transparent); }
 .pill .fab.on, .pill .addbtn { background: var(--green); color: var(--panel); }
@@ -584,3 +582,28 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
   filter: drop-shadow(8px 0 0 rgba(255,0,60,.7)) drop-shadow(-8px 0 0 rgba(0,240,255,.6));
   clip-path: polygon(0 0, 100% 0, 100% 38%, 92% 38%, 92% 44%, 100% 44%, 100% 100%, 0 100%, 0 71%, 7% 71%, 7% 66%, 0 66%); }
 .wolfglitch::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(255,255,255,.07) 0 2px, transparent 2px 5px); }
+
+/* Glass: everything floating over the map is frosted at one of two levels, so they read as one
+   family. Buttons (and the search bar) are the most see-through, the map showing through
+   their own blur; menus and popups hold text to read, so they're a little more solid. Chosen
+   states (a chip that's on, the green buttons) stay solid so they still stand out. */
+:root {
+  --glass-btn: color-mix(in srgb, var(--panel) 58%, transparent);
+  --glass-menu: color-mix(in srgb, var(--panel) 80%, transparent);
+  --glass-edge: 0 1px 8px rgba(0,0,0,.16), inset 0 0 0 .5px rgba(255,255,255,.35);
+}
+.pill, .addmenu .fab, .chips button:not(.on), .search, .leaflet-bottom.leaflet-left .leaflet-control-attribution {
+  background: var(--glass-btn); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-edge); }
+.layers, .results {
+  background: var(--glass-menu); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 4px 16px rgba(0,0,0,.18), inset 0 0 0 .5px rgba(255,255,255,.35); }
+.toast { background: color-mix(in srgb, var(--ink) 80%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+/* Large text is for reading at a glance: the same glass, just more solid behind the words */
+body.large {
+  --glass-btn: color-mix(in srgb, var(--panel) 82%, transparent);
+  --glass-menu: color-mix(in srgb, var(--panel) 94%, transparent);
+}
+/* The © is the least important thing on screen: closed, it's barely there (a faint frosted dot);
+   opened to read the credits, it takes the menu glass */
+#map .leaflet-bottom.leaflet-left .leaflet-control-attribution:not(.open) { background: color-mix(in srgb, var(--panel) 22%, transparent); box-shadow: none; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+#map .leaflet-bottom.leaflet-left .leaflet-control-attribution.open { background: var(--glass-menu); }
+#map .leaflet-control-attribution:not(.open)::before { color: var(--ink); opacity: .8; text-shadow: 0 0 3px var(--panel), 0 0 2px var(--panel); }
