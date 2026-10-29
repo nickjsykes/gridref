@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "178"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "179"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -419,7 +419,7 @@
   map.on("click", (e) => {
     layersEl.style.display = "none";
     $("results").style.display = "none";
-    if (nav) return;
+    if (nav || maker) return;
     const now = Date.now(), again = lastTap && now - lastTap.t < 400 && e.containerPoint.distanceTo(lastTap.p) < 40;
     if (again) { panTo(lastTap.ll, Math.min(map.getZoom() + 1, map.getMaxZoom())); lastTap = null; return; }
     if (reserveTap && reserveTap(e)) { lastTap = null; return; }
@@ -760,6 +760,7 @@
   }
   // Ask the browser not to clear our storage when space runs low
   const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
+  let maker = null; // Make a map, while it's open (see "make a map")
   const pinLayer = L.layerGroup().addTo(map);
   // Point markers: a colour and a shape, so different jobs can be told apart on the map
   // Your marks: one family, tuned to sit on topo and aerial. Magenta first and the default:
@@ -805,20 +806,23 @@
     map.getContainer().classList.toggle("far", lastZone === "far");
     map.getContainer().classList.toggle("mid", lastZone === "mid");
     for (const pt of points) try {
+      // Making a map: only the picked entries, and the ones tapped off drawn faint
+      if (maker && !maker.keys.has(keyOf(pt))) continue;
+      const off = maker && maker.off.has(keyOf(pt)) ? "mkoff" : "";
       if (!many) nameLabel(pt.kind === "area" ? L.latLngBounds(pt.pts).getCenter() : [pt.lat, pt.lon], pt.name, 8).addTo(pinLayer);
       if (pt.kind === "line" || pt.kind === "area") {
         // A white casing under a thinner coloured line: reads on topo and aerial alike, and
         // the wide casing is an easier target for a thumb. Small dots mark the corners.
         const c = COLOURS[pt.colour] || COLOURS.orange, area = pt.kind === "area";
         const Shape = area ? L.polygon : L.polyline, casing = pt.colour === "white" ? "#2b2b2b" : "#fff";
-        Shape(pt.pts, { color: casing, weight: W[0], opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false })
+        Shape(pt.pts, { color: casing, weight: W[0], opacity: 0.85, lineJoin: "round", lineCap: "round", fillColor: c, fillOpacity: area ? 0.12 : 0, bubblingMouseEvents: false, className: off })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
         // An invisible band 30 px wide along the edge: a thumb-sized target for a thin line
         Shape(pt.pts, { color: "#000", weight: 30, opacity: 0.001, fill: false, lineJoin: "round", lineCap: "round", bubblingMouseEvents: false })
           .on("click", () => openFeature(pt))
           .addTo(pinLayer);
-        Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false }).addTo(pinLayer);
+        Shape(pt.pts, { color: c, weight: area ? W[2] : W[1], opacity: 1, lineJoin: "round", lineCap: "round", fill: false, interactive: false, className: off }).addTo(pinLayer);
         if (!many && lastZone === "near" && pt.pts.length <= 80)
           for (const v of pt.pts) L.circleMarker(v, { radius: 3, color: c, weight: 2, fillColor: "#fff", fillOpacity: 1, interactive: false }).addTo(pinLayer);
         // A small camera where each photo of it was taken (not from far out: too busy)
@@ -833,7 +837,7 @@
       const badge = photosOf(pt).length ? `<i class="pcam">${CAMERA_SVG}</i>` : "";
       (many
         ? L.circleMarker([pt.lat, pt.lon], { radius: 5, color: "#fff", weight: 1.5, fillColor: COLOURS[pt.colour] || COLOURS.orange, fillOpacity: 1, renderer: pinCanvas, bubblingMouseEvents: false })
-        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin", html: shapeSvg(pt.shape, pt.colour, 18) + badge, iconSize: [18, 18], iconAnchor: [9, 9] }) }))
+        : L.marker([pt.lat, pt.lon], { icon: L.divIcon({ className: "pin " + off, html: shapeSvg(pt.shape, pt.colour, 18) + badge, iconSize: [18, 18], iconAnchor: [9, 9] }) }))
         .on("click", () => openFeature(pt))
         .addTo(pinLayer);
     } catch {}
@@ -855,6 +859,7 @@
   // Tap something: it comes in close. A point to zoom 17; a line or area as big as fits
   // the clear map (up to 18), never further out than you already were
   function openFeature(pt) {
+    if (maker) { const k = keyOf(pt); maker.off.has(k) ? maker.off.delete(k) : maker.off.add(k); return drawPins(); }
     if (measure || nav || moving) return;
     const shape = pt.kind === "line" || pt.kind === "area";
     const c = centreOf(pt), to = pt.kind === "line" ? midOf(pt) : L.latLng(c.lat, c.lon);
@@ -1377,11 +1382,13 @@
   $("selCancel").onclick = endSelect;
   $("selGo").onclick = () => {
     fresh();
-    const list = points.filter((p) => picked.has(keyOf(p)));
+    const list = points.filter((p) => picked.has(keyOf(p))), forMap = selecting === "map";
     endSelect();
+    if (forMap) return startMaker(list);
     exportList(list, exportFmt, exportPhotos);
   };
-  function drawSelBar() { $("selGo").textContent = `Export ${picked.size}`; }
+  // selecting: false, true (picking what to export) or "map" (picking what goes on a map)
+  function drawSelBar() { $("selGo").textContent = selecting === "map" ? `Make map (${picked.size})` : `Export ${picked.size}`; }
 
   // Import: our own CSV back in, or any CSV with a name column and a grid ref,
   // E/N or lat/long column (e.g. a list of dormouse boxes)
@@ -2647,6 +2654,324 @@
     run().catch((err) => { console.warn("easter egg", err); eggPins.clearLayers(); });
     return true;
   };
+  // ---------- make a map: pick points, frame it, draw on it, send it as a picture ----------
+  // For contractors and volunteers: a picture works on any phone, offline once received, and
+  // prints. Grid lines and refs, a scale bar, north and the copyright lines go on every one.
+  const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
+  const mkDrawLayer = L.layerGroup();
+  function startMaker(list) {
+    if (!list.length) return toast("Pick at least one point");
+    closeDrawer();
+    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], me: false, prevLayer: current };
+    $("maker").hidden = false;
+    document.body.classList.add("mapmaker");
+    mkDrawLayer.clearLayers().addTo(map);
+    setTool("move");
+    $("mkMe").textContent = "Me: off";
+    $("mkMe").classList.remove("on");
+    $("mkOrient").textContent = "Landscape";
+    placeFrame();
+    // Fit the picked points in the frame
+    const b = L.latLngBounds(list.flatMap((p) => (p.pts ? p.pts : [[p.lat, p.lon]])));
+    const f = frameRect(), box = map.getContainer().getBoundingClientRect(), m = 40;
+    map.fitBounds(b, { paddingTopLeft: [f.left - box.left + m, f.top - box.top + m], paddingBottomRight: [box.right - f.right + m, box.bottom - f.bottom + m], maxZoom: 17, animate: false });
+    drawPins();
+  }
+  function endMaker() {
+    if (!maker) return;
+    $("maker").hidden = true;
+    document.body.classList.remove("mapmaker");
+    map.removeLayer(mkDrawLayer);
+    map.dragging.enable();
+    maker = null;
+    drawPins();
+    layout();
+  }
+  // The frame: the picture's map area at the picture's shape, as big as fits between the top
+  // bar and the tool bar
+  function frameRect() { return $("mkFrame").getBoundingClientRect(); }
+  function placeFrame() {
+    const [W, H] = MK[maker.orient], aspect = W / (H - MK.head - MK.foot);
+    const top = $("maker").querySelector(".mktop").getBoundingClientRect().bottom + 12;
+    const bottom = $("maker").querySelector(".mkbar").getBoundingClientRect().top - 12;
+    const availW = window.innerWidth - 24, availH = bottom - top;
+    let w = availW, h = w / aspect;
+    if (h > availH) { h = availH; w = h * aspect; }
+    Object.assign($("mkFrame").style, { left: (window.innerWidth - w) / 2 + "px", top: top + (availH - h) / 2 + "px", width: w + "px", height: h + "px" });
+  }
+  window.addEventListener("resize", () => { if (maker) placeFrame(); });
+  $("makeMapBtn").onclick = () => {
+    fresh();
+    if (!points.length) return toast("Nothing saved yet");
+    // Pick in the notebook, starting with everything showing (the reserve you're on) ticked
+    selecting = "map";
+    picked.clear();
+    $("drawer").classList.add("selecting");
+    openDrawer();
+    const resOf = (p) => { const c = centreOf(p); return reserveShort(L.latLng(c.lat, c.lon)); };
+    for (const p of points) if ((!folder || p.folder === folder) && (!resF || resOf(p) === resF)) picked.add(keyOf(p));
+    openDrawer();
+    toast("Untick any to leave off, then Make map");
+  };
+  $("mkCancel").onclick = endMaker;
+  $("mkOrient").onclick = () => {
+    maker.orient = maker.orient === "portrait" ? "landscape" : "portrait";
+    $("mkOrient").textContent = maker.orient === "portrait" ? "Landscape" : "Portrait";
+    placeFrame();
+  };
+  $("mkMe").onclick = () => {
+    maker.me = !maker.me;
+    $("mkMe").textContent = maker.me ? "Me: on" : "Me: off";
+    $("mkMe").classList.toggle("on", maker.me);
+    if (maker.me && !here) startGps(false);
+  };
+  $("mkLayers").onclick = (e) => {
+    e.stopPropagation();
+    if (layersEl.style.display === "block") { layersEl.style.display = "none"; return; }
+    drawLayerMenu();
+    layersEl.style.display = "block";
+    const r = $("mkLayers").getBoundingClientRect();
+    Object.assign(layersEl.style, { right: Math.max(8, window.innerWidth - r.right) + "px", top: "auto", bottom: window.innerHeight - r.top + 8 + "px" });
+  };
+  $("mkCols").onclick = (e) => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    maker.colour = b.dataset.c;
+    for (const x of $("mkCols").children) x.classList.toggle("on", x === b);
+  };
+  $("mkTools").onclick = (e) => { const b = e.target.closest("button[data-t]"); if (b) setTool(b.dataset.t); };
+  function setTool(t) {
+    maker.tool = t;
+    for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === t);
+    $("maker").classList.toggle("drawing", t !== "move");
+    $("mkHint").textContent = { move: "Move and zoom the map to fill the frame. Tap a point to leave it off.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes." }[t];
+  }
+  $("mkUndo").onclick = () => { const d = maker.drawn.pop(); if (d) mkDrawLayer.removeLayer(d.layer); else toast("Nothing to undo"); };
+
+  // Drawing: kept as map positions, so it stays put as the map moves and is drawn again,
+  // sharp, in the picture
+  const casing = (ll, colour, weight) => L.layerGroup([
+    L.polyline(ll, { color: colour === "#fcc419" ? "#2b2b2b" : "#fff", weight: weight + 4, opacity: 0.9, lineCap: "round", lineJoin: "round", interactive: false }),
+    L.polyline(ll, { color: colour, weight, lineCap: "round", lineJoin: "round", interactive: false }),
+  ]);
+  function arrowHead(a, b, size) { // in projected px at the current zoom: two barbs at b
+    const pa = map.latLngToLayerPoint(a), pb = map.latLngToLayerPoint(b), ang = Math.atan2(pb.y - pa.y, pb.x - pa.x);
+    const barb = (d) => map.layerPointToLatLng(L.point(pb.x - size * Math.cos(ang + d), pb.y - size * Math.sin(ang + d)));
+    return [barb(0.45), b, barb(-0.45)];
+  }
+  function drawArrow(d) {
+    d.layer.clearLayers();
+    d.layer.addLayer(casing([d.pts[0], d.pts[1]], d.colour, 5));
+    d.layer.addLayer(casing(arrowHead(d.pts[0], d.pts[1], 18), d.colour, 5));
+  }
+  map.on("zoomend", () => { if (maker) for (const d of maker.drawn) if (d.type === "arrow") drawArrow(d); });
+  let stroke = null;
+  const llAt = (e) => map.containerPointToLatLng(L.point(e.clientX - map.getContainer().getBoundingClientRect().left, e.clientY - map.getContainer().getBoundingClientRect().top));
+  $("mkDraw").addEventListener("pointerdown", (e) => {
+    if (!maker || maker.tool === "move") return;
+    e.preventDefault();
+    if (maker.tool === "text") { mkTextAt = llAt(e); $("mkTextIn").value = ""; $("mkTextModal").hidden = false; setTimeout(() => $("mkTextIn").focus(), 50); return; }
+    $("mkDraw").setPointerCapture(e.pointerId);
+    stroke = { type: maker.tool, colour: maker.colour, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
+    if (stroke.type === "arrow") stroke.pts.push(stroke.pts[0]);
+  });
+  $("mkDraw").addEventListener("pointermove", (e) => {
+    if (!stroke) return;
+    const ll = llAt(e);
+    if (stroke.type === "pen") {
+      const last = map.latLngToContainerPoint(stroke.pts[stroke.pts.length - 1]), p = map.latLngToContainerPoint(ll);
+      if (last.distanceTo(p) < 3) return;
+      stroke.pts.push(ll);
+      stroke.layer.clearLayers().addLayer(casing(stroke.pts, stroke.colour, 5));
+    } else { stroke.pts[1] = ll; drawArrow(stroke); }
+  });
+  const endStroke = () => {
+    if (!stroke) return;
+    const s = stroke;
+    stroke = null;
+    const big = s.pts.length > 1 && map.latLngToContainerPoint(s.pts[0]).distanceTo(map.latLngToContainerPoint(s.pts[s.pts.length - 1])) > 6;
+    if (s.type === "pen" ? s.pts.length < 2 : !big) { mkDrawLayer.removeLayer(s.layer); return; }
+    maker.drawn.push(s);
+  };
+  $("mkDraw").addEventListener("pointerup", endStroke);
+  $("mkDraw").addEventListener("pointercancel", endStroke);
+  let mkTextAt = null;
+  $("mkTextCancel").onclick = () => { $("mkTextModal").hidden = true; };
+  $("mkTextForm").onsubmit = (e) => {
+    e.preventDefault();
+    const text = $("mkTextIn").value.trim();
+    $("mkTextModal").hidden = true;
+    $("mkTextIn").blur();
+    if (!text || !mkTextAt) return;
+    const d = { type: "text", colour: maker.colour, pts: [mkTextAt], text, layer: L.layerGroup().addTo(mkDrawLayer) };
+    L.marker(mkTextAt, { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(text)}</span>` }) }).addTo(d.layer);
+    maker.drawn.push(d);
+  };
+
+  // ---------- the picture ----------
+  $("mkSend").onclick = () => {
+    layersEl.style.display = "none";
+    const res = viewedReserve(), d = new Date();
+    if (!$("mkTitle").value) $("mkTitle").value = `${res || "Map"} · ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
+    $("mkPreview").hidden = true;
+    $("mkShare").textContent = "Make picture";
+    mkBlob = null;
+    $("mkSendModal").hidden = false;
+  };
+  let mkBlob = null;
+  $("mkSendCancel").onclick = () => { $("mkSendModal").hidden = true; };
+  $("mkTitle").oninput = $("mkNote").oninput = () => { mkBlob = null; $("mkShare").textContent = "Make picture"; };
+  $("mkSendForm").onsubmit = async (e) => {
+    e.preventDefault();
+    if (!mkBlob) {
+      $("mkShare").textContent = "Making…";
+      try { mkBlob = await renderMap($("mkTitle").value.trim(), $("mkNote").value.trim()); }
+      catch (err) { console.warn("map", err); $("mkShare").textContent = "Make picture"; return toast("Couldn't make the picture. Try again with signal"); }
+      $("mkPreview").src = URL.createObjectURL(mkBlob);
+      $("mkPreview").hidden = false;
+      $("mkShare").textContent = "Share";
+      return;
+    }
+    const name = ($("mkTitle").value.trim() || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40) + ".jpg";
+    const file = new File([mkBlob], name, { type: "image/jpeg" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file] }); } catch {} return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(mkBlob);
+    a.download = name;
+    a.click();
+  };
+  const loadImg = (src) => new Promise((ok) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
+  // Tiles for a layer at zoom z: our own fetch (not the screen's), so the picture is sharp at
+  // its full size whatever the phone's screen
+  function tileUrl(layer, x, y, z) {
+    if (layer.wmsParams) {
+      const ts = 256, nw = L.CRS.EPSG3857.pointToLatLng(L.point(x * ts, y * ts), z), se = L.CRS.EPSG3857.pointToLatLng(L.point((x + 1) * ts, (y + 1) * ts), z);
+      const a = L.CRS.EPSG3857.project(nw), b = L.CRS.EPSG3857.project(se);
+      return layer._url + L.Util.getParamString({ ...layer.wmsParams, width: ts, height: ts, crs: "EPSG:3857", srs: "EPSG:3857", bbox: [a.x, b.y, b.x, a.y].join(",") }, layer._url, true);
+    }
+    return L.Util.template(layer._url, { ...layer.options, x, y, z, s: (layer.options.subdomains || "abc")[Math.abs(x + y) % 3], r: "" });
+  }
+  async function drawTiles(ctx, layer, zE, origin, area, opts = {}) {
+    const zt = Math.min(Math.ceil(zE), layer.options.maxNativeZoom || layer.options.maxZoom || 19), s = Math.pow(2, zE - zt), size = 256 * s;
+    const x0 = Math.floor(origin.x / size), y0 = Math.floor(origin.y / size), x1 = Math.floor((origin.x + area.w) / size), y1 = Math.floor((origin.y + area.h) / size);
+    const jobs = [];
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) jobs.push(loadImg(tileUrl(layer, x, y, zt)).then((img) => ({ img, x, y })));
+    ctx.save();
+    if (opts.blend) ctx.globalCompositeOperation = opts.blend;
+    if (opts.alpha != null) ctx.globalAlpha = opts.alpha;
+    if (opts.filter) ctx.filter = opts.filter;
+    for (const { img, x, y } of await Promise.all(jobs)) if (img) ctx.drawImage(img, area.x + x * size - origin.x, area.y + y * size - origin.y, size + 0.5, size + 0.5);
+    ctx.restore();
+  }
+  // Grid spacing: the finest of 100 m … 10 km that gives no more than 8 lines across
+  const gridStep = (metres) => [100, 200, 500, 1000, 2000, 5000, 10000].find((s) => metres / s <= 8) || 10000;
+  async function renderMap(title, note) {
+    const [W, H] = MK[maker.orient], area = { x: 0, y: MK.head, w: W, h: H - MK.head - MK.foot };
+    const f = frameRect(), box = map.getContainer().getBoundingClientRect();
+    const nw = map.containerPointToLatLng([f.left - box.left, f.top - box.top]);
+    const zE = map.getZoom() + Math.log2(area.w / f.width), origin = map.project(nw, zE);
+    const P = (ll) => map.project(ll, zE).subtract(origin).add([area.x, area.y]);
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = H;
+    const ctx = cv.getContext("2d");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.save();
+    ctx.beginPath(); ctx.rect(area.x, area.y, area.w, area.h); ctx.clip();
+    ctx.fillStyle = "#eef0ea"; ctx.fillRect(area.x, area.y, area.w, area.h);
+    // The map: the layer on screen (the offline OS map sits on OS Outdoor, as on screen),
+    // then the LiDAR shading if it's on, blended the same way
+    if (current === "os" && LAYERS.outdoor) await drawTiles(ctx, LAYERS.outdoor.layer, zE, origin, area);
+    await drawTiles(ctx, LAYERS[current].layer, zE, origin, area);
+    if (shadeOn) {
+      const near = map.getZoom() >= 14 && nearReserve();
+      await drawTiles(ctx, near ? reliefLayer : lidarShade, zE, origin, area, { blend: "hard-light", alpha: shadePct / 100, filter: near ? "" : "brightness(.72) contrast(1.35)" });
+    }
+    const line = (pts, colour, width, dash) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.lineCap = ctx.lineJoin = "round"; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); };
+    const halo = (text, x, y, font, colour, align = "left") => { ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 6; ctx.strokeText(text, x, y); ctx.fillStyle = colour; ctx.fillText(text, x, y); };
+    // Reserve boundaries in view: the edge, with the band inside
+    for (const fe of nnr) if (isTeam(fe)) {
+      const polys = fe.geometry.type === "Polygon" ? [fe.geometry.coordinates] : fe.geometry.coordinates;
+      const path = new Path2D();
+      for (const poly of polys) for (const r of poly) r.forEach(([x, y], i) => { const p = P([y, x]); i ? path.lineTo(p.x, p.y) : path.moveTo(p.x, p.y); });
+      ctx.save(); ctx.clip(path, "evenodd"); ctx.strokeStyle = "rgba(217,72,15,.3)"; ctx.lineWidth = 30; ctx.stroke(path); ctx.restore();
+      ctx.strokeStyle = "#d9480f"; ctx.lineWidth = 3; ctx.stroke(path);
+    }
+    // OS grid: lines across the map, numbered along the top and left edges like an OS sheet
+    const gNW = OSGB.wgs84ToGrid(nw.lat, nw.lng), seLL = map.unproject(origin.add([area.w, area.h]), zE), gSE = OSGB.wgs84ToGrid(seLL.lat, seLL.lng);
+    const step = gridStep(gSE.e - gNW.e), labels = [];
+    for (let e = Math.ceil(gNW.e / step) * step; e <= gSE.e; e += step) {
+      const a = P(OSGB.gridToWgs84(e, gNW.n + 2000)), b = P(OSGB.gridToWgs84(e, gSE.n - 2000));
+      line([{ x: a.x, y: a.y }, { x: b.x, y: b.y }], "rgba(29,79,143,.6)", step >= 1000 ? 2 : 1.4);
+      labels.push(["e", e, a.x + (b.x - a.x) * ((area.y - a.y) / (b.y - a.y || 1))]);
+    }
+    for (let n = Math.ceil(gSE.n / step) * step; n <= gNW.n; n += step) {
+      const a = P(OSGB.gridToWgs84(gNW.e - 2000, n)), b = P(OSGB.gridToWgs84(gSE.e + 2000, n));
+      line([{ x: a.x, y: a.y }, { x: b.x, y: b.y }], "rgba(29,79,143,.6)", step >= 1000 ? 2 : 1.4);
+      labels.push(["n", n, a.y + (b.y - a.y) * ((area.x - a.x) / (b.x - a.x || 1))]);
+    }
+    // Labels: whole km as two figures ("33"), finer lines as four ("3350"), as on a 1:25k map
+    const fig = (v) => (step >= 1000 ? String(Math.floor((v % 100000) / 1000)).padStart(2, "0") : String(Math.floor((v % 100000) / 10)).padStart(4, "0"));
+    for (const [k, v, at] of labels) {
+      if (k === "e" && at > area.x + 70 && at < area.x + area.w - 20) halo(fig(v), at + 4, area.y + 16, "700 22px ui-monospace, Menlo, monospace", "#1d4f8f");
+      if (k === "n" && at > area.y + 40 && at < area.y + area.h - 10) halo(fig(v), area.x + 6, at - 13, "700 22px ui-monospace, Menlo, monospace", "#1d4f8f");
+    }
+    const sq = OSGB.gridRef(gNW.e, gNW.n, 2).slice(0, 2);
+    ctx.fillStyle = "#1d4f8f"; ctx.fillRect(area.x, area.y, 50, 34);
+    ctx.font = "700 22px ui-monospace, Menlo, monospace"; ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(sq, area.x + 25, area.y + 18);
+    // Your marks: lines and areas, then points, each named with its 8-figure grid ref
+    const chosen = points.filter((p) => maker.keys.has(keyOf(p)) && !maker.off.has(keyOf(p)));
+    for (const p of chosen) if (p.pts) {
+      const c = COLOURS[p.colour] || COLOURS.orange, pts = p.pts.map((q) => P(q)), area2 = p.kind === "area";
+      if (area2) { ctx.beginPath(); pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y))); ctx.closePath(); ctx.fillStyle = c + "33"; ctx.fill(); }
+      const ring = area2 ? pts.concat([pts[0]]) : pts;
+      line(ring, p.colour === "white" ? "#2b2b2b" : "#fff", 9);
+      line(ring, c, 5);
+    }
+    const shapeImg = async (p) => loadImg("data:image/svg+xml," + encodeURIComponent(shapeSvg(p.shape, p.colour, 40).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" ')));
+    for (const p of chosen) {
+      const c = centreOf(p), at = P(p.kind === "line" ? midOf(p) : [c.lat, c.lon]);
+      if (!p.pts) { const img = await shapeImg(p); if (img) ctx.drawImage(img, at.x - 20, at.y - 20, 40, 40); }
+      halo(p.name, at.x + 26, at.y - 10, "700 24px -apple-system, system-ui, sans-serif", "#1b1a15");
+      halo(OSGB.gridRef(c.e, c.n, 8), at.x + 26, at.y + 16, "600 20px ui-monospace, Menlo, monospace", "#1b1a15");
+    }
+    // Drawings
+    for (const d of maker.drawn) {
+      const pts = d.pts.map((q) => P(q)), edge = d.colour === "#fcc419" ? "#2b2b2b" : "#fff";
+      if (d.type === "pen") { line(pts, edge, 13); line(pts, d.colour, 8); }
+      if (d.type === "arrow") {
+        const [a, b] = pts, ang = Math.atan2(b.y - a.y, b.x - a.x), s = 34;
+        const head = [{ x: b.x - s * Math.cos(ang + 0.45), y: b.y - s * Math.sin(ang + 0.45) }, b, { x: b.x - s * Math.cos(ang - 0.45), y: b.y - s * Math.sin(ang - 0.45) }];
+        line([a, b], edge, 13); line(head, edge, 13); line([a, b], d.colour, 8); line(head, d.colour, 8);
+      }
+      if (d.type === "text") halo(d.text, pts[0].x, pts[0].y, "800 30px -apple-system, system-ui, sans-serif", d.colour, "center");
+    }
+    if (maker.me && here) {
+      const p = P([here.lat, here.lon]);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 13, 0, Math.PI * 2); ctx.fillStyle = "#1a73e8"; ctx.fill(); ctx.lineWidth = 5; ctx.strokeStyle = "#fff"; ctx.stroke();
+      halo(`Me, ${new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`, p.x + 22, p.y, "700 22px -apple-system, system-ui, sans-serif", "#1a73e8");
+    }
+    ctx.restore();
+    // Header: title and note
+    ctx.fillStyle = "#1b1a15"; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.font = "800 46px -apple-system, system-ui, sans-serif"; ctx.fillText(title || "Map", 28, 62, W - 56);
+    ctx.font = "26px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "#4a4a42";
+    ctx.fillText(note || new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" }), 28, 104, W - 56);
+    // Footer: scale bar, copyright, north
+    const fy = H - MK.foot, mpp = map.unproject(origin.add([0, area.h / 2]), zE).distanceTo(map.unproject(origin.add([100, area.h / 2]), zE)) / 100;
+    const nice = [10, 20, 50, 100, 200, 250, 500, 1000, 2000, 5000].filter((m) => m / mpp <= W * 0.28).pop() || 10, bar = nice / mpp;
+    ctx.fillStyle = "#1b1a15"; ctx.fillRect(28, fy + 34, bar, 10); ctx.fillStyle = "#fff"; ctx.fillRect(28 + bar / 2, fy + 36, bar / 2 - 2, 6);
+    ctx.fillStyle = "#1b1a15"; ctx.font = "600 22px -apple-system, system-ui, sans-serif"; ctx.fillText(nice >= 1000 ? `${nice / 1000} km` : `${nice} m`, 28, fy + 74);
+    ctx.font = "16px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "#4a4a42"; ctx.textAlign = "center";
+    const credit = current === "aerial" ? "Imagery © Esri, Maxar, Earthstar Geographics · OS grid © Crown copyright" : "Contains OS data © Crown copyright and database rights 2026";
+    ctx.fillText(credit, W / 2, fy + 40, W - 400);
+    ctx.fillText(`Reserve boundaries © Natural England · ${new Date().toLocaleDateString("en-GB")}`, W / 2, fy + 64, W - 400);
+    const nx = W - 60, ny = fy + 48;
+    ctx.beginPath(); ctx.moveTo(nx, ny - 30); ctx.lineTo(nx + 14, ny + 10); ctx.lineTo(nx, ny + 2); ctx.lineTo(nx - 14, ny + 10); ctx.closePath(); ctx.fillStyle = "#1b1a15"; ctx.fill();
+    ctx.font = "800 22px -apple-system, system-ui, sans-serif"; ctx.textAlign = "center"; ctx.fillText("N", nx, ny + 34);
+    ctx.strokeStyle = "#1b1a15"; ctx.lineWidth = 2; ctx.strokeRect(area.x + 1, area.y + 1, area.w - 2, area.h - 2);
+    return new Promise((ok, bad) => cv.toBlob((b) => (b ? ok(b) : bad(new Error("no picture"))), "image/jpeg", 0.9));
+  }
   function drawChips() {
     const keepScroll = $("chips").scrollLeft;
     $("chips").innerHTML = "";
