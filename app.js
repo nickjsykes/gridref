@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "177"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "178"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1022,7 +1022,23 @@
     if (savePoints()) toast("✓ Saved " + name + (photos.length ? ` with ${photos.length} photo${photos.length > 1 ? "s" : ""}` : ""));
     if (wasShape && measure) $("mDone").click(); // back to the map
   };
-  $("listBtn").onclick = () => openDrawer();
+  // The notebook opens on the reserve you're looking at (zoomed in, centred on or within one of
+  // the team's reserves), otherwise on everything. Roudsea's chip view centres between its two
+  // blocks, so it's the reserve's outer box that counts, not its boundary.
+  function viewedReserve() {
+    if (map.getZoom() < CLOSE) return "";
+    const c = map.getCenter();
+    let best = "", bestD = Infinity;
+    for (const f of nnr) {
+      if (!isTeam(f)) continue;
+      const [w, s, e, n] = f.bbox;
+      if (c.lng < w || c.lng > e || c.lat < s || c.lat > n) continue;
+      const d = c.distanceTo([(s + n) / 2, (w + e) / 2]);
+      if (d < bestD) { bestD = d; best = TEAM.get(f.properties.REF_CODE); }
+    }
+    return best;
+  }
+  $("listBtn").onclick = () => { resF = viewedReserve(); openDrawer(); };
 
   function ago(iso) {
     if (!iso) return "never";
