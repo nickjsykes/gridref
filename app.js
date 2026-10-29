@@ -43,8 +43,25 @@
   // so only through the proxy; it comes and goes with OS Outdoor
   if (OS_PROXY && LAYERS.outdoor) {
     const o = LAYERS.outdoor.layer, hold = L.tileLayer(o._url, { ...o.options, minNativeZoom: 17, maxNativeZoom: 17, minZoom: 16, maxZoom: 16.99 });
+    LAYERS.outdoor.hold = hold;
     o.on("add", () => hold.addTo(map).setZIndex(o.options.zIndex || 1));
     o.on("remove", () => map.removeLayer(hold));
+  }
+  // Tiles only where the map comes to rest: a glide between reserves passes through every
+  // zoom from 10 to 19, and loading a screenful at each (about 150 tiles a jump) ran into the
+  // proxy's 600-a-minute limit after a few jumps, leaving blank squares. A tile that fails
+  // anyway (refused, or a blip) is asked for again a moment later, twice at most
+  const tileLayers = [...Object.values(LAYERS).map((x) => x.layer), ...(LAYERS.outdoor && LAYERS.outdoor.hold ? [LAYERS.outdoor.hold] : [])];
+  for (const t of tileLayers) {
+    t.options.updateWhenZooming = false;
+    t.options.updateWhenIdle = true;
+    t.on("tileerror", (e) => {
+      const tile = e.tile, n = +(tile.dataset.retry || 0);
+      if (n >= 2 || offlineMode || !tile.src || tile.src.startsWith("data:")) return;
+      tile.dataset.retry = n + 1;
+      const src = tile.src.replace(/[?&]retry=\d+/, "");
+      setTimeout(() => { if (tile.isConnected) tile.src = src + (src.includes("?") ? "&" : "?") + "retry=" + (n + 1); }, 2000 + n * 3000);
+    });
   }
   let current = LAYERS.outdoor ? "outdoor" : "os"; // every launch starts on OS Outdoor (or the offline OS map without a key); a map picked in the layers menu lasts until the app is closed
   LAYERS[current].layer.addTo(map);
@@ -91,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "197"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "198"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
