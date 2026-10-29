@@ -684,14 +684,20 @@ body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's 
 .drawer.maps-tab #list, .drawer.maps-tab #resFilter, .drawer.maps-tab #backup, .drawer.maps-tab footer .nb { display: none; }
 .drawer:not(.maps-tab) #mapList, .drawer:not(.maps-tab) footer .mp { display: none; }
 .drawer footer button.primary { background: var(--green); color: var(--panel); }
-/* A reserve's own places (Barn, Car park…): small chips under the reserves for a few
-   seconds after you open one, then they fade */
-.subchips { position: fixed; z-index: 999; left: 12px; right: 12px; top: calc(var(--safe-t) + var(--nudge) + 116px); display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; opacity: 0; transition: opacity .25s; pointer-events: none; }
+/* A reserve's own places (Barn, Car park…): a short list straight down from that reserve's
+   button for a few seconds after you open it, then they fade */
+.subchips { position: fixed; z-index: 999; left: 12px; width: max-content; max-width: calc(100vw - 24px); top: calc(var(--safe-t) + var(--nudge) + 116px); display: flex; flex-direction: column; align-items: stretch; gap: 6px; opacity: 0; transition: opacity .25s; pointer-events: none; } /* a short list down from its reserve's button */
 .subchips::-webkit-scrollbar { display: none; }
 .subchips.show { opacity: 1; pointer-events: auto; }
 .subchips[hidden] { display: none; }
-.subchips button { flex: none; border: 0; border-radius: 14px; padding: 7px 12px; min-height: 32px; font: 600 13px var(--sans); color: var(--ink);
+.subchips button { flex: none; border: 0; border-radius: 14px; padding: 8px 14px; min-height: 36px; text-align: left; font: 600 13px var(--sans); color: var(--ink);
   background: var(--glass-btn); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-edge); }
 body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body.mapmaker .subchips, body.adding .subchips { display: none; }
 /* the zoom level, small, beside the closed © (for telling Nick which view you mean) */
 #map .leaflet-control-attribution:not(.open)::before { content: "© " attr(data-z); }
+/* After a place jump (Barn, Car park…): the cross is the view's middle, not the place, so
+   the grid ref is blurred with a note until the map's moved */
+.refline { position: relative; }
+.placenote { display: none; }
+.sheet.placeview .ref, .sheet.placeview .rows .v { filter: blur(7px); opacity: .45; }
+.sheet.placeview .placenote { display: grid; place-items: center; position: absolute; inset: 0; padding: 0 12px; text-align: center; font: 600 15px var(--sans); color: var(--ink); pointer-events: none; }

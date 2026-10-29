@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "196"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "197"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -431,6 +431,16 @@
     $("results").style.display = "none";
     if (nav) return;
     if (maker) return mkTap(e);
+    // A tap just beside a point opens it, rather than nudging the map: the drawn point is
+    // small, a fingertip isn't
+    if (map.getZoom() >= CLOSE) {
+      let hit = null, best = 26;
+      for (const p of points) if (!p.pts) {
+        const d = map.latLngToContainerPoint([p.lat, p.lon]).distanceTo(e.containerPoint);
+        if (d < best) { best = d; hit = p; }
+      }
+      if (hit) { lastTap = null; return openFeature(hit); }
+    }
     const now = Date.now(), again = lastTap && now - lastTap.t < 400 && e.containerPoint.distanceTo(lastTap.p) < 40;
     if (again) { panTo(lastTap.ll, Math.min(map.getZoom() + 1, map.getMaxZoom())); lastTap = null; return; }
     if (reserveTap && reserveTap(e)) { lastTap = null; return; }
@@ -2391,8 +2401,38 @@
   // A reserve's own places: after opening the reserve they show as small chips for a few
   // seconds; one tap goes there. The grid ref is the middle of the view wanted, with its zoom
   const PLACES = {
-    "1006058": [{ name: "Barn", ref: "SD 4831 7746", zoom: 17.5 }], // Gait Barrows
+    "1006058": [ // Gait Barrows
+      { name: "Barn", ref: "SD 4831 7746", zoom: 17.5 },
+      { name: "Car park", ref: "SD 4789 7754", zoom: 17.5 },
+      { name: "Moss Lane", ref: "SD 4776 7639", zoom: 16 },
+    ],
+    "1006126": [ // Roudsea
+      { name: "Barn", ref: "SD 3306 8272", zoom: 17.5 },
+      { name: "Tarn", ref: "SD 3318 8241", zoom: 18 },
+      { name: "Stony Ride", ref: "SD 3487 8048", zoom: 15.2 },
+    ],
+    "1006954": [ // Duddon
+      { name: "Parking (Foxfield)", ref: "SD 2144 8511", zoom: 17.6 },
+      { name: "Heathwaite", ref: "SD 2411 8749", zoom: 15 },
+    ],
+    "1006114": [ // Walney
+      { name: "Lockup", ref: "SD 1709 6990", zoom: 19 },
+      { name: "Entrance", ref: "SD 1689 7154", zoom: 17.6 },
+    ],
   };
+  // A place's view is framed for a look round, so the cross isn't on the barn itself: its
+  // grid ref is blurred, and Share, Navigate and copying wait, until the map's moved
+  function placeView(name) {
+    sheet.classList.add("placeview");
+    $("placeNote").textContent = `${name}: move the map to read a grid ref`;
+    map.once("movestart", () => sheet.classList.remove("placeview"));
+  }
+  sheet.addEventListener("click", (e) => {
+    if (!sheet.classList.contains("placeview") || !e.target.closest("#shareBtn, #navBtn, [data-copy], #w3wRow")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toast("Move the map onto the exact spot first");
+  }, true);
   let subTimer = null;
   function showPlaces(code) {
     const el = $("subChips"), list = PLACES[code] || [];
@@ -2410,10 +2450,18 @@
         following = false;
         $("locBtn").classList.remove("on");
         map.flyTo(map.unproject(map.project([ll.lat, ll.lon], p.zoom).add([0, map.getSize().y / 2 - crossPt().y]), p.zoom), p.zoom, { duration: 0.9 });
+        map.once("moveend", () => placeView(p.name));
       };
       el.appendChild(b);
     }
     el.hidden = false;
+    // A list straight down from that reserve's button, where the thumb already is (pulled
+    // back in if it would run off the right-hand side)
+    const chip = $("chips").querySelector(`button[data-code="${code}"]`);
+    if (chip) {
+      const w = el.scrollWidth, x = chip.getBoundingClientRect().left;
+      el.style.left = Math.max(12, Math.min(x, window.innerWidth - 12 - w)) + "px";
+    }
     requestAnimationFrame(() => el.classList.add("show"));
     const hide = () => { el.classList.remove("show"); subTimer = setTimeout(() => (el.hidden = true), 300); };
     subTimer = setTimeout(hide, 3500);
@@ -3399,6 +3447,7 @@
       if (!f) continue;
       const b = document.createElement("button");
       b.textContent = name;
+      b.dataset.code = code;
       b.onclick = () => goReserve(f);
       $("chips").appendChild(b);
     }
