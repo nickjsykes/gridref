@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "170"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "171"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2431,10 +2431,22 @@
   }
   // Mike's Timberwolf moment: reality glitches, the screen goes black with a huge wolf for two
   // quick blinks, a pause, then one last flicker, and everything's normal as if nothing happened
+  // Our own wolf (the emoji differs by phone, and Apple's is too soft): a low-poly head in
+  // greys, slit amber eyes that glow, heavy brows
+  const WOLF_SVG = `<svg viewBox="0 0 200 200" aria-hidden="true"><defs><filter id="wglow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+    <path d="M100 52 132 40 155 12 162 70 180 96 150 120 130 160 100 188 70 160 50 120 20 96 38 70 45 12 68 40Z" fill="#9a9a9a"/>
+    <path d="M52 26 66 46 55 62Z" fill="#1c1c1c"/><path d="M148 26 134 46 145 62Z" fill="#1c1c1c"/>
+    <path d="M100 52 68 40 55 66 74 92 100 88Z" fill="#e4e4e4"/><path d="M100 52 132 40 145 66 126 92 100 88Z" fill="#c9c9c9"/>
+    <path d="M55 66 38 70 20 96 50 120 74 92Z" fill="#a8a8a8"/><path d="M145 66 162 70 180 96 150 120 126 92Z" fill="#8a8a8a"/>
+    <path d="M74 92 50 120 70 160 86 150 84 100Z" fill="#b5b5b5"/><path d="M126 92 150 120 130 160 114 150 116 100Z" fill="#969696"/>
+    <path d="M100 88 84 100 86 150 100 178 114 150 116 100Z" fill="#f2f2f2"/><path d="M100 52 92 68 100 86 108 68Z" fill="#fff"/>
+    <path d="M56 74 92 86M144 74 108 86" stroke="#141414" stroke-width="6" stroke-linecap="round"/>
+    <g fill="#ffb300" filter="url(#wglow)"><path d="M66 84 88 91 79 97Z"/><path d="M134 84 112 91 121 97Z"/></g>
+    <path d="M89 150h22l-11 15Z" fill="#141414"/><path d="M100 165v8M91 176l9-3 9 3" stroke="#141414" stroke-width="3" fill="none" stroke-linecap="round"/></svg>`;
   async function wolfGlitch() {
     const g = document.createElement("div");
     g.className = "wolfglitch";
-    g.innerHTML = `<span>🐺</span>`;
+    g.innerHTML = WOLF_SVG;
     document.body.appendChild(g);
     const blink = async (ms, dx) => {
       g.style.setProperty("--dx", dx + "px");
