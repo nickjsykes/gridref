@@ -668,3 +668,4 @@ body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's 
 .mkback { align-self: flex-start; border: 0; background: none; padding: 2px 0; font: 600 15px var(--sans); color: var(--green); }
 .card .btns button:disabled { opacity: .75; }
 .toast { z-index: 1400; } /* over the cards too, so messages from a card are seen */
+.card .btns#mkBtnsDone:not(.three) { grid-template-columns: 1fr 1fr; }

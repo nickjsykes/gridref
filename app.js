@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "184"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "185"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2894,18 +2894,23 @@
   let mkCur = null, mkSet = [];
   const mkSendLabel = () => { $("mkSend").textContent = mkSet.length ? `Make (${mkSet.length} ready)` : "Make"; };
   // Made: every map in the set side by side, swipe to review them, the newest showing
+  // Not made yet, with maps already in the set: they're shown with Save and Send, so you can
+  // send what's ready instead of making another
   function mkMode(made) {
+    const set = made ? theSet() : mkSet;
     $("mkBtnsMake").hidden = made;
-    $("mkBtnsDone").hidden = !made;
+    $("mkBtnsDone").hidden = !set.length;
+    $("mkAnother").hidden = !made;
+    $("mkBtnsDone").classList.toggle("three", made);
     $("mkBackMap").hidden = !made; // before a picture is made, the Back button does this
-    const box = $("mkPreviews"), set = made ? theSet() : [];
-    box.hidden = !made;
+    const box = $("mkPreviews");
+    box.hidden = !set.length;
     box.innerHTML = set.map(() => '<img alt="A map in this set">').join("");
     set.forEach((m, i) => { m.url = m.url || URL.createObjectURL(m.blob); box.children[i].src = m.url; });
-    $("mkCount").hidden = set.length < 2;
+    $("mkCount").hidden = made ? set.length < 2 : !set.length;
     $("mkShareSet").textContent = `Send (${set.length})`;
     mkSavedLabel();
-    if (made) requestAnimationFrame(() => { box.scrollLeft = box.scrollWidth; mkWhich(); });
+    if (set.length) requestAnimationFrame(() => { box.scrollLeft = box.scrollWidth; mkWhich(); });
   }
   // Save says so on the button (a toast would sit behind the card)
   function mkSavedLabel() {
@@ -2915,7 +2920,8 @@
   }
   function mkWhich() {
     const box = $("mkPreviews"), n = box.children.length, i = Math.round(box.scrollLeft / (box.clientWidth || 1));
-    $("mkCount").textContent = `Map ${Math.min(n, i + 1)} of ${n} · swipe to review`;
+    $("mkCount").textContent = $("mkBtnsMake").hidden ? `Map ${Math.min(n, i + 1)} of ${n} · swipe to review`
+      : n > 1 ? `${n} maps ready: send them, or make another · map ${Math.min(n, i + 1)} of ${n}` : "1 map ready: send it, or make another";
   }
   $("mkPreviews").addEventListener("scroll", mkWhich, { passive: true });
   $("mkSend").onclick = () => {
@@ -3151,7 +3157,25 @@
     taken.push({ x: area.x, y: area.y, w: 54, h: 38 }); // the square letters
     const marks = chosen.map((p) => { const c = centreOf(p); return { p, c, at: P(p.kind === "line" ? midOf(p) : [c.lat, c.lon]) }; });
     for (const m of marks) if (!m.p.pts) taken.push({ x: m.at.x - 22, y: m.at.y - 22, w: 44, h: 44 });
-    const syms = maker.drawn.filter((d) => d.type === "sym").map((d) => ({ d, at: P(d.pts[0]) }));
+    const syms = maker.drawn.filter((d) => d.type === "sym").map((d) => ({ d, at: P(d.pts[0]), from: P(d.pts[0]) }));
+    // Symbols put down close together are eased apart until none hides another or a point;
+    // one that had to move keeps a thin line back to its true spot
+    const fixed = marks.filter((m) => !m.p.pts).map((m) => m.at);
+    for (let it = 0; it < 40; it++) {
+      let moved = false;
+      for (let i = 0; i < syms.length; i++) {
+        const a = syms[i];
+        for (let j = i + 1; j < syms.length; j++) {
+          const b = syms[j], dx = b.at.x - a.at.x, dy = b.at.y - a.at.y, d = Math.hypot(dx, dy) || 0.01;
+          if (d < 50) { const k = (50 - d) / 2 / d; a.at = L.point(a.at.x - dx * k, a.at.y - dy * k); b.at = L.point(b.at.x + dx * k, b.at.y + dy * k); moved = true; }
+        }
+        for (const f of fixed) {
+          const dx = a.at.x - f.x, dy = a.at.y - f.y, d = Math.hypot(dx, dy) || 0.01;
+          if (d < 46) { const k = (46 - d) / d; a.at = L.point(a.at.x + dx * k, a.at.y + dy * k); moved = true; }
+        }
+      }
+      if (!moved) break;
+    }
     for (const s of syms) taken.push({ x: s.at.x - 24, y: s.at.y - 24, w: 48, h: 48 });
     for (const d of maker.drawn) if (d.type === "text") {
       ctx.font = "800 30px -apple-system, system-ui, sans-serif";
@@ -3185,6 +3209,10 @@
     }
     // Point markers and symbols on top, then the drawn labels
     for (const m of marks) if (!m.p.pts) { const img = await svgImg(shapeSvg(m.p.shape, m.p.colour, 40)); if (img) ctx.drawImage(img, m.at.x - 20, m.at.y - 20, 40, 40); }
+    for (const s of syms) if (s.at.distanceTo(s.from) > 12) {
+      line([s.from, s.at], "#1b1a15", 2);
+      ctx.beginPath(); ctx.arc(s.from.x, s.from.y, 4, 0, Math.PI * 2); ctx.fillStyle = "#1b1a15"; ctx.fill();
+    }
     for (const s of syms) { const img = await svgImg(symSvg(s.d.sym, 44)); if (img) ctx.drawImage(img, s.at.x - 22, s.at.y - 22, 44, 44); }
     for (const d of maker.drawn) if (d.type === "text") { const at = P(d.pts[0]); halo(d.text, at.x, at.y, "800 30px -apple-system, system-ui, sans-serif", d.colour, "center"); }
     if (key) {
