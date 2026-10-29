@@ -82,7 +82,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "157"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "158"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2124,14 +2124,41 @@
   // Burnt orange: nothing on the topo map uses it, and tiles stay light in dark mode
   const RESERVE = "#d9480f";
   // Zoomed out: a bold line and a tint, so the reserves stand out across the county. Zoomed in
-  // (11.5 up): a crisp edge with a soft band along it, and a faint spotlight outside. The switch
+  // (11.5 up): a crisp edge with a soft band just inside it, the way OS marks national park
+  // edges (so you can tell which side is the reserve), and a faint spotlight outside. The switch
   // sits well below every reserve chip's view (all land at about 13 or closer) and above the
   // launch overview (about 9), so every chip shows the same style on any phone.
   const CLOSE = 11.5;
   nnrLayer.options.style = () => (map.getZoom() < CLOSE
     ? { color: RESERVE, weight: 3, opacity: 0.95, fillColor: RESERVE, fillOpacity: 0.14 }
-    : { color: RESERVE, weight: 2.2, opacity: 1, fill: false, lineJoin: "round" });
-  const bandLayer = L.geoJSON(null, { interactive: false, style: { color: RESERVE, weight: 11, opacity: 0.22, fill: false, lineJoin: "round" } });
+    : { color: RESERVE, weight: 1.6, opacity: 1, fill: false, lineJoin: "round" });
+  const bandLayer = L.geoJSON(null, { interactive: false, style: { color: RESERVE, weight: 18, opacity: 0.3, fill: false, lineJoin: "round" } });
+  // The band is a wide stroke clipped to the reserve's own shape, so only its inner half shows.
+  // The clip <use>s the boundary path, so it follows that path as Leaflet redraws it.
+  function clipBand() {
+    const edges = {};
+    nnrLayer.eachLayer((l) => { if (l._path) edges[l.feature.properties.REF_CODE] = l._path; });
+    bandLayer.eachLayer((l) => {
+      const edge = edges[l.feature.properties.REF_CODE], band = l._path;
+      if (!edge || !band || band.getAttribute("clip-path")) return;
+      const NS = "http://www.w3.org/2000/svg", svg = band.ownerSVGElement;
+      const id = "edge-" + l.feature.properties.REF_CODE;
+      edge.id = id;
+      let defs = svg.querySelector("defs");
+      if (!defs) svg.prepend((defs = document.createElementNS(NS, "defs")));
+      let clip = document.getElementById("clip-" + id);
+      if (!clip) {
+        clip = document.createElementNS(NS, "clipPath");
+        clip.id = "clip-" + id;
+        const use = document.createElementNS(NS, "use");
+        use.setAttribute("href", "#" + id);
+        use.setAttribute("clip-rule", "evenodd");
+        clip.appendChild(use);
+        defs.appendChild(clip);
+      }
+      band.setAttribute("clip-path", `url(#clip-${id})`);
+    });
+  }
   // The spotlight: one shape covering the whole region with the reserves cut out of it, in its
   // own pane under the boundaries, just a hint darker around them (10%): the team mark things
   // outside the reserves too (shops, parking), so the rest of the map must stay fully usable
@@ -2154,12 +2181,13 @@
     maskPane.classList.toggle("on", close);
     if (close && !map.hasLayer(bandLayer)) bandLayer.addTo(map).bringToBack();
     if (!close && map.hasLayer(bandLayer)) map.removeLayer(bandLayer);
+    if (close) clipBand();
   }
   // Tap a reserve chip: its boundary draws itself round as the map lands on it, in the same
   // time for every reserve. A reserve in several pieces (Duddon has ten) draws them one after
   // another, each getting its share of the time by length: drawn as one outline, every piece
   // would grow at once and the many small ones would be done in a blink.
-  const DRAW_MS = 1100;
+  const DRAW_MS = 600;
   function drawOn(code) {
     nnrLayer.eachLayer((l) => {
       const path = l._path;
