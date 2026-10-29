@@ -91,7 +91,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "189"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "190"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2687,19 +2687,37 @@
   // ---------- make a map: pick points, frame it, draw on it, send it as a picture ----------
   // For contractors and volunteers: a picture works on any phone, offline once received, and
   // prints. Grid lines and refs, a scale bar, north and the copyright lines go on every one.
-  // OS-style map symbols for the maker: simple, bold, each on its own tile so it reads on any map
+  // OS-style map symbols for the maker: simple, bold, each on its own tile so it reads on any
+  // map. In palette order, the things a work party, contractor or visitor needs first
   const SYM_BG = '<rect x="1" y="1" width="22" height="22" rx="4" fill="#fff" stroke="#1b1a15" stroke-width="1.5"/>';
   const SYMBOLS = {
     parking: { name: "Parking", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><path d="M8.5 18.5V5.5h4.3a3.7 3.7 0 0 1 0 7.4H8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>' },
+    dropoff: { name: "Drop-off", svg: SYM_BG + '<rect x="3.5" y="7" width="17" height="9" rx="2" fill="#1b1a15"/><path d="M5.5 8.6h4v3h-4ZM10.5 8.6h4v3h-4ZM15.5 8.6h3.2v3h-3.2Z" fill="#fff"/><circle cx="7.5" cy="17" r="1.9" fill="#1b1a15"/><circle cx="16.5" cy="17" r="1.9" fill="#1b1a15"/>' },
+    meet: { name: "Meeting point", short: "Meet", svg: SYM_BG + '<path d="M7.5 19.5v-15" stroke="#1b1a15" stroke-width="2" stroke-linecap="round"/><path d="M8.5 4.5h10l-3 4 3 4h-10Z" fill="#2f9e44"/>' },
+    assembly: { name: "Assembly point", short: "Assembly", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 4.5v3M12 16.5v3M4.5 12h3M16.5 12h3" stroke="#fff" stroke-width="1.8"/><path d="M12 9.2 10.2 7h3.6ZM12 14.8l-1.8 2.2h3.6ZM9.2 12 7 10.2v3.6ZM14.8 12l2.2-1.8v3.6Z" fill="#fff"/><circle cx="12" cy="12" r="1.6" fill="#fff"/>' },
+    toilets: { name: "Toilets", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#fff">WC</text>' },
+    welfare: { name: "Welfare / tea", short: "Welfare", svg: SYM_BG + '<path d="M6 9.5h10v4.5a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4Z" fill="#7a4f2a"/><path d="M16 11h1.4a1.9 1.9 0 0 1 0 3.8H16" fill="none" stroke="#7a4f2a" stroke-width="1.6"/><path d="M9 4.5c-1 1.2 1 1.8 0 3M12.5 4.5c-1 1.2 1 1.8 0 3" stroke="#7a4f2a" stroke-width="1.2" fill="none" stroke-linecap="round"/>' },
+    lunch: { name: "Lunch spot", short: "Lunch", svg: SYM_BG + '<path d="M5 9h14M7.5 9 5.5 18.5M16.5 9l2 9.5M4.5 14h15" stroke="#7a4f2a" stroke-width="2" stroke-linecap="round"/>' },
+    firstaid: { name: "First aid", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 6v12M6 12h12" stroke="#fff" stroke-width="3.4"/>' },
+    defib: { name: "Defibrillator", short: "Defib", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 19s-7-4.3-7-9a3.6 3.6 0 0 1 7-1.3A3.6 3.6 0 0 1 19 10c0 4.7-7 9-7 9Z" fill="#fff"/><path d="M13 8.3 10.2 12.8h2.5l-1.2 3.7 3-4.7H12l1.1-3.5Z" fill="#2f9e44"/>' },
+    tools: { name: "Tool store", short: "Tools", svg: SYM_BG + '<path d="M6.5 18.5 16 7M17.5 18.5 8 7" stroke="#7a4f2a" stroke-width="2" stroke-linecap="round"/><path d="M14.3 5.6 18.4 9.7l1.4-1.4-4.1-4.1Z" fill="#1b1a15"/><path d="M5.2 8.6 9.6 4.2" stroke="#1b1a15" stroke-width="2.6" stroke-linecap="round"/>' },
+    workarea: { name: "Work area", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#f08c00"/><path d="M12 3.5v10" stroke="#fff" stroke-width="2"/><path d="M9.5 3.5h5" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><path d="M8.5 13h7l-.8 4.6a2.7 2.7 0 0 1-5.4 0Z" fill="#fff"/>' },
+    waste: { name: "Waste / bins", short: "Waste", svg: SYM_BG + '<path d="M7 8.5h10l-1 10.5H8Z" fill="#5a574d"/><path d="M5.5 7h13M10 7V5.2h4V7" stroke="#1b1a15" stroke-width="1.6" fill="none"/>' },
+    fire: { name: "Fire site", short: "Fire", svg: SYM_BG + '<path d="M12 3.5c1 3 4.5 4.5 4.5 9a4.5 4.5 0 0 1-9 0c0-2.4 1.4-3.6 2.2-5 .3 1.7 1.2 2.5 1.8 2.8-.4-2.3.1-4.6.5-6.8Z" fill="#e8590c"/><path d="M12 12.5c.6 1.3 2 1.9 2 3.6a2 2 0 0 1-4 0c0-1.2.7-1.8 1.2-2.6Z" fill="#fcc419"/>' },
+    hazard: { name: "Hazard", svg: '<path d="M12 1.8 22.8 21H1.2Z" fill="#fcc419" stroke="#1b1a15" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 8.5v6" stroke="#1b1a15" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="#1b1a15"/>' },
+    keepout: { name: "Keep out", svg: '<circle cx="12" cy="12" r="11" fill="#e03131"/><rect x="5" y="10" width="14" height="4" rx=".8" fill="#fff"/>' },
+    livestock: { name: "Livestock", svg: SYM_BG + '<path d="M8.6 8c-.9-1.6-.7-3 .4-4.1M15.4 8c.9-1.6.7-3-.4-4.1" stroke="#a39a86" stroke-width="1.7" fill="none" stroke-linecap="round"/><path d="M6.5 8.5 4.2 7.2M17.5 8.5l2.3-1.3" stroke="#1b1a15" stroke-width="1.6" stroke-linecap="round"/><path d="M7 8h10l-1 6c-.4 2.5-2 4.6-4 4.6S8.4 16.5 8 14Z" fill="#1b1a15"/><ellipse cx="12" cy="16.4" rx="3" ry="2" fill="#e8b4a0"/><circle cx="9.6" cy="11" r=".9" fill="#fff"/><circle cx="14.4" cy="11" r=".9" fill="#fff"/>' },
+    deepwater: { name: "Deep water / tide", short: "Deep water", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c7ed6"/><path d="M3.5 9c2-1.5 3.5-1.5 5.5 0s3.5 1.5 5.5 0 3.5-1.5 5.5 0M3.5 14.5c2-1.5 3.5-1.5 5.5 0s3.5 1.5 5.5 0 3.5-1.5 5.5 0" stroke="#fff" stroke-width="1.8" fill="none"/>' },
     gate: { name: "Gate", svg: SYM_BG + '<path d="M5 5.5v13M19 5.5v13M5 8.5h14M5 12h14M5 15.5h14M5 15.5 19 8.5" stroke="#1b1a15" stroke-width="1.7" fill="none" stroke-linecap="round"/>' },
     stile: { name: "Stile", svg: SYM_BG + '<path d="M7 5v14M17 5v14M4 15h16M7 10h10" stroke="#1b1a15" stroke-width="2" fill="none" stroke-linecap="round"/>' },
-    barn: { name: "Barn", svg: SYM_BG + '<path d="M4 19.5V10l8-5 8 5v9.5Z" fill="#5a574d"/><path d="M10 19.5v-5h4v5" fill="#fff"/>' },
-    toilets: { name: "Toilets", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#fff">WC</text>' },
-    meet: { name: "Meeting point", short: "Meet", svg: SYM_BG + '<path d="M7.5 19.5v-15" stroke="#1b1a15" stroke-width="2" stroke-linecap="round"/><path d="M8.5 4.5h10l-3 4 3 4h-10Z" fill="#2f9e44"/>' },
-    hazard: { name: "Hazard", svg: '<path d="M12 1.8 22.8 21H1.2Z" fill="#fcc419" stroke="#1b1a15" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 8.5v6" stroke="#1b1a15" stroke-width="2.4" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="#1b1a15"/>' },
-    water: { name: "Water", svg: SYM_BG + '<path d="M12 4c3 4.5 5 7.3 5 10a5 5 0 0 1-10 0c0-2.7 2-5.5 5-10Z" fill="#1c7ed6"/>' },
     bridge: { name: "Bridge", svg: SYM_BG + '<path d="M3 10.5h18M3 16c3-4.5 15-4.5 18 0" stroke="#1b1a15" stroke-width="2" fill="none"/><path d="M6.5 10.5v3M17.5 10.5v3M12 10.5v1.5" stroke="#1b1a15" stroke-width="1.6"/>' },
-    firstaid: { name: "First aid", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 6v12M6 12h12" stroke="#fff" stroke-width="3.4"/>' },
+    barn: { name: "Barn", svg: SYM_BG + '<path d="M4 19.5V10l8-5 8 5v9.5Z" fill="#5a574d"/><path d="M10 19.5v-5h4v5" fill="#fff"/>' },
+    water: { name: "Water", svg: SYM_BG + '<path d="M12 4c3 4.5 5 7.3 5 10a5 5 0 0 1-10 0c0-2.7 2-5.5 5-10Z" fill="#1c7ed6"/>' },
+    signal: { name: "Phone signal", short: "Signal", svg: SYM_BG + '<path d="M6 18.5v-3M10 18.5v-6M14 18.5v-9M18 18.5v-12" stroke="#2f9e44" stroke-width="2.6" stroke-linecap="round"/>' },
+    info: { name: "Information", short: "Info", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="12" cy="7" r="1.7" fill="#fff"/><path d="M12 10.5v7.5" stroke="#fff" stroke-width="2.8" stroke-linecap="round"/>' },
+    hide: { name: "Bird hide", svg: SYM_BG + '<path d="M4 11.5 12 6l8 5.5" stroke="#1b1a15" stroke-width="1.8" fill="none" stroke-linejoin="round"/><path d="M5.5 11h13v8h-13Z" fill="#7a4f2a"/><path d="M7.5 13h9v2h-9Z" fill="#1b1a15"/>' },
+    viewpoint: { name: "Viewpoint", svg: SYM_BG + '<path d="M12 17.5 5 9.5M12 17.5l2.5-11M12 17.5l7-6.5" stroke="#1b1a15" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2" fill="#1b1a15"/>' },
+    accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
@@ -3078,7 +3096,12 @@
         const blob = await photoDB.get("map:" + def.id).catch(() => null);
         if (!blob) return toast("The picture's missing. Edit it to make it again");
         const files = [mapFile({ blob, def }, 0)];
-        if (navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files }); } catch {} }
+        if (!(navigator.canShare && navigator.canShare({ files }))) return toast("Sharing isn't available here");
+        try { await navigator.share({ files }); } catch { return; } // backed out: stay in the list
+        // Sent: the job's done, back to the main map
+        $("mapsModal").hidden = true;
+        closeDrawer();
+        toast("Map sent", 2400);
       };
       list.appendChild(row);
     }
