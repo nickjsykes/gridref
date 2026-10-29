@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "200"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "201"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1439,13 +1439,12 @@
   $("selCancel").onclick = endSelect;
   $("selGo").onclick = () => {
     fresh();
-    const list = points.filter((p) => picked.has(keyOf(p))), forMap = selecting === "map";
+    const list = points.filter((p) => picked.has(keyOf(p)));
     endSelect();
-    if (forMap) return startMaker(list);
     exportList(list, exportFmt, exportPhotos);
   };
-  // selecting: false, true (picking what to export) or "map" (picking what goes on a map)
-  function drawSelBar() { $("selGo").textContent = selecting === "map" ? `Make map (${picked.size})` : `Export ${picked.size}`; }
+  // selecting: false, or true while picking what to export
+  function drawSelBar() { $("selGo").textContent = `Export ${picked.size}`; }
 
   // Import: our own CSV back in, or any CSV with a name column and a grid ref,
   // E/N or lat/long column (e.g. a list of dormouse boxes)
@@ -1566,9 +1565,10 @@
       let entries;
       try { entries = await Zip.read(f); } catch (err) { return toast(err.message); }
       const csv = entries.find((x) => /\.csv$/i.test(x.name));
-      if (!csv) return toast("No CSV inside that zip");
+      // A map sent with Share to edit has no notebook in it, just the map
+      if (!csv && !entries.some((x) => x.name === "maps/maps.json")) return toast("No CSV inside that zip");
       const photos = new Map(entries.filter((x) => /\.jpe?g$/i.test(x.name)).map((x) => [x.name, x.data]));
-      res = importCSV(new TextDecoder().decode(csv.data), photos, folderName);
+      res = csv ? importCSV(new TextDecoder().decode(csv.data), photos, folderName) : { pendingPhotos: [] };
       for (const ph of res.pendingPhotos) { try { await photoDB.put(ph.id, new Blob([ph.data], { type: "image/jpeg" })); } catch {} }
       // Saved maps from a backup: any not already here come back, pictures and all
       const mj = entries.find((x) => x.name === "maps/maps.json");
@@ -1585,11 +1585,12 @@
     } else res = importCSV(await f.text(), null, folderName);
     // Open the folder it went into, so you see what came in
     if (res.added && res.folder) { folder = res.folder; resF = ""; }
+    else if (res.maps) dTab = "maps";
     openDrawer();
     // "Imported 3 into "Boxes" (2 photos), 1 saved map. 16 already here"
     const nPh = res.pendingPhotos ? res.pendingPhotos.length : 0;
     const said = [res.added ? `Imported ${res.added}` + (res.folder ? ` into "${res.folder}"` : "") + (nPh ? ` (${nPh} photo${nPh > 1 ? "s" : ""})` : "") : "",
-      res.maps ? `${res.maps} saved map${res.maps > 1 ? "s" : ""} back` : ""].filter(Boolean).join(", ");
+      res.maps ? `${res.maps} map${res.maps > 1 ? "s" : ""} added to Maps` : ""].filter(Boolean).join(", ");
     const extra = [res.dupes ? `${res.dupes} already in the notebook, skipped` : "", res.skipped ? `${res.skipped} row${res.skipped > 1 ? "s" : ""} couldn't be read` : ""].filter(Boolean).join(". ");
     toast((said || "Nothing new to import") + (extra ? `. ${extra}` : ""), 4000);
   };
@@ -2872,13 +2873,17 @@
     viewpoint: { name: "Viewpoint", svg: SYM_BG + '<path d="M12 17.5 5 9.5M12 17.5l2.5-11M12 17.5l7-6.5" stroke="#1b1a15" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2" fill="#1b1a15"/>' },
     accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
+  const FINDABLE = new Set(["parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
   const mkDrawLayer = L.layerGroup();
-  function startMaker(list, reopening) {
-    if (!list.length && !reopening) return toast("Pick at least one point");
+  // Starts on the map as it is. Everything in the notebook is there, faint: a tap puts it on
+  // this map (or takes it off). Anything in list starts on, and the frame fits round it
+  function startMaker(list) {
     closeDrawer();
-    maker = { keys: new Set(list.map(keyOf)), off: new Set(), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
+    $("keepBar").hidden = true;
+    const on = new Set(list.map(keyOf)), all = points.map(keyOf);
+    maker = { keys: new Set(all), off: new Set(all.filter((k) => !on.has(k))), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
     $("maker").hidden = false;
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
@@ -2890,7 +2895,10 @@
     mkSet = [];
     mkSendLabel();
     $("mkTitle").value = $("mkNote").value = "";
-    if (!list.length) return drawPins();
+    if (!list.length) {
+      if (all.length) toast("Faint marks are from your notebook: tap one to put it on the map", 3600);
+      return drawPins();
+    }
     // Fit the picked points in the frame
     const b = L.latLngBounds(list.flatMap((p) => (p.pts ? p.pts : [[p.lat, p.lon]])));
     const f = frameRect(), box = map.getContainer().getBoundingClientRect(), m = 40;
@@ -2915,25 +2923,19 @@
   function frameRect() { return $("mkFrame").getBoundingClientRect(); }
   function placeFrame() {
     const [W, H] = MK[maker.orient], aspect = W / (H - MK.head - MK.foot);
+    // (on a wide screen the tools are a column on the left: the frame goes beside them)
+    const bar = $("maker").querySelector(".mkbar").getBoundingClientRect(), side = bar.right < window.innerWidth / 2;
     const top = $("maker").querySelector(".mktop").getBoundingClientRect().bottom + 12;
-    const bottom = $("maker").querySelector(".mkbar").getBoundingClientRect().top - 12;
-    const availW = window.innerWidth - 24, availH = bottom - top;
+    const bottom = side ? window.innerHeight - 12 : bar.top - 12, left = side ? bar.right + 12 : 12;
+    const availW = window.innerWidth - 12 - left, availH = bottom - top;
     let w = availW, h = w / aspect;
     if (h > availH) { h = availH; w = h * aspect; }
-    Object.assign($("mkFrame").style, { left: (window.innerWidth - w) / 2 + "px", top: top + (availH - h) / 2 + "px", width: w + "px", height: h + "px" });
+    Object.assign($("mkFrame").style, { left: left + (availW - w) / 2 + "px", top: top + (availH - h) / 2 + "px", width: w + "px", height: h + "px" });
   }
   window.addEventListener("resize", () => { if (maker) placeFrame(); });
-  $("makeMapBtn").onclick = () => {
-    fresh();
-    if (!points.length) return toast("Nothing saved yet");
-    // Pick in the notebook: nothing ticked, so you choose exactly what goes on the map
-    dTab = "notes";
-    selecting = "map";
-    picked.clear();
-    $("drawer").classList.add("selecting");
-    openDrawer();
-    toast("Tick what goes on the map, then Make map");
-  };
+  // Make a map starts from the map in view: no picking first
+  $("makeMapBtn").onclick = () => { fresh(); startMaker([]); };
+  $("mapBtn").onclick = () => { setAdding(false); fresh(); startMaker([]); };
   $("mkCancel").onclick = () => {
     const unsaved = mkSet.filter((m) => !m.saved).length;
     if (unsaved && !confirm(`Close without saving? ${unsaved} map${unsaved > 1 ? "s" : ""} not saved or sent will be lost.`)) return;
@@ -2971,8 +2973,8 @@
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
     placeFrame(); // the symbol palette makes the bar taller: keep the whole frame in view
-    if (t === "move" && maker.drawn.length + maker.keys.size) toast("Move: a tap hides a point or deletes a drawing", 3200);
-    $("mkHint").textContent = { move: "Move: pan and zoom to fill the frame. A tap hides a point or deletes a drawing; Undo brings it back.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
+    if (t === "move" && maker.drawn.length) toast("Move: a tap puts a mark on or off, or deletes a drawing", 3200);
+    $("mkHint").textContent = { move: "Move: pan and zoom to fill the frame. Tap a notebook mark to put it on or off; tap a drawing to delete it. Undo brings it back.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
   }
   $("mkSyms").innerHTML = Object.entries(SYMBOLS).map(([k, v]) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${v.short || v.name}</span></button>`).join("");
   $("mkSyms").onclick = (e) => {
@@ -3141,7 +3143,7 @@
     return {
       id: maker.editId || "map" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString(), title, note, orient: maker.orient,
       nw: [nw.lat, nw.lng], se: [se.lat, se.lng], layer: current, shade: shadeOn, me: maker.me,
-      keys: [...maker.keys], off: [...maker.off], drawn: maker.drawn.map(({ type, colour, pts, text, sym }) => ({ type, colour, pts: pts.map((q) => [q.lat, q.lng]), text, sym })),
+      keys: [...maker.keys].filter((k) => !maker.off.has(k)), off: [], drawn: maker.drawn.map(({ type, colour, pts, text, sym }) => ({ type, colour, pts: pts.map((q) => [q.lat, q.lng]), text, sym })),
     };
   }
   $("mkSendForm").onsubmit = async (e) => {
@@ -3207,39 +3209,85 @@
     if (d.type === "text") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(d.text)}</span>` }) }).addTo(d.layer);
     if (d.type === "sym") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
   }
-  function editMap(def) {
-    const list = points.filter((p) => def.keys.includes(keyOf(p)));
+  // Opens a saved map to change it; as a copy, it's the start of a new one and the saved map
+  // stays as it was (a reserve's usual map, say, with this week's work area added)
+  function editMap(def, asCopy) {
+    const list = points.filter((p) => (def.keys || []).includes(keyOf(p)) && !(def.off || []).includes(keyOf(p)));
     if (def.layer !== current && LAYERS[def.layer]) setBase(def.layer);
-    startMaker(list, true);
-    maker.editId = def.id;
+    startMaker(list);
+    maker.editId = asCopy ? null : def.id;
     maker.orient = def.orient;
     $("mkOrient").textContent = def.orient === "portrait" ? "Landscape" : "Portrait";
     placeFrame();
-    maker.off = new Set(def.off);
     maker.me = def.me;
     $("mkMe").textContent = def.me ? "Me: on" : "Me: off";
     $("mkMe").classList.toggle("on", !!def.me);
     for (const d of def.drawn) { const x = { ...d, pts: d.pts.map((q) => L.latLng(q[0], q[1])) }; showDrawn(x); maker.drawn.push(x); }
     const f = frameRect(), box = map.getContainer().getBoundingClientRect();
     map.fitBounds([def.nw, def.se], { paddingTopLeft: [f.left - box.left, f.top - box.top], paddingBottomRight: [box.right - f.right, box.bottom - f.bottom], animate: false });
-    $("mkTitle").value = def.title;
-    $("mkNote").value = def.note;
+    $("mkTitle").value = asCopy ? "" : def.title || "";
+    $("mkNote").value = def.note || "";
     drawPins();
+  }
+  // Starting at a reserve: the team's usual map for it if there is one (parking, meeting
+  // point, standing hazards; sent in by the team and kept here), otherwise the reserve framed
+  // with its boundary, ready to draw on
+  const STARTERS = {};
+  function startAtReserve(name) {
+    if (STARTERS[name]) return editMap(STARTERS[name], true);
+    const code = [...TEAM].find(([, n]) => n === name)?.[0], fe = nnr.find((f) => f.properties.REF_CODE === code);
+    if (!fe) return toast("That reserve's boundary hasn't loaded yet");
+    const b = L.geoJSON(fe).getBounds();
+    startMaker([]);
+    const wide = b.getNorthEast().distanceTo(L.latLng(b.getNorth(), b.getWest())) > b.getNorthEast().distanceTo(L.latLng(b.getSouth(), b.getEast()));
+    maker.orient = wide ? "landscape" : "portrait";
+    $("mkOrient").textContent = wide ? "Portrait" : "Landscape";
+    placeFrame();
+    const f = frameRect(), box = map.getContainer().getBoundingClientRect(), m = 16;
+    map.fitBounds(b, { paddingTopLeft: [f.left - box.left + m, f.top - box.top + m], paddingBottomRight: [box.right - f.right + m, box.bottom - f.bottom + m], animate: false });
+  }
+  // One map as a file another phone can Import: what made it, and its picture. Notebook marks
+  // on it travel in the picture only (they're the sender's)
+  async function mapZip(def) {
+    const pic = await photoDB.get("map:" + def.id).catch(() => null);
+    if (!pic) return null;
+    const name = (def.title || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40);
+    return new File([await Zip.make([{ name: "maps/maps.json", data: JSON.stringify([{ ...def, keys: [], off: [] }]) }, { name: `maps/${def.id}.jpg`, data: pic }])], `${name}-map.zip`, { type: "application/zip" });
   }
   function renderMaps() {
     const maps = savedMaps(), list = $("mapList");
-    list.innerHTML = maps.length ? "" : empty("No saved maps yet.<br>Tap <b>Make a map</b> to pick points, frame them, draw on them and send them to anyone.");
+    list.innerHTML = `<div class="mkstart"><small>Start a map at</small><div class="chiprow">${[...TEAM.values()].map((n) => `<button type="button" class="chip" data-r="${esc(n)}">${esc(n)}</button>`).join("")}</div></div>`
+      + (maps.length ? "" : empty("No saved maps yet.<br>Tap a reserve above, or <b>Make a map</b> for what's on screen. Frame it, add symbols and send it to anyone."));
+    list.querySelector(".mkstart").onclick = (e) => { const b = e.target.closest("button[data-r]"); if (b) startAtReserve(b.dataset.r); };
     for (const def of maps) {
       const row = document.createElement("div");
       row.className = "mapitem";
-      row.innerHTML = `<img alt=""><div><b></b><small></small><div class="mapacts"><button type="button" data-a="share">Share</button><button type="button" data-a="edit">Edit</button><button type="button" data-a="del" class="danger">Delete</button></div></div>`;
+      row.innerHTML = `<img alt=""><div><b></b><small></small><div class="mapacts"><button type="button" data-a="share">Share</button><button type="button" data-a="team">Share to edit</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="edit">Edit</button><button type="button" data-a="del" class="danger">Delete</button></div></div>`;
       row.querySelector("b").textContent = def.title || "Map";
       row.querySelector("small").textContent = `${dayLabel(def.at)} · ${def.orient}${def.note ? " · " + def.note : ""}`;
       photoDB.get("map:" + def.id).then((b) => { if (b) row.querySelector("img").src = URL.createObjectURL(b); }).catch(() => {});
+      // Share to edit sends the map itself, for another Field Notes phone to Import and change.
+      // The file is packed as the finger goes down, so it's ready inside the tap (an iPhone
+      // refuses a share sheet that opens too long after it)
+      let teamFile = null;
+      row.querySelector('[data-a="team"]').addEventListener("pointerdown", () => { teamFile = teamFile || mapZip(def); });
       row.onclick = async (e) => {
         const a = e.target.closest("button[data-a]");
         if (!a) return;
         if (a.dataset.a === "edit") return editMap(def);
+        if (a.dataset.a === "copy") return editMap(def, true);
+        if (a.dataset.a === "team") {
+          const file = await (teamFile = teamFile || mapZip(def));
+          if (!file) return toast("The picture's missing. Edit it to make it again");
+          if (!(navigator.canShare && navigator.canShare({ files: [file] }))) {
+            const dl = document.createElement("a");
+            dl.href = URL.createObjectURL(file); dl.download = file.name; dl.click();
+            return;
+          }
+          try { await navigator.share({ files: [file], text: "A Field Notes map: open Field Notes, Notebook, Import, and pick this file" }); } catch { return; }
+          closeDrawer();
+          return toast("Sent. They Import it in Field Notes to change it", 3000);
+        }
         if (a.dataset.a === "del") {
           if (!confirm(`Delete the map "${def.title || "Map"}"?`)) return;
           store.set("maps", savedMaps().filter((m) => m.id !== def.id));
@@ -3391,14 +3439,31 @@
       const at = P(d.pts[0]), w = ctx.measureText(d.text).width + 10;
       taken.push({ x: at.x - w / 2, y: at.y - 20, w, h: 40 });
     }
-    // The key: every symbol used, in a white box in the bottom-left corner of the map
-    const used = [...new Set(syms.map((s) => s.d.sym))];
+    // The key: every symbol used, in a white box in the bottom-left corner of the map. The
+    // places people have to find (parking, meeting point, first aid…) get a line each with
+    // their 8-figure grid ref, for a contractor's satnav or a 999 call; the rest share lines
+    // (only the symbols in the picture: one put down outside the frame isn't on this map)
+    const shown = syms.filter((s) => s.from.x >= area.x && s.from.x <= area.x + area.w && s.from.y >= area.y && s.from.y <= area.y + area.h);
+    const used = [...new Set(shown.map((s) => s.d.sym))];
     let key = null;
     if (used.length) {
-      ctx.font = "600 20px -apple-system, system-ui, sans-serif";
-      const items = used.map((k) => ({ k, w: 36 + ctx.measureText(SYMBOLS[k].name).width + 22 })), rows = [[]], maxW = area.w * 0.62;
+      const items = [], rows = [], maxW = area.w * 0.62;
+      for (const s of shown) if (FINDABLE.has(s.d.sym)) {
+        const g = OSGB.wgs84ToGrid(s.d.pts[0].lat, s.d.pts[0].lng), ref = g && OSGB.gridRef(g.e, g.n, 8);
+        if (ref && !items.some((it) => it.k === s.d.sym && it.ref === ref)) items.push({ k: s.d.sym, ref });
+      }
+      for (const k of used) if (!items.some((it) => it.k === k)) items.push({ k });
+      for (const it of items) {
+        ctx.font = "600 20px -apple-system, system-ui, sans-serif";
+        it.nw = ctx.measureText(SYMBOLS[it.k].name).width;
+        ctx.font = "600 20px ui-monospace, Menlo, monospace";
+        it.w = 36 + it.nw + (it.ref ? 14 + ctx.measureText(it.ref).width : 0) + 22;
+      }
       let rowW = 0;
-      for (const it of items) { if (rowW + it.w > maxW && rows[rows.length - 1].length) { rows.push([]); rowW = 0; } rows[rows.length - 1].push(it); rowW += it.w; }
+      for (const it of items) {
+        const last = rows[rows.length - 1];
+        if (!last || it.ref || last[0].ref || rowW + it.w > maxW) { rows.push([it]); rowW = it.w; } else { last.push(it); rowW += it.w; }
+      }
       const w = Math.max(...rows.map((r) => r.reduce((t, it) => t + it.w, 0))) + 14, h = rows.length * 42 + 12;
       key = { x: area.x + 10, y: area.y + area.h - h - 10, w, h, rows };
       taken.push(key);
@@ -3435,6 +3500,7 @@
           if (img) ctx.drawImage(img, kx, ky + 3, 30, 30);
           ctx.font = "600 20px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "#1b1a15"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
           ctx.fillText(SYMBOLS[it.k].name, kx + 36, ky + 19);
+          if (it.ref) { ctx.font = "600 20px ui-monospace, Menlo, monospace"; ctx.fillStyle = "#1d4f8f"; ctx.fillText(it.ref, kx + 36 + it.nw + 14, ky + 19); }
           kx += it.w;
         }
         ky += 42;

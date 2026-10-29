@@ -647,6 +647,11 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .pin.mkoff, .leaflet-overlay-pane .mkoff { opacity: .28; }
 .mksyms { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-height: 148px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 2px; } /* 27 symbols: two and a half rows show, the rest scroll */
 .mksyms[hidden] { display: none; }
+/* A laptop: the tools sit in a column on the left, so the frame keeps the screen's full height */
+@media (min-width: 900px) {
+  .mkbar { right: auto; width: 360px; }
+  .mksyms { max-height: 320px; }
+}
 .mksyms button { border: 2px solid transparent; border-radius: 10px; padding: 5px 1px 4px; background: var(--green-soft); display: flex; flex-direction: column; align-items: center; gap: 2px; font: 600 10.5px var(--sans); color: var(--ink); }
 .mksyms button.on { border-color: var(--green); background: var(--panel); }
 .mksyms button span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
@@ -660,9 +665,12 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mapitem > div { flex: 1; min-width: 0; }
 .mapitem b { display: block; font: 700 15px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mapitem small { display: block; font: 12.5px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0 6px; }
-.mapacts { display: flex; gap: 6px; }
-.mapacts button { flex: 1; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
+.mapacts { display: flex; flex-wrap: wrap; gap: 6px; }
+.mapacts button { flex: 1 1 30%; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
 .mapacts button.danger { color: var(--danger); }
+/* Start a map at a reserve: the team's reserves as chips above the saved maps, wrapping */
+.mkstart small { display: block; font: 600 12.5px var(--sans); color: var(--muted); }
+.mkstart .chiprow { flex-wrap: wrap; padding: 6px 0 2px; overflow: visible; }
 body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's bar */
 .mkback[hidden] { display: none; }
 .mkback { align-self: flex-start; border: 0; background: none; padding: 2px 0; font: 600 15px var(--sans); color: var(--green); }
