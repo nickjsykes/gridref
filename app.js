@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "198"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "199"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -2451,6 +2451,14 @@
     toast("Move the map onto the exact spot first");
   }, true);
   let subTimer = null;
+  // Touching the map (to drag, pinch or tap) means you're done with the list: it goes at once
+  map.getContainer().addEventListener("pointerdown", () => {
+    const el = $("subChips");
+    if (el.hidden) return;
+    clearTimeout(subTimer);
+    el.classList.remove("show");
+    subTimer = setTimeout(() => (el.hidden = true), 250);
+  });
   function showPlaces(code) {
     const el = $("subChips"), list = PLACES[code] || [];
     clearTimeout(subTimer);
