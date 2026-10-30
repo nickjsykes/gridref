@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "208"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "209"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -3095,8 +3095,8 @@
     viewpoint: { name: "Viewpoint", svg: SYM_BG + '<path d="M12 17.5 5 9.5M12 17.5l2.5-11M12 17.5l7-6.5" stroke="#1b1a15" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2" fill="#1b1a15"/>' },
     accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
-  // Trucks: where a delivery or a contractor's vehicle goes
-  SYMBOLS.truck = { name: "Truck", svg: SYM_BG + '<path d="M3.5 7.5h10v8.5h-10Z" fill="#6b6b66"/><path d="M13.5 10h3.6l2.9 3v3h-6.5Z" fill="#6b6b66"/><path d="M15 11.2h1.7l1.5 1.6H15Z" fill="#fff"/><rect x="6.2" y="9.6" width="4.6" height="4.2" rx=".6" fill="#2f9e44"/><circle cx="7" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/><circle cx="16.5" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/>' };
+  // Truck: a pickup, where a contractor's or the team's vehicle goes
+  SYMBOLS.truck = { name: "Truck", svg: SYM_BG + '<path d="M2.8 11.6h8.4v4.6H2.8Z" fill="#6b6b66"/><path d="M2.8 11.6h8.4" stroke="#4a4a46" stroke-width="1"/><path d="M11 16.2V8.4h4.6l2.6 3.4h2.4c.5 0 .9.4.9.9v3.5Z" fill="#6b6b66"/><path d="M12.6 9.6h2.5l1.8 2.3h-4.3Z" fill="#fff"/><rect x="12.4" y="12.6" width="2.6" height="2.4" rx=".4" fill="#2f9e44"/><circle cx="6.4" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/><circle cx="17.4" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/>' };
   // The ones offered when making a map (the others stay, so older maps still draw)
   const PALETTE = ["spot", "barn", "parking", "toilets", "assembly", "firstaid", "defib", "hazard", "keepout", "gate", "tools", "workarea", "fire", "truck"];
   const FINDABLE = new Set(["spot", "truck", "parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
