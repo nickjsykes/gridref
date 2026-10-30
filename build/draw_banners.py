@@ -4,14 +4,18 @@ The Environment Agency's 1 m LiDAR (cached by build_relief.py in build/src/lidar
 to a 4 m grid, smoothed, and contoured at an interval that suits the reserve: tight on a flat
 moss (where a 25 cm step shows the dome of a raised bog), wider on a limestone ridge. Every
 fifth line is a little stronger, as on an OS map, and the reserve's boundary is drawn over the
-top. Lines only, in black: the app uses the file as a mask and colours it in CSS.
+top. Lines only, in white, for the spruce banner (the app inverts them in dark mode).
 
-Output: art/banner/<REF_CODE>.svg
+"All reserves" gets an overview of the patch: the coast and the big lakes (OpenStreetMap, via
+Overpass) with the seven reserves drawn where they lie.
+
+Output: art/banner/<REF_CODE>.svg and art/banner/all.svg
 Run with the Terra venv (rasterio, scipy, pyproj, matplotlib), after build_relief.py:
   C:/Dev/Terra/.venv/Scripts/python.exe build/draw_banners.py
 Contains Environment Agency data © Environment Agency (OGL v3). Boundaries © Natural England.
+Coast and lakes © OpenStreetMap contributors (ODbL).
 """
-import json
+import json, time, urllib.parse, urllib.request
 from pathlib import Path
 
 import matplotlib
@@ -108,7 +112,7 @@ def draw(code):
     svg = (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {H:.0f}" preserveAspectRatio="xMidYMid slice">'
         f"<!-- {name}: contours every {step:g} m from Environment Agency LiDAR (OGL v3); boundary © Natural England -->"
-        f'<g fill="none" stroke="#000" stroke-linejoin="round" stroke-linecap="round">'
+        f'<g fill="none" stroke="#fff" stroke-linejoin="round" stroke-linecap="round">'
         f'<path stroke-width="2.4" stroke-opacity=".6" d="{"".join(paths["minor"])}"/>'
         f'<path stroke-width="3.6" stroke-opacity=".85" d="{"".join(paths["index"])}"/>'
         f'<path stroke-width="7" d="{"".join(bound)}"/>'
@@ -120,6 +124,71 @@ def draw(code):
     print(f"{name}: {step:g} m contours, {len(paths['minor']) + len(paths['index'])} lines, {out.stat().st_size // 1024} KB")
 
 
+# The overview: South Cumbria from Hallsenna to Gait Barrows
+AREA = (-3.47, 54.09, -2.74, 54.42)   # west, south, east, north (WGS84)
+OVERPASS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter", "https://maps.mail.ru/osm/tools/overpass/api/interpreter"]
+
+
+def osm_lines():
+    w, s_, e, n = AREA
+    q = (f'[out:json][timeout:120];(way["natural"="coastline"]({s_},{w},{n},{e});'
+         f'way["natural"="water"]["name"~"Windermere|Coniston Water|Esthwaite Water"]({s_},{w},{n},{e});'
+         f'relation["natural"="water"]["name"~"Windermere|Coniston Water|Esthwaite Water"]({s_},{w},{n},{e}););out geom;')
+    els = None
+    for url in OVERPASS * 2:             # busy servers say 502/504: try the next, then again
+        try:
+            req = urllib.request.Request(url, data=urllib.parse.urlencode({"data": q}).encode(), headers={"User-Agent": "FieldNotes-banner/1"})
+            with urllib.request.urlopen(req, timeout=180) as r:
+                els = json.load(r)["elements"]
+            break
+        except Exception as err:
+            print(f"  {url}: {err}")
+            time.sleep(10)
+    if els is None:
+        raise SystemExit("Overpass is busy: try again later")
+    out = []
+    for el in els:
+        if el["type"] == "way":
+            out.append([(p["lon"], p["lat"]) for p in el["geometry"]])
+        else:
+            out += [[(p["lon"], p["lat"]) for p in m["geometry"]] for m in el.get("members", []) if m.get("geometry")]
+    return out
+
+
+def draw_overview():
+    to_bng = Transformer.from_crs(4326, 27700, always_xy=True)
+    w, s_, e, n = AREA
+    (e0, n0), (e1, n1) = to_bng.transform(w, s_), to_bng.transform(e, n)
+    k = WIDTH / (e1 - e0)
+    H = (n1 - n0) * k
+    xy = lambda lon, lat: (lambda E, N: ((E - e0) * k, (n1 - N) * k))(*to_bng.transform(lon, lat))
+    def path(pts, closed=False):
+        line = LineString([xy(*p) for p in pts]).simplify(1.2)
+        return "M" + "L".join(f"{x:.0f},{y:.0f}" for x, y in line.coords) + ("Z" if closed else "")
+    land = "".join(path(l) for l in osm_lines() if len(l) > 1)
+    res = "".join(path(r, True) for code in TEAM for r in reserve_rings_wgs(code))
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {H:.0f}" preserveAspectRatio="xMidYMid slice">'
+        f"<!-- South Cumbria: coast and lakes © OpenStreetMap contributors (ODbL); reserves © Natural England -->"
+        f'<g fill="none" stroke="#fff" stroke-linejoin="round" stroke-linecap="round">'
+        f'<path stroke-width="5" stroke-opacity=".8" d="{land}"/>'
+        f'<path stroke-width="5" fill="#fff" fill-opacity=".45" d="{res}"/>'
+        "</g></svg>"
+    )
+    out = OUT / "all.svg"
+    out.write_text(svg, "utf-8", newline="\n")
+    print(f"Overview: {out.stat().st_size // 1024} KB")
+
+
+def reserve_rings_wgs(code):
+    gj = json.loads((ROOT / "data" / "nnr.geojson").read_text("utf-8"))
+    f = next(f for f in gj["features"] if f["properties"].get("REF_CODE") == code)
+    g = f["geometry"]
+    polys = [g["coordinates"]] if g["type"] == "Polygon" else g["coordinates"]
+    return [ring for poly in polys for ring in poly]
+
+
 if __name__ == "__main__":
     for code in TEAM:
         draw(code)
+    draw_overview()

@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "205"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "206"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -593,7 +593,7 @@
     // Links kept short (5 decimal places is about a metre) and named, so they don't swamp the message
     ["apple", "Apple Maps", (x) => `Apple Maps: https://maps.apple.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
     ["google", "Google Maps", (x) => `Google Maps: https://maps.google.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
-    ["pic", "Current map", () => ""],
+    ["pic", "Make a map", () => ""],
     ["photos", "Photos", () => ""],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
@@ -608,25 +608,56 @@
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
     return [part(["ref", "ll", "en"]), part(["name", "notes"]), part(["apple", "google"])].filter(Boolean).join("\n\n");
   }
+  // Two rows of ticks: where it is (grid ref, lat/long, E/N and the two map links, as logos so
+  // they fit on one line), then what goes with it (a map, photos, name, notes)
+  const LOGOS = {
+    apple: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8C7 7.4 5.6 8.3 4.8 9.7c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.7-2.2c.9-1.3 1.2-2.5 1.2-2.6 0 0-2.4-.9-2.3-3.7ZM14.1 5.8c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3Z"/></svg>',
+    google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1a73e8" d="M12 2a7 7 0 0 0-7 7c0 1.3.4 2.5 1 3.6L12 9Z"/><path fill="#ea4335" d="M12 2v7l5.9-3.3A7 7 0 0 0 12 2Z"/><path fill="#fbbc04" d="M17.9 5.7 12 9l-6 3.6c1.5 2.6 3.7 5 6 9.4 2.4-4.6 4.6-7 6-9.6.6-1 1-2.2 1-3.4 0-1.2-.4-2.3-1.1-3.3Z"/><path fill="#34a853" d="M12 9 6 12.6C7.5 15.2 9.7 17.6 12 22c1.1-2.2 2.2-3.9 3.2-5.3Z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>',
+  };
+  const ROW1 = ["ref", "ll", "en", "apple", "google"];
   function drawShare() {
     $("shOpts").innerHTML = "";
+    $("shOpts2").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
       if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes) || (k === "pic" && !shareItem.canPic) || (k === "photos" && !(shareItem.photos || []).length)) continue;
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = label;
-      b.className = shareOn.has(k) ? "on" : "";
+      if (LOGOS[k]) { b.innerHTML = LOGOS[k]; b.setAttribute("aria-label", label); b.className = "logo"; } else b.textContent = label;
+      b.classList.toggle("on", shareOn.has(k));
       b.onclick = () => {
         shareOn.has(k) ? shareOn.delete(k) : shareOn.add(k);
         store.set("shareOpts", [...shareOn]);
         b.classList.toggle("on", shareOn.has(k));
         $("shPrev").textContent = shareTextFor(shareItem);
         if (k === "pic") { if (shareOn.has("pic")) makePic(); else $("shPicBox").hidden = true; }
+        if (k === "photos") drawSharePhotos();
       };
-      $("shOpts").appendChild(b);
+      $(ROW1.includes(k) ? "shOpts" : "shOpts2").appendChild(b);
     }
     $("shPrev").textContent = shareTextFor(shareItem);
+    $("shAddMap").hidden = !shareItem.canPic;
+    drawSharePhotos();
   }
+  // Its photos, small, under the maps (tap × to leave one out of this share)
+  function drawSharePhotos() {
+    const box = $("shPhotos"), phs = shareOn.has("photos") ? shareItem.photos || [] : [];
+    box.innerHTML = phs.map((ph, i) => `<span class="shp"><img alt="Photo"><button type="button" class="x" data-px="${i}" aria-label="Leave this photo out">×</button></span>`).join("");
+    phs.forEach((ph, i) => photoDB.get(ph.id).then((b) => { if (b) box.querySelectorAll("img")[i].src = URL.createObjectURL(b); }).catch(() => {}));
+    box.hidden = !phs.length;
+  }
+  $("shPhotos").onclick = (e) => {
+    const x = e.target.closest("[data-px]");
+    if (!x) return;
+    shareItem.photos.splice(+x.dataset.px, 1);
+    sharePhotos = shareItem.photos.length ? photoFiles(shareItem.label, shareItem.photos) : null;
+    drawShare();
+  };
+  // + Add photo: the camera or the phone's photos, stamped as usual, then back to this card
+  $("shAddPhoto").onclick = () => {
+    photoFor = "share";
+    $("shareModal").hidden = true;
+    $("photoPick").click();
+  };
   // ---------- a picture of the map for sharing ----------
   // The map under the crosshair as a square picture: map tiles (and LiDAR if it's on), the
   // reserve edge, a pin, and a footer with the grid ref, lat/long, reserve and date. Nothing
@@ -755,9 +786,9 @@
       cancel: () => { if (!list[i]) list.splice(i, 1); $("shareModal").hidden = false; },
     };
   }
-  $("shEdit").onclick = () => openMakerFor(shareItem, 0);
   $("shAddMap").onclick = async () => {
     const it = shareItem;
+    if (!shareOn.has("pic")) { shareOn.add("pic"); drawShare(); makePic(); }
     // the plain picture stays as the first map: keep the one already made
     if (!it.maps) it.maps = [{ file: ((await sharePic) || [])[0] || null, def: null }];
     openMakerFor(it, it.maps.length);
@@ -781,8 +812,13 @@
       $("shPicBox").hidden = !fs.length;
     });
   }
-  $("shCancel").onclick = () => { $("shareModal").hidden = true; };
-  $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) $("shareModal").hidden = true; };
+  // Cancel: photos taken for this share go too (nothing was shared or saved)
+  function closeShare() {
+    $("shareModal").hidden = true;
+    for (const id of (shareItem && shareItem.added) || []) photoDB.del(id).catch(() => {});
+  }
+  $("shCancel").onclick = closeShare;
+  $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) closeShare(); };
   $("shGo").onclick = async () => {
     const text = shareTextFor(shareItem);
     const pics = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : [];
@@ -790,9 +826,32 @@
     const files = [...pics, ...phs].filter(Boolean);
     if (!text && !files.length) return toast("Tick at least one thing to share");
     $("shareModal").hidden = true;
-    if (files.length && navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, text }); } catch {} return; }
-    if (navigator.share) { try { await navigator.share({ text }); } catch {} } else copy(text);
+    try {
+      if (files.length && navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, text });
+      else if (navigator.share) await navigator.share({ text });
+      else await copy(text);
+    } catch { $("shareModal").hidden = false; return; } // backed out of the share sheet: the card's still here
+    keepShared(shareItem);
   };
+  // Shared: the place is kept. From the crosshair it becomes a point in the notebook (with the
+  // photos taken for it); a saved thing gets any new photos. Maps made for it go into Maps
+  function keepShared(it) {
+    fresh();
+    const added = new Set(it.added || []), newPhotos = (it.photos || []).filter((ph) => added.has(ph.id));
+    let said;
+    if (it.pt) {
+      const p = points.find((q) => keyOf(q) === keyOf(it.pt));
+      if (p && newPhotos.length) { p.photos = [...photosOf(p), ...newPhotos]; savePoints(); said = `Shared. ${newPhotos.length > 1 ? "Photos" : "Photo"} added to ${p.name}`; }
+    } else {
+      const name = autoName("point", it.lat, it.lon);
+      points.unshift({ name, notes: "", colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle"), kind: "point",
+        lat: it.lat, lon: it.lon, e: Math.round(it.e), n: Math.round(it.n), acc: null, photos: newPhotos, at: new Date().toISOString() });
+      persist();
+      if (savePoints()) said = `Shared, and saved in your notebook as ${name}`;
+    }
+    for (const m of it.maps || []) if (m.def && m.file) saveMap(m.def, m.file).catch(() => {});
+    if (said) toast(said, 3000);
+  }
   $("shareBtn").onclick = () => {
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
     openShare({ ref: last.ref, lat: last.lat, lon: last.lon, e: last.e, n: last.n });
@@ -1199,12 +1258,11 @@
   // Tap a reserve to see only its entries; tap it again to see everything
   // Which reserve: a small pill under the banner's title ("All reserves ▾"); a tap opens the
   // list. Notes offer the reserves they have entries in; Maps offer every team reserve
-  // The banner behind the title: the reserve's own ground as contour lines (art/banner, drawn
-  // by build/draw_banners.py from its LiDAR), or the general texture for all of them
+  // The banner's drawing: the reserve's own ground as contour lines (art/banner, drawn by
+  // build/draw_banners.py from its LiDAR), or the whole patch when it's all of them
   function drawBanner(name) {
-    const code = name && [...TEAM].find(([, n]) => n === name)?.[0], head = $("drawer").querySelector("header");
-    head.classList.toggle("art", !!code);
-    if (code) head.style.setProperty("--art", `url(art/banner/${code}.svg)`);
+    const code = name && [...TEAM].find(([, n]) => n === name)?.[0], src = `art/banner/${code || "all"}.svg`;
+    if (!$("bannerArt").src.endsWith(src)) $("bannerArt").src = src;
   }
   function drawResPick(opts) {
     const sub = $("dSub"), cur = dTab === "maps" ? mapResF : resF;
@@ -1404,7 +1462,7 @@
   function shareSaved(pt) {
     const c = centreOf(pt), ref = OSGB.gridRef(c.e, c.n, digits);
     const what = pt.kind === "area" ? ` (centre of ${fmtArea(shapeStats(pt).area)})` : pt.kind === "line" ? ` (start of ${fmtDist(shapeStats(pt).length)} line)` : "";
-    openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n, photos: photosOf(pt) });
+    openShare({ head: `${pt.name}${what}`, label: pt.name, notes: pt.notes || "", ref, lat: c.lat, lon: c.lon, e: c.e, n: c.n, photos: photosOf(pt), pt });
   }
   // A saved thing's photos as files, named after it ("Broken_stile_2.jpg")
   async function photoFiles(name, photos) {
@@ -2587,7 +2645,7 @@
     "1006058": [ // Gait Barrows
       { name: "Barn", ref: "SD 4831 7746", zoom: 17.5 },
       { name: "Car park", ref: "SD 4789 7754", zoom: 17.5 },
-      { name: "Moss Lane", ref: "SD 4776 7639", zoom: 17.5 },
+      { name: "Moss Lane", ref: "SD 4785 7624", zoom: 16.2 }, // a long lane: wider than the usual 17.5
     ],
     "1006126": [ // Roudsea
       { name: "Barn", ref: "SD 3306 8272", zoom: 17.5 },
@@ -3956,14 +4014,14 @@
     e.target.value = "";
     const mode = photoFor;
     photoFor = null;
-    if (!file || !mode || (mode === "draft" && !draft)) return;
+    if (!file || !mode || (mode === "draft" && !draft)) { if (mode === "share") $("shareModal").hidden = false; return; }
     toast("Stamping the photo…");
     const ex = fromPhone ? await EXIF.read(file) : {};
-    const thing = mode === "draft" ? centreOf(saving) : { lat: last.lat, lon: last.lon };
+    const thing = mode === "draft" ? centreOf(saving) : mode === "share" ? { lat: shareItem.lat, lon: shareItem.lon } : { lat: last.lat, lon: last.lon };
     const where = ex.lat != null ? { lat: ex.lat, lon: ex.lon, src: "Photo's location" }
       : here && !fromPhone ? { lat: here.lat, lon: here.lon, src: `GPS ±${Math.round(here.acc)} m` }
       : { lat: thing.lat, lon: thing.lon, src: "" };
-    if (fromPhone && ex.lat == null) toast("No location in that photo: stamped with this " + ({ line: "line", area: "area" }[saving.kind] || "point") + "'s");
+    if (fromPhone && ex.lat == null) toast("No location in that photo: stamped with this " + ({ line: "line", area: "area" }[saving && saving.kind] || "point") + "'s");
     const g = OSGB.wgs84ToGrid(where.lat, where.lon);
     const ref = OSGB.gridRef(g.e, g.n, digits) || `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`;
     const when = ex.when || (fromPhone && file.lastModified ? new Date(file.lastModified) : new Date());
@@ -4078,6 +4136,16 @@
     try { await photoDB.put(id, photoFile); } catch { return toast("Couldn't save the photo on this phone"); }
     const rec = { id, lat: +ph.lat.toFixed(6), lon: +ph.lon.toFixed(6), acc: ph.acc };
     closePhoto();
+    if (ph.mode === "share") {
+      const it = shareItem;
+      it.photos = [...(it.photos || []), rec];
+      (it.added = it.added || []).push(id);
+      sharePhotos = photoFiles(it.label || it.ref, it.photos);
+      shareOn.add("photos");
+      drawShare();
+      $("shareModal").hidden = false;
+      return;
+    }
     if (ph.mode === "draft") {
       if (!draft) { photoDB.del(id).catch(() => {}); return; }
       draft.photos.push(rec);
@@ -4145,7 +4213,7 @@
     }
   };
   function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; viewing = null; }
-  $("photoClose").onclick = closePhoto;
+  $("photoClose").onclick = () => { const m = photoNew && photoNew.mode; closePhoto(); if (m === "share") $("shareModal").hidden = false; };
 
   // ---------- move and reshape saved things ----------
   // Move: the thing follows the crosshair (a dashed preview) until "Place here". Using the

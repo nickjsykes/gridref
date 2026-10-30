@@ -1,11 +1,11 @@
 // Keeps Grid Ref working with no signal:
 //  - the app itself and the offline place/postcode data (network first, so updates land)
 //  - map tiles you've looked at (cache first, refreshed in the background after a week)
-const CACHE = "gridref-v205";
+const CACHE = "gridref-v206";
 const TILES = "gridref-tiles";
 const MAPS = "gridref-maps"; // the offline OS map pack and boundary data: kept across updates
 const MAX_TILES = 5000; // roughly 100-150 MB of topo tiles
-const SHELL = ["./", "index.html", "app.js", "app.css", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html", "install.html", "qr.png", "osprey.svg", "art/contours.svg", "art/banner/1006114.svg", "art/banner/1006954.svg", "art/banner/1006126.svg", "art/banner/1006058.svg", "art/banner/1006067.svg", "art/banner/1006018.svg", "art/banner/1006111.svg",
+const SHELL = ["./", "index.html", "app.js", "app.css", "osgb.js", "parse.js", "local.js", "config.js", "manifest.webmanifest", "icon-180.png", "w3w.html", "install.html", "qr.png", "osprey.svg", "art/contours.svg", "art/banner/all.svg", "art/banner/1006114.svg", "art/banner/1006954.svg", "art/banner/1006126.svg", "art/banner/1006058.svg", "art/banner/1006067.svg", "art/banner/1006018.svg", "art/banner/1006111.svg",
   "zip.js", "exif.js", "vendor/leaflet/leaflet.css", "vendor/leaflet/leaflet.js"];
 // The big data files (about 2 MB) with a fingerprint of their contents, written by
 // build/release.py. They're kept with the map pack, across updates, and fetched again only

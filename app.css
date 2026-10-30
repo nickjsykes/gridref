@@ -743,7 +743,7 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 .drawer header { position: relative; overflow: hidden; align-items: flex-start; min-height: 118px; padding: 12px 16px 30px; background: var(--green); border-bottom: 0; }
 .drawer header::before { content: ""; position: absolute; inset: 0; background: var(--panel); opacity: .13; pointer-events: none;
   -webkit-mask: url(art/contours.svg) center / 420px auto repeat; mask: url(art/contours.svg) center / 420px auto repeat; }
-.drawer header > * { position: relative; z-index: 1; } /* above the banner art */
+.drawer header > :not(.bannerart) { position: relative; z-index: 1; } /* above the banner art */
 .drawer header button, .drawer header .back { color: var(--panel); }
 .drawer h2.dtitle { align-self: flex-end; color: var(--panel); font-size: clamp(28px, 9vw, 34px); line-height: 1.05; white-space: normal; }
 .dtitle small { display: block; margin-top: 5px; color: var(--panel); opacity: .82; font: 500 14px var(--sans); }
@@ -770,14 +770,13 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .msedit { align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 8px 14px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
 .msedit[hidden] { display: none; }
 .msedit svg { width: 16px; height: 16px; }
-/* On a reserve: its own ground and boundary, the whole reserve fitted to the banner's height on
-   the right (clear of the title), over a fainter wash of the general texture */
-.drawer header.art::before { opacity: .07; }
-.drawer header.art::after { content: ""; position: absolute; top: 4px; bottom: 4px; right: 6px; width: 70%; background: var(--panel); opacity: .45; pointer-events: none;
-  /* the drawing, faded in from the left so the edge of the LiDAR doesn't show as a box */
-  -webkit-mask: var(--art) right center / contain no-repeat, linear-gradient(to right, transparent 25%, #000 60%);
-  -webkit-mask-composite: source-in;
-  mask: var(--art) right center / contain no-repeat, linear-gradient(to right, transparent 25%, #000 60%); mask-composite: intersect; }
+/* The banner's drawing (art/banner): the reserve's own ground and boundary, or the whole patch
+   for all of them. A plain picture, white lines (dark in dark mode), on the right clear of the
+   title and faded in from the left so the drawing's edge doesn't show as a box */
+.drawer header .bannerart { position: absolute; z-index: 0; top: 2px; right: 4px; width: 74%; height: calc(100% + 14px); /* (runs on under the tabs) */ object-fit: contain; object-position: right center; opacity: .42; pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right, transparent 20%, #000 55%); mask-image: linear-gradient(to right, transparent 20%, #000 55%); }
+@media (prefers-color-scheme: dark) { .drawer header .bannerart { filter: invert(1); } }
+.drawer header::before { opacity: .06; } /* the general texture, now just a wash under the drawing */
 /* Share's maps: one big picture, or a row of them once there's more than one (tap to edit, × to drop) */
 .shpics { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
 .shpics .shp { position: relative; flex: 1 0 100%; }
@@ -786,3 +785,15 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .shpics .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font: 600 18px/1 var(--sans); }
 .shpicacts { display: flex; gap: 8px; margin-top: 8px; }
 .shpicacts b { font-weight: 700; font-size: 17px; }
+/* Share: the first row fits grid ref, lat/long, E/N and the two map links (logos) on one line */
+.shchips.row1 { grid-template-columns: 1.2fr 1.15fr .8fr 42px 42px; }
+.sheetmenu .shchips.row1 button { font-size: 12.5px; padding: 8px 2px; }
+.sheetmenu .shchips button.logo { display: grid; place-items: center; padding: 6px 0; }
+.shchips button.logo svg { width: 20px; height: 20px; }
+.sheetmenu .shchips button.logo:not(.on) svg { opacity: .45; filter: grayscale(1); }
+.shchips:empty { display: none; }
+.shphotos[hidden] { display: none; }
+.shphotos .shp { flex: 0 0 26%; }
+.shphotos img { height: 72px; object-fit: cover; }
+.shpics img[data-i] { cursor: pointer; }
+.shpics .shp:has(img[data-i])::after { content: "✎ edit"; position: absolute; left: 6px; bottom: 6px; padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,.92); color: var(--green); font: 600 12px var(--sans); pointer-events: none; }
