@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "206"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "207"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -773,7 +773,7 @@
       const d = { type: "sym", sym: "spot", pts: [L.latLng(it.lat, it.lon)] };
       showDrawn(d);
       maker.drawn.push(d);
-      $("mkTitle").value = it.label || it.ref;
+      $("mkTitle").value = it.label || ""; // (blank: Make fills in the reserve and the day, not a grid ref that could be mistaken for one on the map)
     }
     maker.handoff = {
       made: (blob, def) => {
@@ -3073,7 +3073,7 @@
     dropoff: { name: "Drop-off", svg: SYM_BG + '<rect x="3.5" y="7" width="17" height="9" rx="2" fill="#1b1a15"/><path d="M5.5 8.6h4v3h-4ZM10.5 8.6h4v3h-4ZM15.5 8.6h3.2v3h-3.2Z" fill="#fff"/><circle cx="7.5" cy="17" r="1.9" fill="#1b1a15"/><circle cx="16.5" cy="17" r="1.9" fill="#1b1a15"/>' },
     meet: { name: "Meeting point", short: "Meet", svg: SYM_BG + '<path d="M7.5 19.5v-15" stroke="#1b1a15" stroke-width="2" stroke-linecap="round"/><path d="M8.5 4.5h10l-3 4 3 4h-10Z" fill="#2f9e44"/>' },
     assembly: { name: "Assembly point", short: "Assembly", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 4.5v3M12 16.5v3M4.5 12h3M16.5 12h3" stroke="#fff" stroke-width="1.8"/><path d="M12 9.2 10.2 7h3.6ZM12 14.8l-1.8 2.2h3.6ZM9.2 12 7 10.2v3.6ZM14.8 12l2.2-1.8v3.6Z" fill="#fff"/><circle cx="12" cy="12" r="1.6" fill="#fff"/>' },
-    toilets: { name: "Toilets", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#fff">WC</text>' },
+    toilets: { name: "Toilets", short: "WC", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><text x="12" y="16" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-weight="700" font-size="10" fill="#fff">WC</text>' },
     welfare: { name: "Welfare / tea", short: "Welfare", svg: SYM_BG + '<path d="M6 9.5h10v4.5a4 4 0 0 1-4 4h-2a4 4 0 0 1-4-4Z" fill="#7a4f2a"/><path d="M16 11h1.4a1.9 1.9 0 0 1 0 3.8H16" fill="none" stroke="#7a4f2a" stroke-width="1.6"/><path d="M9 4.5c-1 1.2 1 1.8 0 3M12.5 4.5c-1 1.2 1 1.8 0 3" stroke="#7a4f2a" stroke-width="1.2" fill="none" stroke-linecap="round"/>' },
     lunch: { name: "Lunch spot", short: "Lunch", svg: SYM_BG + '<path d="M5 9h14M7.5 9 5.5 18.5M16.5 9l2 9.5M4.5 14h15" stroke="#7a4f2a" stroke-width="2" stroke-linecap="round"/>' },
     firstaid: { name: "First aid", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#2f9e44"/><path d="M12 6v12M6 12h12" stroke="#fff" stroke-width="3.4"/>' },
@@ -3097,6 +3097,10 @@
     viewpoint: { name: "Viewpoint", svg: SYM_BG + '<path d="M12 17.5 5 9.5M12 17.5l2.5-11M12 17.5l7-6.5" stroke="#1b1a15" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2" fill="#1b1a15"/>' },
     accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
+  // Trucks: where a delivery or a contractor's vehicle goes
+  SYMBOLS.truck = { name: "Truck", svg: SYM_BG + '<path d="M3.5 7.5h10v8.5h-10Z" fill="#1b1a15"/><path d="M13.5 10h3.6l2.9 3v3h-6.5Z" fill="#1b1a15"/><path d="M15 11.2h1.7l1.5 1.6H15Z" fill="#fff"/><circle cx="7" cy="17" r="2" fill="#1b1a15" stroke="#fff" stroke-width="1.2"/><circle cx="16.5" cy="17" r="2" fill="#1b1a15" stroke="#fff" stroke-width="1.2"/>' };
+  // The ones offered when making a map (the others stay, so older maps still draw)
+  const PALETTE = ["spot", "barn", "parking", "toilets", "assembly", "firstaid", "defib", "hazard", "keepout", "gate", "tools", "workarea", "fire", "truck"];
   const FINDABLE = new Set(["spot", "parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { W: 1200, H: 1600, head: 128, foot: 96 }; // always upright: it reads on a phone and prints on A4
@@ -3193,11 +3197,12 @@
     for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === t);
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
-    placeFrame(); // the symbol palette makes the bar taller: keep the whole frame in view
+    $("mkHint").hidden = t === "sym";
+    if (t !== "text") endLabel();
     if (t === "move" && maker.drawn.length) toast("Move: a tap puts a mark on or off, or deletes a drawing", 3200);
-    $("mkHint").textContent = { move: "Move: pan and zoom to fill the frame. Tap a notebook mark to put it on or off; tap a drawing to delete it. Undo brings it back.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
+    $("mkHint").textContent = { move: "Pan and zoom to fill the frame. Drag a symbol or label to move it. Tap a notebook mark to put it on or off; tap a drawing to delete it.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes, then type. Drag it to move it after.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
   }
-  $("mkSyms").innerHTML = Object.entries(SYMBOLS).map(([k, v]) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${v.short || v.name}</span></button>`).join("");
+  $("mkSyms").innerHTML = PALETTE.map((k) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${SYMBOLS[k].short || SYMBOLS[k].name}</span></button>`).join("");
   $("mkSyms").onclick = (e) => {
     const b = e.target.closest("button[data-s]");
     if (!b) return;
@@ -3212,6 +3217,7 @@
     if (!h) return toast("Nothing to undo");
     if (h.op === "pt") { maker.off.has(h.k) ? maker.off.delete(h.k) : maker.off.add(h.k); return drawPins(); }
     if (h.op === "add") { mkDrawLayer.removeLayer(h.d.layer); maker.drawn = maker.drawn.filter((x) => x !== h.d); return; }
+    if (h.op === "mv") { h.d.pts = [h.from]; h.d.marker.setLatLng(h.from); return; }
     mkDrawLayer.addLayer(h.d.layer);
     maker.drawn.splice(Math.min(h.at, maker.drawn.length), 0, h.d);
     if (h.d.type === "arrow") drawArrow(h.d);
@@ -3224,9 +3230,8 @@
     for (const d of maker.drawn) {
       const pts = d.pts.map((q) => map.latLngToContainerPoint(q));
       let dist = Infinity;
-      if (d.type === "sym") dist = pts[0].distanceTo(p) - 12;
-      else if (d.type === "text") dist = Math.abs(p.x - pts[0].x) < d.text.length * 5 + 8 && Math.abs(p.y - pts[0].y) < 16 ? 0 : Infinity;
-      else for (let i = 1; i < pts.length; i++) dist = Math.min(dist, L.LineUtil.pointToSegmentDistance(p, pts[i - 1], pts[i]));
+      if (d.type === "sym" || d.type === "text") continue;
+      for (let i = 1; i < pts.length; i++) dist = Math.min(dist, L.LineUtil.pointToSegmentDistance(p, pts[i - 1], pts[i]));
       if (dist < bestD) { bestD = dist; best = d; }
     }
     if (!best) return false;
@@ -3259,12 +3264,12 @@
     if (!maker || maker.tool === "move") return;
     e.preventDefault();
     if (maker.tool === "sym") {
-      const d = { type: "sym", sym: maker.sym, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
-      L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
+      const d = { type: "sym", sym: maker.sym, pts: [llAt(e)] };
+      showDrawn(d);
       addDrawn(d);
       return;
     }
-    if (maker.tool === "text") { mkTextAt = llAt(e); $("mkTextIn").value = ""; $("mkTextModal").hidden = false; setTimeout(() => $("mkTextIn").focus(), 50); return; }
+    if (maker.tool === "text") return startLabel(llAt(e));
     $("mkDraw").setPointerCapture(e.pointerId);
     stroke = { type: maker.tool, colour: maker.colour, pts: [llAt(e)], layer: L.layerGroup().addTo(mkDrawLayer) };
     if (stroke.type === "arrow") stroke.pts.push(stroke.pts[0]);
@@ -3289,18 +3294,62 @@
   };
   $("mkDraw").addEventListener("pointerup", endStroke);
   $("mkDraw").addEventListener("pointercancel", endStroke);
-  let mkTextAt = null;
-  $("mkTextCancel").onclick = () => { $("mkTextModal").hidden = true; };
-  $("mkTextForm").onsubmit = (e) => {
-    e.preventDefault();
-    const text = $("mkTextIn").value.trim();
-    $("mkTextModal").hidden = true;
-    $("mkTextIn").blur();
-    if (!text || !mkTextAt) return;
-    const d = { type: "text", colour: maker.colour, pts: [mkTextAt], text, layer: L.layerGroup().addTo(mkDrawLayer) };
-    L.marker(mkTextAt, { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(text)}</span>` }) }).addTo(d.layer);
-    addDrawn(d);
+  // Labels: tap where it goes and type; it appears on the map as you type, in black with a
+  // white edge, broken into lines (Return for a new line; long lines wrap at about 22
+  // letters). Done leaves it there, and Move is back so it can be dragged into place. In
+  // Move, a tap on a label opens it to change it.
+  const LABEL_WRAP = 22;
+  function wrapLabel(text) {
+    const out = [];
+    for (const para of text.split("\n")) {
+      let line = "";
+      for (const word of para.split(/\s+/).filter(Boolean)) {
+        if (line && (line + " " + word).length > LABEL_WRAP) { out.push(line); line = word; } else line = line ? line + " " + word : word;
+      }
+      out.push(line);
+    }
+    return out.filter((l, i, a) => l || (i && i < a.length - 1));
+  }
+  const labelHtml = (text) => `<span class="mklabel">${wrapLabel(text).map(esc).join("<br>") || "&nbsp;"}</span>`;
+  let editingLabel = null; // { d, isNew }
+  function startLabel(ll, d) {
+    endLabel();
+    const isNew = !d;
+    if (isNew) { d = { type: "text", colour: "#1b1a15", pts: [ll], text: "" }; showDrawn(d); }
+    editingLabel = { d, isNew, was: d.text };
+    $("mkHint").hidden = true;
+    $("mkLabelBox").hidden = false;
+    $("mkLabelDel").hidden = isNew;
+    $("mkLabelIn").value = d.text;
+    setTimeout(() => $("mkLabelIn").focus(), 30);
+  }
+  function endLabel(keep = true) {
+    const e = editingLabel;
+    if (!e) return;
+    editingLabel = null;
+    $("mkLabelBox").hidden = true;
+    $("mkHint").hidden = maker && maker.tool === "sym";
+    $("mkLabelIn").blur();
+    const empty = !e.d.text.trim();
+    if (!keep || empty) {
+      if (e.isNew) mkDrawLayer.removeLayer(e.d.layer);
+      else if (!keep) { e.d.text = e.was; drawLabel(e.d); }
+      else { maker.drawn.splice(maker.drawn.indexOf(e.d), 1); mkDrawLayer.removeLayer(e.d.layer); maker.history.push({ op: "del", d: e.d, at: maker.drawn.length }); }
+      return;
+    }
+    e.d.text = e.d.text.trim();
+    drawLabel(e.d);
+    if (e.isNew) addDrawn(e.d);
+  }
+  function drawLabel(d) { d.marker.setIcon(L.divIcon({ className: "mklabelpin", iconSize: [0, 0], html: labelHtml(d.text) })); }
+  $("mkLabelIn").addEventListener("input", () => { if (editingLabel) { editingLabel.d.text = $("mkLabelIn").value; drawLabel(editingLabel.d); } });
+  $("mkLabelDone").onclick = () => {
+    const wasNew = editingLabel && editingLabel.isNew;
+    endLabel();
+    if (wasNew) { setTool("move"); toast("Drag the label if it's not quite right", 2600); }
   };
+  $("mkLabelCancel").onclick = () => endLabel(false);
+  $("mkLabelDel").onclick = () => { if (editingLabel) editingLabel.d.text = ""; endLabel(); toast("Label removed. Undo brings it back"); };
 
   // ---------- the picture ----------
   // A set of maps goes out together (e.g. roads to the reserve, then the paths on it): Add
@@ -3422,12 +3471,28 @@
     maps.unshift(def);
     if (!store.set("maps", maps)) throw new Error("full");
   }
+  // Symbols and labels are markers you can drag in Move (Undo puts them back); a tap on a
+  // symbol removes it, a tap on a label opens it to change
   function showDrawn(d) {
     d.layer = L.layerGroup().addTo(mkDrawLayer);
     if (d.type === "pen") d.layer.addLayer(ink(d.pts, d.colour, 5));
     if (d.type === "arrow") drawArrow(d);
-    if (d.type === "text") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="mklabel" style="color:${d.colour}">${esc(d.text)}</span>` }) }).addTo(d.layer);
-    if (d.type === "sym") L.marker(d.pts[0], { interactive: false, icon: L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) }).addTo(d.layer);
+    if (d.type !== "text" && d.type !== "sym") return;
+    const icon = d.type === "sym" ? L.divIcon({ className: "mksym", iconSize: [28, 28], iconAnchor: [14, 14], html: symSvg(d.sym, 28) }) : L.divIcon({ className: "mklabelpin", iconSize: [0, 0], html: labelHtml(d.text) });
+    d.marker = L.marker(d.pts[0], { icon, draggable: true, bubblingMouseEvents: false, keyboard: false }).addTo(d.layer);
+    d.marker.on("dragstart", () => { d.from = d.pts[0]; });
+    d.marker.on("dragend", () => { maker.history.push({ op: "mv", d, from: d.from }); d.pts = [d.marker.getLatLng()]; haptic(); });
+    d.marker.on("click", () => {
+      if (!maker || maker.tool !== "move") return;
+      if (d.type === "text") return startLabel(null, d);
+      const at = maker.drawn.indexOf(d);
+      if (at < 0) return;
+      maker.drawn.splice(at, 1);
+      mkDrawLayer.removeLayer(d.layer);
+      maker.history.push({ op: "del", d, at });
+      haptic();
+      toast("Removed. Undo brings it back");
+    });
   }
   // Opens a saved map to change it; as a copy, it's the start of a new one and the saved map
   // stays as it was (a reserve's usual map, say, with this week's work area added)
@@ -3728,28 +3793,34 @@
       if (!moved) break;
     }
     for (const s of syms) taken.push({ x: s.at.x - 24, y: s.at.y - 24, w: 48, h: 48 });
+    const LABEL_FONT = "800 30px -apple-system, system-ui, sans-serif", LABEL_LH = 36;
     for (const d of maker.drawn) if (d.type === "text") {
-      ctx.font = "800 30px -apple-system, system-ui, sans-serif";
-      const at = P(d.pts[0]), w = ctx.measureText(d.text).width + 10;
-      taken.push({ x: at.x - w / 2, y: at.y - 20, w, h: 40 });
+      ctx.font = LABEL_FONT;
+      const lines = wrapLabel(d.text), at = P(d.pts[0]), w = Math.max(...lines.map((l) => ctx.measureText(l).width)) + 12, h = lines.length * LABEL_LH + 6;
+      taken.push({ x: at.x - w / 2, y: at.y - h / 2, w, h });
     }
-    // The key: every symbol used, in a white box in the bottom-left corner of the map. The
-    // places people have to find (parking, meeting point, first aid…) get a line each with
-    // their 8-figure grid ref, for a contractor's satnav or a 999 call; the rest share lines
-    // (only the symbols in the picture: one put down outside the frame isn't on this map)
+    // The key, in a white box in the bottom-left corner: the ONLY place a grid ref appears, each
+    // on its own line beside the thing it's for ("Parking  SD 3325 8214"), so nobody takes
+    // one place's ref for another's. The Location comes first, then the other places people
+    // have to find, then your notebook marks by name; other symbols share lines, no refs
+    // (only what's in the picture: a symbol put down outside the frame isn't on this map)
     const shown = syms.filter((s) => s.from.x >= area.x && s.from.x <= area.x + area.w && s.from.y >= area.y && s.from.y <= area.y + area.h);
     const used = [...new Set(shown.map((s) => s.d.sym))];
     let key = null;
-    if (used.length) {
+    const inPic = (m) => m.at.x >= area.x && m.at.x <= area.x + area.w && m.at.y >= area.y && m.at.y <= area.y + area.h;
+    const markRows = marks.filter(inPic).map((m) => ({ mark: m, name: m.p.name.length > 30 ? m.p.name.slice(0, 29) + "…" : m.p.name, ref: OSGB.gridRef(m.c.e, m.c.n, 8) }));
+    if (used.length || markRows.length) {
       const items = [], rows = [], maxW = area.w * 0.62;
-      for (const s of shown) if (FINDABLE.has(s.d.sym)) {
+      const findable = shown.filter((s) => FINDABLE.has(s.d.sym)).sort((a, b) => (b.d.sym === "spot") - (a.d.sym === "spot"));
+      for (const s of findable) {
         const g = OSGB.wgs84ToGrid(s.d.pts[0].lat, s.d.pts[0].lng), ref = g && OSGB.gridRef(g.e, g.n, 8);
-        if (ref && !items.some((it) => it.k === s.d.sym && it.ref === ref)) items.push({ k: s.d.sym, ref });
+        if (ref && !items.some((it) => it.k === s.d.sym && it.ref === ref)) items.push({ k: s.d.sym, name: SYMBOLS[s.d.sym].name, ref });
       }
-      for (const k of used) if (!items.some((it) => it.k === k)) items.push({ k });
+      items.push(...markRows);
+      for (const k of used) if (!items.some((it) => it.k === k)) items.push({ k, name: SYMBOLS[k].name });
       for (const it of items) {
         ctx.font = "600 20px -apple-system, system-ui, sans-serif";
-        it.nw = ctx.measureText(SYMBOLS[it.k].name).width;
+        it.nw = ctx.measureText(it.name).width;
         ctx.font = "600 20px ui-monospace, Menlo, monospace";
         it.w = 36 + it.nw + (it.ref ? 14 + ctx.measureText(it.ref).width : 0) + 22;
       }
@@ -3763,17 +3834,14 @@
       taken.push(key);
     }
     for (const m of marks) {
-      const name = m.p.name, ref = OSGB.gridRef(m.c.e, m.c.n, 8);
+      const name = m.p.name;
       ctx.font = "700 24px -apple-system, system-ui, sans-serif";
-      const w1 = ctx.measureText(name).width;
-      ctx.font = "600 20px ui-monospace, Menlo, monospace";
-      const w = Math.max(w1, ctx.measureText(ref).width) + 10, h = 54, g = m.p.pts ? 8 : 24, { x, y } = m.at;
+      const w = ctx.measureText(name).width + 10, h = 32, g = m.p.pts ? 8 : 24, { x, y } = m.at;
       const spots = [[x + g, y - h / 2], [x - g - w, y - h / 2], [x - w / 2, y - g - h], [x - w / 2, y + g], [x + g - 6, y - g - h + 6], [x + g - 6, y + g - 6], [x - g - w + 6, y - g - h + 6], [x - g - w + 6, y + g - 6]]
         .map(([bx, by]) => ({ x: bx, y: by, w, h }));
       const best = spots.find((b) => inArea(b) && !overlap(b)) || spots.filter(inArea).sort((a, b) => overlap(a) - overlap(b))[0] || spots[0];
       taken.push(best);
-      halo(name, best.x + 5, best.y + 15, "700 24px -apple-system, system-ui, sans-serif", "#1b1a15");
-      halo(ref, best.x + 5, best.y + 40, "600 20px ui-monospace, Menlo, monospace", "#1b1a15");
+      halo(name, best.x + 5, best.y + 16, "700 24px -apple-system, system-ui, sans-serif", "#1b1a15");
     }
     // Point markers and symbols on top, then the drawn labels
     for (const m of marks) if (!m.p.pts) { const img = await svgImg(shapeSvg(m.p.shape, m.p.colour, 40)); if (img) ctx.drawImage(img, m.at.x - 20, m.at.y - 20, 40, 40); }
@@ -3782,7 +3850,12 @@
       ctx.beginPath(); ctx.arc(s.from.x, s.from.y, 4, 0, Math.PI * 2); ctx.fillStyle = "#1b1a15"; ctx.fill();
     }
     for (const s of syms) { const img = await svgImg(symSvg(s.d.sym, 44)); if (img) ctx.drawImage(img, s.at.x - 22, s.at.y - 22, 44, 44); }
-    for (const d of maker.drawn) if (d.type === "text") { const at = P(d.pts[0]); halo(d.text, at.x, at.y, "800 30px -apple-system, system-ui, sans-serif", d.colour, "center"); }
+    for (const d of maker.drawn) if (d.type === "text") {
+      const lines = wrapLabel(d.text), at = P(d.pts[0]), top = at.y - ((lines.length - 1) * LABEL_LH) / 2;
+      ctx.save(); ctx.lineWidth = 8; // a wide white edge: black words read on any map
+      lines.forEach((l, i) => { ctx.font = LABEL_FONT; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.lineJoin = "round"; ctx.strokeStyle = "#fff"; ctx.strokeText(l, at.x, top + i * LABEL_LH); ctx.fillStyle = "#1b1a15"; ctx.fillText(l, at.x, top + i * LABEL_LH); });
+      ctx.restore();
+    }
     if (key) {
       ctx.fillStyle = "rgba(255,255,255,.93)"; ctx.strokeStyle = "#1b1a15"; ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.roundRect(key.x, key.y, key.w, key.h, 8); ctx.fill(); ctx.stroke();
@@ -3790,10 +3863,13 @@
       for (const row of key.rows) {
         let kx = key.x + 8;
         for (const it of row) {
-          const img = await svgImg(symSvg(it.k, 30));
+          const mk = it.mark && it.mark.p, col = mk && (COLOURS[mk.colour] || COLOURS.orange);
+          const icon = !mk ? symSvg(it.k, 30) : !mk.pts ? shapeSvg(mk.shape, mk.colour, 30)
+            : `<svg width="30" height="30" viewBox="0 0 24 24" fill="${mk.kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${mk.kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
+          const img = await svgImg(icon);
           if (img) ctx.drawImage(img, kx, ky + 3, 30, 30);
           ctx.font = "600 20px -apple-system, system-ui, sans-serif"; ctx.fillStyle = "#1b1a15"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-          ctx.fillText(SYMBOLS[it.k].name, kx + 36, ky + 19);
+          ctx.fillText(it.name, kx + 36, ky + 19);
           if (it.ref) { ctx.font = "600 20px ui-monospace, Menlo, monospace"; ctx.fillStyle = "#1d4f8f"; ctx.fillText(it.ref, kx + 36 + it.nw + 14, ky + 19); }
           kx += it.w;
         }
@@ -4040,7 +4116,7 @@
     const stamp = `${when.getFullYear()}${pad2(when.getMonth() + 1)}${pad2(when.getDate())}_${pad2(when.getHours())}${pad2(when.getMinutes())}`; // local time
     stampJob = { line: "", base, name: `${ref.replace(/\s+/g, "")}_${stamp}.jpg`, ref, ll: `${where.lat.toFixed(5)}, ${where.lon.toFixed(5)}`,
       when: `${when.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} ${timeOf(when.toISOString())}`,
-      reserve: reserve.replace(/ \(NNR\)$/, ""), src: where.src };
+      reserve: reserve.replace(/ \(NNR\)$/, ""), src: where.src.startsWith("GPS") ? `taken from here, ${where.src}` : where.src ? "taken from here (the photo's own location)" : "the point's location" };
     photoNew = { lat: where.lat, lon: where.lon, acc: where.src.startsWith("GPS") ? Math.round(here.acc) : null, mode };
     viewing = null;
     // Hold +: no screen in between, stamped your usual way and saved
