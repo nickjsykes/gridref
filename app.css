@@ -622,7 +622,7 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mktop button { border: 0; border-radius: 11px; padding: 9px 12px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
 .mkbar { position: fixed; z-index: 1001; left: 8px; right: 8px; bottom: max(8px, calc(var(--safe-b) - 14px)); border-radius: 18px; padding: 8px;
   background: var(--glass-menu); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 4px 16px rgba(0,0,0,.18), inset 0 0 0 .5px rgba(255,255,255,.35); display: flex; flex-direction: column; gap: 8px; }
-.mktools { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.mktools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
 .mktools button { border: 0; border-radius: 12px; padding: 8px 2px; font: 600 12.5px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .mktools button svg { width: 22px; height: 22px; }
 .mktools button.on { background: var(--green); color: var(--panel); }
@@ -851,11 +851,13 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .mkrow #mkCancel { flex: 0 0 auto; padding: 11px 14px; }
 .mkanother { align-self: center; }
 .mkanother[hidden] { display: none; }
-.navfoot { margin-top: 10px; }
-.navfoot button { border: 0; border-radius: 12px; padding: 13px; font: 600 16px var(--sans); background: var(--green-soft); color: var(--green); }
-.sheet.arrived .navfoot button { background: var(--panel); color: var(--green); }
 .shph { position: relative; padding: 0; border: 0; background: none; border-radius: 10px; }
 .shph img { opacity: .45; }
 .shph.on img { opacity: 1; box-shadow: 0 0 0 3px var(--green); }
 .shph span { position: absolute; top: 6px; right: 6px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 700 14px var(--sans); color: #fff; background: rgba(0,0,0,.35); border: 2px solid #fff; }
 .shph.on span { background: var(--green); }
+/* Draw's row: line / arrow choice, a divider, then the colours */
+.mkcols .mkkind { width: 44px; height: 36px; border-radius: 10px; border: 0; box-shadow: none; background: var(--green-soft); color: var(--green); display: grid; place-items: center; }
+.mkcols .mkkind svg { width: 22px; height: 22px; }
+.mkcols .mkkind.on { background: var(--green); color: var(--panel); box-shadow: none; }
+.mkcols .mksep { width: 1px; align-self: stretch; margin: 6px 4px; background: var(--line); }

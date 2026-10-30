@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "211"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "212"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -3123,7 +3123,7 @@
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
     setTool("move");
-    $("mkMe").textContent = "Me: off";
+    $("mkMe").textContent = "My dot";
     $("mkMe").classList.remove("on");
     placeFrame();
     mkSet = [];
@@ -3181,7 +3181,7 @@
   };
   $("mkMe").onclick = () => {
     maker.me = !maker.me;
-    $("mkMe").textContent = maker.me ? "Me: on" : "Me: off";
+    $("mkMe").textContent = maker.me ? "✓ My dot" : "My dot";
     $("mkMe").classList.toggle("on", maker.me);
     if (maker.me && !here) startGps(false);
   };
@@ -3193,23 +3193,27 @@
     const r = $("mkLayers").getBoundingClientRect();
     Object.assign(layersEl.style, { right: Math.max(8, window.innerWidth - r.right) + "px", top: "auto", bottom: window.innerHeight - r.top + 8 + "px" });
   };
+  // Draw's own row: line or arrow, then the colour
   $("mkCols").onclick = (e) => {
     const b = e.target.closest("button");
     if (!b) return;
+    if (b.dataset.k) return setTool(b.dataset.k);
     maker.colour = b.dataset.c;
-    for (const x of $("mkCols").children) x.classList.toggle("on", x === b);
+    for (const x of $("mkCols").querySelectorAll("[data-c]")) x.classList.toggle("on", x === b);
   };
   $("mkTools").onclick = (e) => { const b = e.target.closest("button[data-t]"); if (b) setTool(b.dataset.t); };
   function setTool(t) {
     maker.tool = t;
-    for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === t);
+    const tb = t === "arrow" ? "pen" : t; // Arrow lives inside Draw
+    for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === tb);
+    for (const b of $("mkCols").querySelectorAll("[data-k]")) b.classList.toggle("on", b.dataset.k === t);
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
     $("mkCols").hidden = t !== "pen" && t !== "arrow";
     $("mkHint").hidden = t === "sym" || t === "pen" || t === "arrow";
     if (t !== "text") endLabel();
     if (t === "move" && maker.drawn.length) toast("Move: a tap puts a mark on or off, or deletes a drawing", 3200);
-    $("mkHint").textContent = { move: "Pan and zoom to fill the frame. Drag a symbol or label to move it. Tap a notebook mark to put it on or off; tap a drawing to delete it.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes, then type. Drag it to move it after.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
+    $("mkHint").textContent = { move: "Pan and zoom to fit. Tap a mark to add or remove it.", text: "Tap where the label goes." }[t] || "";
   }
   $("mkSyms").innerHTML = PALETTE.map((k) => `<button type="button" data-s="${k}" class="${k === "parking" ? "on" : ""}">${symSvg(k, 26)}<span>${SYMBOLS[k].short || SYMBOLS[k].name}</span></button>`).join("");
   $("mkSyms").onclick = (e) => {
@@ -3267,6 +3271,19 @@
     d.layer.addLayer(ink(arrowHead(d.pts[0], d.pts[1], 18), d.colour, 5));
   }
   map.on("zoomend", () => { if (maker) for (const d of maker.drawn) if (d.type === "arrow") drawArrow(d); });
+  // Finger lines are smoothed: wobble under 2.5 px is dropped, then the corners are rounded
+  // off (Chaikin, two passes). Done in screen px at the current zoom, kept as map positions
+  function smoothLine(lls) {
+    if (lls.length < 3) return lls;
+    let p = L.LineUtil.simplify(lls.map((ll) => map.latLngToContainerPoint(ll)), 2.5);
+    for (let n = 0; n < 2 && p.length > 2; n++) {
+      const q = [p[0]];
+      for (let i = 0; i < p.length - 1; i++) q.push(p[i].multiplyBy(0.75).add(p[i + 1].multiplyBy(0.25)), p[i].multiplyBy(0.25).add(p[i + 1].multiplyBy(0.75)));
+      q.push(p[p.length - 1]);
+      p = q;
+    }
+    return p.map((pt) => map.containerPointToLatLng(pt));
+  }
   let stroke = null;
   const llAt = (e) => map.containerPointToLatLng(L.point(e.clientX - map.getContainer().getBoundingClientRect().left, e.clientY - map.getContainer().getBoundingClientRect().top));
   $("mkDraw").addEventListener("pointerdown", (e) => {
@@ -3290,7 +3307,7 @@
       const last = map.latLngToContainerPoint(stroke.pts[stroke.pts.length - 1]), p = map.latLngToContainerPoint(ll);
       if (last.distanceTo(p) < 3) return;
       stroke.pts.push(ll);
-      stroke.layer.clearLayers().addLayer(ink(stroke.pts, stroke.colour, 5));
+      stroke.layer.clearLayers().addLayer(ink(smoothLine(stroke.pts), stroke.colour, 5));
     } else { stroke.pts[1] = ll; drawArrow(stroke); }
   });
   const endStroke = () => {
@@ -3299,6 +3316,7 @@
     stroke = null;
     const big = s.pts.length > 1 && map.latLngToContainerPoint(s.pts[0]).distanceTo(map.latLngToContainerPoint(s.pts[s.pts.length - 1])) > 6;
     if (s.type === "pen" ? s.pts.length < 2 : !big) { mkDrawLayer.removeLayer(s.layer); return; }
+    if (s.type === "pen") { s.pts = smoothLine(s.pts); s.layer.clearLayers().addLayer(ink(s.pts, s.colour, 5)); }
     addDrawn(s);
   };
   $("mkDraw").addEventListener("pointerup", endStroke);
@@ -3511,7 +3529,7 @@
     startMaker(list);
     maker.editId = asCopy ? null : def.id;
     maker.me = def.me;
-    $("mkMe").textContent = def.me ? "Me: on" : "Me: off";
+    $("mkMe").textContent = def.me ? "✓ My dot" : "My dot";
     $("mkMe").classList.toggle("on", !!def.me);
     for (const d of def.drawn) { const x = { ...d, pts: d.pts.map((q) => L.latLng(q[0], q[1])) }; showDrawn(x); maker.drawn.push(x); }
     const f = frameRect(), box = map.getContainer().getBoundingClientRect();

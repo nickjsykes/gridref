@@ -15,8 +15,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=211">
-<link rel="stylesheet" href="app.css?v=211">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=212">
+<link rel="stylesheet" href="app.css?v=212">
 </head>
 <body>
 <div id="map"></div>
@@ -102,6 +102,7 @@
   <div class="nav" id="nav">
     <div class="nav-head">
       <div><small>Going to</small><b id="navRef"></b></div>
+      <button type="button" id="navEnd">Done</button>
     </div>
     <div class="nav-body">
       <svg class="dial" viewBox="-100 -100 200 200" aria-hidden="true">
@@ -121,7 +122,6 @@
       </div>
     </div>
     <div class="nav-hint" id="navHint"></div>
-    <div class="btns one navfoot"><button type="button" id="navEnd">Stop</button></div>
   </div>
 </section>
 
@@ -262,16 +262,15 @@
     <div class="mktools" id="mkTools">
       <button type="button" data-t="move" class="on" aria-label="Move the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>Move</button>
       <button type="button" data-t="pen" aria-label="Draw"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16Z"/><path d="M14 7l3 3"/></svg>Draw</button>
-      <button type="button" data-t="arrow" aria-label="Arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M10 5h9v9"/></svg>Arrow</button>
       <button type="button" data-t="text" aria-label="Label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>Label</button>
       <button type="button" data-t="sym" aria-label="Symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9.5 17V7h3.2a3 3 0 0 1 0 6H9.5" stroke-linecap="round"/></svg>Symbol</button>
       <button type="button" id="mkUndo" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
     </div>
-    <div class="mkslot"><div class="mksyms" id="mkSyms" hidden></div><div class="mkcols" hidden id="mkCols"><button type="button" data-c="#e03131" class="on" aria-label="Red" style="background:#e03131"></button><button type="button" data-c="#fcc419" aria-label="Yellow" style="background:#fcc419"></button><button type="button" data-c="#1c7ed6" aria-label="Blue" style="background:#1c7ed6"></button></div><p class="mkhint" id="mkHint">Pan and zoom to fill the frame.</p><div class="mklabelbox" id="mkLabelBox" hidden><textarea id="mkLabelIn" rows="2" maxlength="80" placeholder="Type the label" autocomplete="off"></textarea><div class="mklbtns"><button type="button" id="mkLabelCancel">Cancel</button><button type="button" class="danger" id="mkLabelDel">Delete</button><button type="button" class="primary" id="mkLabelDone">Done</button></div></div></div>
+    <div class="mkslot"><div class="mksyms" id="mkSyms" hidden></div><div class="mkcols" hidden id="mkCols"><button type="button" data-k="pen" class="mkkind on" aria-label="Line"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 17c4-8 8 2 16-8"/></svg></button><button type="button" data-k="arrow" class="mkkind" aria-label="Arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19 19 5M10 5h9v9"/></svg></button><span class="mksep"></span><button type="button" data-c="#e03131" class="on" aria-label="Red" style="background:#e03131"></button><button type="button" data-c="#fcc419" aria-label="Yellow" style="background:#fcc419"></button><button type="button" data-c="#1c7ed6" aria-label="Blue" style="background:#1c7ed6"></button></div><p class="mkhint" id="mkHint">Pan and zoom to fit.</p><div class="mklabelbox" id="mkLabelBox" hidden><textarea id="mkLabelIn" rows="2" maxlength="80" placeholder="Type the label" autocomplete="off"></textarea><div class="mklbtns"><button type="button" id="mkLabelCancel">Cancel</button><button type="button" class="danger" id="mkLabelDel">Delete</button><button type="button" class="primary" id="mkLabelDone">Done</button></div></div></div>
     <div class="mkrow">
       <button type="button" id="mkCancel">Cancel</button>
-      <button type="button" id="mkLayers">Map</button>
-      <button type="button" id="mkMe">Me: off</button>
+      <button type="button" id="mkLayers">Style</button>
+      <button type="button" id="mkMe">My dot</button>
       <button type="button" class="primary" id="mkSend">Next</button>
     </div>
   </div>
@@ -289,13 +288,13 @@
 </div>
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=211"></script>
-<script src="config.js?v=211"></script>
-<script src="osgb.js?v=211"></script>
-<script src="parse.js?v=211"></script>
-<script src="zip.js?v=211"></script>
-<script src="exif.js?v=211"></script>
-<script src="local.js?v=211"></script>
-<script src="app.js?v=211"></script>
+<script src="vendor/leaflet/leaflet.js?v=212"></script>
+<script src="config.js?v=212"></script>
+<script src="osgb.js?v=212"></script>
+<script src="parse.js?v=212"></script>
+<script src="zip.js?v=212"></script>
+<script src="exif.js?v=212"></script>
+<script src="local.js?v=212"></script>
+<script src="app.js?v=212"></script>
 </body>
 </html>
