@@ -15,8 +15,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=203">
-<link rel="stylesheet" href="app.css?v=203">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=204">
+<link rel="stylesheet" href="app.css?v=204">
 </head>
 <body>
 <div id="map"></div>
@@ -89,7 +89,6 @@
     </div>
     <div class="m-btns">
       <button id="mAdd"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Add point</button>
-      <button id="mWalk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.8"/><path d="m9 21 3-6 3 3v3M7 12l3-4h4l2 4 3 1M12 8l-1 6"/></svg><span>Walk it</span></button>
       <button id="mUndo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
       <button id="mDone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>Cancel</button>
       <button class="primary" id="mSave"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5Z"/><path d="M8 3v6h8V3M8 21v-7h8v7"/></svg>Save</button>
@@ -197,7 +196,7 @@
   <div class="card">
     <div class="im-title"><b>Share</b></div>
     <div class="chiprow shchips" id="shOpts"></div>
-    <div class="shpicbox" id="shPicBox" hidden><img class="shpic" id="shPic" alt="Map picture"><button type="button" class="shadjust" id="shAdjust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>Move or zoom</button></div>
+    <div class="shpicbox" id="shPicBox" hidden><img class="shpic" id="shPic" alt="Map picture"><button type="button" class="shadjust" id="shEdit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16Z"/><path d="M14 7l3 3"/></svg>Edit map</button></div>
     <pre class="shprev" id="shPrev"></pre>
     <div class="btns"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></div>
   </div>
@@ -217,17 +216,13 @@
   <div class="card">
     <div class="im-title"><b>Share</b></div>
     <div class="mkpreviews mspics" id="msPics"></div>
+    <button type="button" class="msedit" id="msEdit" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1L19 8l-3-3L5 16Z"/><path d="M14 7l3 3"/></svg>Edit map</button>
     <label class="mstext">Message to go with it<textarea id="msText" rows="6" autocomplete="off"></textarea></label>
     <div class="btns"><button type="button" id="msCancel">Cancel</button><button type="button" class="primary" id="msGo">Share</button></div>
   </div>
 </div>
 <!-- Picking on the map for export -->
 <div class="picframe" id="pickBar" hidden><div class="mktop"><button type="button" id="mpCancel">Cancel</button><b>Tap marks to pick</b><button type="button" class="mkready" id="mpGo">Export 0</button></div></div>
-<!-- Framing the shared map picture: move and zoom the map inside a square, then Done -->
-<div class="picframe" id="picFrame" hidden>
-  <div class="mkframe" id="pfBox"></div>
-  <div class="mktop"><button type="button" id="pfCancel">Cancel</button><b>Move and zoom the map</b><button type="button" class="mkready" id="pfDone">Done</button></div>
-</div>
 <div class="modal sheetmenu" id="exportModal" hidden>
   <div class="card">
     <div class="im-title"><b>Export</b></div>
@@ -294,13 +289,13 @@
 </div>
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=203"></script>
-<script src="config.js?v=203"></script>
-<script src="osgb.js?v=203"></script>
-<script src="parse.js?v=203"></script>
-<script src="zip.js?v=203"></script>
-<script src="exif.js?v=203"></script>
-<script src="local.js?v=203"></script>
-<script src="app.js?v=203"></script>
+<script src="vendor/leaflet/leaflet.js?v=204"></script>
+<script src="config.js?v=204"></script>
+<script src="osgb.js?v=204"></script>
+<script src="parse.js?v=204"></script>
+<script src="zip.js?v=204"></script>
+<script src="exif.js?v=204"></script>
+<script src="local.js?v=204"></script>
+<script src="app.js?v=204"></script>
 </body>
 </html>

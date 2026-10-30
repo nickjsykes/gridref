@@ -255,8 +255,7 @@ body.measuring .measure { display: block; }
 body.measuring:not(.area-mode) .m-area { display: none; }
 body.measuring:not(.area-mode) .m-nums { grid-template-columns: 1fr; }
 body.area-mode .m-len { display: none; }
-.m-btns { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr 1fr; gap: 6px; }
-.m-btns button.walking { background: #c0392b; color: #fff; } /* recording: red, like the line it draws */
+.m-btns { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 6px; }
 .m-btns button { border: 0; border-radius: 12px; padding: 10px 4px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .m-btns button svg { width: 22px; height: 22px; }
 .m-btns .primary { background: var(--green); color: var(--panel); }
@@ -495,7 +494,7 @@ body.large .more-hint { display: none !important; }
 body.large .row .v.dim { font-size: 17px !important; }
 .sheetmenu .shchips button { padding: 8px 4px; font-size: 13.5px; border-radius: 12px; background: var(--green-soft); color: var(--muted); white-space: nowrap; }
 .sheetmenu .shchips button.on { background: var(--green); color: var(--panel); }
-.shpic { display: block; width: 100%; max-height: 26vh; object-fit: cover; object-position: center 40%; border-radius: 10px; }
+.shpic { display: block; width: 100%; height: 30vh; object-fit: contain; border-radius: 10px; background: var(--green-soft); } /* the whole picture, square or a tall map */
 .shpic[hidden] { display: none; }
 
 /* Big text (John mode): also high contrast and a big "Copied" */
@@ -705,13 +704,12 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 .placenote b { font: 700 26px var(--sans); color: var(--ink); }
 .placenote small { font: 13px var(--sans); color: var(--muted); }
 
-/* Share's map picture: a corner button to frame it again; framing hides everything but the map */
+/* Share's map picture: a corner button to edit it in the map maker */
 .shpicbox { position: relative; }
 .shpicbox[hidden] { display: none; }
 .shadjust { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 7px 12px; font: 600 13.5px var(--sans); background: rgba(255,255,255,.92); color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
 .shadjust svg { width: 16px; height: 16px; }
 .picframe[hidden] { display: none; }
-body.framing .top, body.framing .chips, body.framing .subchips, body.framing .fabs, body.framing .sheet, body.framing .cross, body.framing .leaflet-control-attribution { display: none !important; }
 
 /* Maps tab: a card per map, the picture half the width (tap for full screen), its details and
    buttons beside it. Reserve chips wrap above; a reserve has a New map card first */
@@ -751,7 +749,9 @@ body.framing .top, body.framing .chips, body.framing .subchips, body.framing .fa
 .drawer header button, .drawer header .back { color: var(--panel); }
 .drawer h2.dtitle { align-self: flex-end; color: var(--panel); font-size: clamp(28px, 9vw, 34px); line-height: 1.05; white-space: normal; }
 .dtitle small { display: block; margin-top: 5px; color: var(--panel); opacity: .82; font: 500 14px var(--sans); }
-.dtabs { position: relative; z-index: 2; margin: -20px 16px 4px; background: var(--panel); box-shadow: 0 3px 12px rgba(0,0,0,.14); }
+.dtabs { position: relative; z-index: 2; margin: -20px 16px 4px; background: var(--card); box-shadow: 0 3px 12px rgba(0,0,0,.14), inset 0 0 0 1px var(--line); }
+/* the picked tab: solid spruce, so it's clear which one you're on in light and dark */
+.dtabs button.on { background: var(--green); color: var(--panel); box-shadow: none; }
 .drawer .list { border-top: 0; }
 body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross, body.mappick .subchips { display: none !important; }
 .mktop button:disabled { opacity: .5; }
@@ -769,3 +769,6 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .reslist button.on { color: var(--green); font-weight: 700; }
 .reslist button.on::after { content: "  ✓"; }
 .drawer header { min-height: 104px; }
+.msedit { align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 8px 14px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
+.msedit[hidden] { display: none; }
+.msedit svg { width: 16px; height: 16px; }

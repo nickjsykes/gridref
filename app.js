@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "203"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "204"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -521,7 +521,6 @@
       first = false;
       update();
       if (nav) drawNav();
-      if (measure && measure.walking) walkStep();
     }, (err) => {
       // A weak or lost signal is usually brief and the watch carries on by itself, so keep
       // following; only a refusal switches GPS off
@@ -584,15 +583,16 @@
     };
   }
   // Share: tick what goes in. Remembered for next time; grid ref, Apple Maps, name and notes to
-  // start with. The message reads location first (where a chat shows the map preview), then a
-  // blank line, then the name and notes, so it's easy to read.
+  // start with. The message reads location first, then the name and notes, then the map links
+  // at the bottom, each part after a blank line, so it's easy to read and copy from.
   // Name and notes only appear for saved things (the crosshair has neither).
   const SHARE_OPTS = [
     ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
     ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
-    ["apple", "Apple Maps", (x) => `https://maps.apple.com/?ll=${x.lat.toFixed(6)},${x.lon.toFixed(6)}&q=${encodeURIComponent(x.label || x.ref)}`],
-    ["google", "Google Maps", (x) => `https://www.google.com/maps/search/?api=1&query=${x.lat.toFixed(6)},${x.lon.toFixed(6)}`],
+    // Links kept short (5 decimal places is about a metre) and named, so they don't swamp the message
+    ["apple", "Apple Maps", (x) => `Apple Maps: https://maps.apple.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
+    ["google", "Google Maps", (x) => `Google Maps: https://maps.google.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
     ["pic", "Current map", () => ""],
     ["photos", "Photos", () => ""],
     ["name", "Name", (x) => x.head],
@@ -606,7 +606,7 @@
   if (!store.get("sharePhotos", false)) { shareOn.add("photos"); store.set("shareOpts", [...shareOn]); store.set("sharePhotos", true); }
   function shareTextFor(x) {
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
-    return [part(["ref", "ll", "en", "apple", "google"]), part(["name", "notes"])].filter(Boolean).join("\n\n");
+    return [part(["ref", "ll", "en"]), part(["name", "notes"]), part(["apple", "google"])].filter(Boolean).join("\n\n");
   }
   function drawShare() {
     $("shOpts").innerHTML = "";
@@ -633,9 +633,8 @@
   // of yours goes in it: no saved points, no blue dot. Chats show it as the big preview.
   async function mapPicture(x) {
     const box = map.getContainer().getBoundingClientRect();
-    // The square: the one framed with Move or zoom, else the biggest round the crosshair
-    const { x: cx0, y: cy0 } = crossPt(), sq = picSq || { x: cx0 - Math.min(cx0, cy0), y: cy0 - Math.min(cx0, cy0), s: 2 * Math.min(cx0, cy0) };
-    const half = sq.s / 2, cx = sq.x + half, cy = sq.y + half, S = 1080, k = S / (2 * half), FOOT = 190;
+    const { x: cx, y: cy } = crossPt();
+    const half = Math.min(cx, cy), S = 1080, k = S / (2 * half), FOOT = 190;
     const c = document.createElement("canvas");
     c.width = S;
     c.height = S + FOOT;
@@ -721,40 +720,29 @@
     // its photos are read in now, so they're ready when Share is pressed (same iPhone rule)
     sharePhotos = item.photos && item.photos.length ? photoFiles(item.label, item.photos) : null;
     $("shPicBox").hidden = true;
-    picSq = null;
     if (item.canPic && shareOn.has("pic")) makePic();
     drawShare();
     $("shareModal").hidden = false;
   }
-  // Move or zoom: the share card steps aside, the map is free to move inside a square, and
-  // Done makes the picture again from that square (Cancel puts the map back as it was)
-  let picSq = null, picWas = null, picPin = null;
-  $("shAdjust").onclick = () => {
-    picWas = { c: map.getCenter(), z: map.getZoom() };
-    // the place being shared stays marked, so you can frame round it
-    picPin = L.circleMarker([shareItem.lat, shareItem.lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#c2255c", fillOpacity: 1, interactive: false }).addTo(map);
+  // Edit map: the picture goes through the map maker, framed on the place with a Location
+  // symbol on it, to add parking, a meeting point, arrows… Make hands it back to this card
+  $("shEdit").onclick = () => {
+    const it = shareItem;
     $("shareModal").hidden = true;
-    document.body.classList.add("framing");
-    $("picFrame").hidden = false;
-    const top = document.querySelector("#picFrame .mktop").getBoundingClientRect().bottom + 16;
-    const size = Math.min(window.innerWidth - 24, window.innerHeight - top - 24);
-    Object.assign($("pfBox").style, { left: (window.innerWidth - size) / 2 + "px", top: top + (window.innerHeight - top - 24 - size) / 2 + "px", width: size + "px", height: size + "px" });
-  };
-  function endFraming() { if (picPin) map.removeLayer(picPin); picPin = null; document.body.classList.remove("framing"); $("picFrame").hidden = true; $("shareModal").hidden = false; }
-  $("pfCancel").onclick = () => { map.setView(picWas.c, picWas.z, { animate: false }); endFraming(); };
-  $("pfDone").onclick = async () => {
-    const f = $("pfBox").getBoundingClientRect(), box = map.getContainer().getBoundingClientRect();
-    picSq = { x: f.left - box.left, y: f.top - box.top, s: f.width };
-    $("pfDone").textContent = "…";
-    // the picture is built from the tiles on screen: wait (a little) for the new ones to arrive
-    for (let i = 0; i < 20 && Object.values(LAYERS).some((l) => map.hasLayer(l.layer) && l.layer.isLoading && l.layer.isLoading()); i++) await new Promise((r) => setTimeout(r, 150));
-    $("pfDone").textContent = "Done";
-    endFraming();
-    makePic();
+    map.setView([it.lat, it.lon], map.getZoom(), { animate: false });
+    startMaker([]);
+    const d = { type: "sym", sym: "spot", pts: [L.latLng(it.lat, it.lon)] };
+    showDrawn(d);
+    maker.drawn.push(d);
+    $("mkTitle").value = it.label || it.ref;
+    maker.handoff = {
+      made: (blob) => { it.edited = new File([blob], `${it.ref.replace(/\s+/g, "")}.jpg`, { type: "image/jpeg" }); shareOn.add("pic"); drawShare(); makePic(); $("shareModal").hidden = false; },
+      cancel: () => { $("shareModal").hidden = false; },
+    };
   };
   function makePic() {
     const it = shareItem;
-    sharePic = mapPicture(it).catch(() => null);
+    sharePic = it.edited ? Promise.resolve(it.edited) : mapPicture(it).catch(() => null); // edited in the maker: that one
     sharePic.then((f) => { if (shareItem === it && f && shareOn.has("pic")) { $("shPic").src = URL.createObjectURL(f); $("shPicBox").hidden = false; } });
   }
   $("shCancel").onclick = () => { $("shareModal").hidden = true; };
@@ -2978,6 +2966,7 @@
   // map. In palette order, the things a work party, contractor or visitor needs first
   const SYM_BG = '<rect x="1" y="1" width="22" height="22" rx="4" fill="#fff" stroke="#1b1a15" stroke-width="1.5"/>';
   const SYMBOLS = {
+    spot: { name: "Location", svg: '<path d="M12 23s-8-7.2-8-13.2a8 8 0 0 1 16 0C20 15.8 12 23 12 23Z" fill="#c2255c" stroke="#fff" stroke-width="1.6"/><circle cx="12" cy="9.8" r="3" fill="#fff"/>' },
     parking: { name: "Parking", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><path d="M8.5 18.5V5.5h4.3a3.7 3.7 0 0 1 0 7.4H8.5" fill="none" stroke="#fff" stroke-width="2.6" stroke-linejoin="round"/>' },
     dropoff: { name: "Drop-off", svg: SYM_BG + '<rect x="3.5" y="7" width="17" height="9" rx="2" fill="#1b1a15"/><path d="M5.5 8.6h4v3h-4ZM10.5 8.6h4v3h-4ZM15.5 8.6h3.2v3h-3.2Z" fill="#fff"/><circle cx="7.5" cy="17" r="1.9" fill="#1b1a15"/><circle cx="16.5" cy="17" r="1.9" fill="#1b1a15"/>' },
     meet: { name: "Meeting point", short: "Meet", svg: SYM_BG + '<path d="M7.5 19.5v-15" stroke="#1b1a15" stroke-width="2" stroke-linecap="round"/><path d="M8.5 4.5h10l-3 4 3 4h-10Z" fill="#2f9e44"/>' },
@@ -3006,7 +2995,7 @@
     viewpoint: { name: "Viewpoint", svg: SYM_BG + '<path d="M12 17.5 5 9.5M12 17.5l2.5-11M12 17.5l7-6.5" stroke="#1b1a15" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17.5" r="2" fill="#1b1a15"/>' },
     accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
-  const FINDABLE = new Set(["parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
+  const FINDABLE = new Set(["spot", "parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { W: 1200, H: 1600, head: 128, foot: 96 }; // always upright: it reads on a phone and prints on A4
   const mkDrawLayer = L.layerGroup();
@@ -3016,7 +3005,7 @@
     leaveDrawer(); // started from the notebook's Maps: Cancel, Save and Send hand back to it
     $("keepBtn").hidden = true;
     const on = new Set(list.map(keyOf)), all = points.map(keyOf);
-    maker = { keys: new Set(all), off: new Set(all.filter((k) => !on.has(k))), tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
+    maker = { keys: new Set(all), off: new Set(all.filter((k) => !on.has(k))), tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking", handoff: null };
     $("maker").hidden = false;
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
@@ -3070,6 +3059,8 @@
   $("makeMapBtn").onclick = () => { fresh(); startMaker([]); };
   $("mapBtn").onclick = () => { setAdding(false); fresh(); startMaker([]); };
   $("mkCancel").onclick = () => {
+    const h = maker.handoff;
+    if (h) { endMaker(); return h.cancel(); } // editing a map on its way to be shared: back to that
     const unsaved = mkSet.filter((m) => !m.saved).length;
     if (unsaved && !confirm(`Close without saving? ${unsaved} map${unsaved > 1 ? "s" : ""} not saved or sent will be lost.`)) return;
     endMaker();
@@ -3280,6 +3271,9 @@
     const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
     try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
     catch (err) { console.warn("map", err); $("mkMake").textContent = "Make map"; return toast("Couldn't make the picture. Try again with signal"); }
+    // Editing a map on its way to be shared: straight back to the share card with it
+    const h = maker.handoff;
+    if (h) { const { blob, def } = mkCur; mkCur = null; $("mkSendModal").hidden = true; endMaker(); return h.made(blob, def); }
     mkMode("made");
   };
   $("mkAnother").onclick = () => {
@@ -3469,6 +3463,16 @@
     $("msText").value = defs.map((d) => [d.title, d.note, ...mapRefs(d)].filter(Boolean).join("\n")).join("\n\n");
     $("msPics").innerHTML = defs.map(() => '<img alt="Map">').join("");
     msAfter = after || null;
+    // One saved map: Edit map opens it in the maker, and Make brings the new picture back here
+    $("msEdit").hidden = !(defs.length === 1 && !blobs);
+    $("msEdit").onclick = () => {
+      $("mapShareModal").hidden = true;
+      editMap(defs[0]);
+      maker.handoff = {
+        made: async (blob, def) => { try { await saveMap(def, blob); } catch {} shareMaps([def]); },
+        cancel: () => { $("mapShareModal").hidden = false; },
+      };
+    };
     msFiles = Promise.all(defs.map(async (d, i) => {
       const b = (blobs && blobs[i]) || (await photoDB.get("map:" + d.id).catch(() => null));
       if (b) $("msPics").children[i].src = URL.createObjectURL(b);
@@ -3782,8 +3786,7 @@
     mLive.setLatLngs(pts.length ? [pts[pts.length - 1], t] : []);
     mDots.clearLayers();
     // Big enough to see past the crosshair; the first one ringed so you know you've started
-    // (walked points are a few metres apart: just the line, no dots, apart from the first)
-    pts.forEach((p, i) => (i && p.walked) || L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
+    pts.forEach((p, i) => L.circleMarker(p, { radius: i ? 6 : 8, color: "#fff", weight: 3, fillColor: "#c0392b", fillOpacity: 1, interactive: false }).addTo(mDots));
     const st = mStats(isArea && pts.length >= 3 ? pts.concat([pts[0]]) : pts);
     $("mDist").textContent = fmtDist(st.d);
     const a = isArea && pts.length >= 3 ? mStats(pts).area : null;
@@ -3814,44 +3817,8 @@
   $("measureBtn").onclick = () => startMeasure("line");
   $("areaBtn").onclick = () => startMeasure("area");
   $("mAdd").onclick = () => { measure.pts.push(target()); drawMeasure(); toast(`Point ${measure.pts.length} added`); };
-  // Walk it: the line follows you, a point every few metres as GPS moves. Only while the
-  // screen is on: an iPhone web app gets no GPS when locked or in the background, so the
-  // screen is kept awake, and a gap (if it locks anyway) is joined with a straight line.
-  let walkLock = null;
-  async function keepAwake() { try { walkLock = await navigator.wakeLock.request("screen"); } catch {} }
-  function walkStep() {
-    if (!here || here.acc > 20) return; // a poor fix would put a zigzag in the line
-    const ll = L.latLng(here.lat, here.lon), last = measure.pts[measure.pts.length - 1];
-    ll.walked = true;
-    if (last && last.distanceTo(ll) < Math.max(4, here.acc * 0.6)) return;
-    measure.pts.push(ll);
-    drawMeasure();
-  }
-  function setWalk(on) {
-    if (!measure || !!measure.walking === on) return;
-    measure.walking = on;
-    const b = $("mWalk");
-    b.classList.toggle("walking", on);
-    b.lastChild.textContent = on ? "Stop" : "Walk it";
-    if (on) {
-      startGps(true);
-      keepAwake();
-      walkStep();
-      toast("Walking: points add as you go. Keep the screen on");
-    } else {
-      try { walkLock && walkLock.release(); } catch {}
-      walkLock = null;
-      toast(`Walk stopped: ${measure.pts.length} points, ${fmtDist(mStats(measure.pts).d)}`);
-    }
-  }
-  $("mWalk").onclick = () => setWalk(!(measure && measure.walking));
-  document.addEventListener("visibilitychange", () => {
-    if (!(measure && measure.walking)) return;
-    if (document.visibilityState === "visible") { keepAwake(); toast("Back: the line joins straight across the gap"); }
-  });
   $("mUndo").onclick = () => { if (!measure.pts.length) return; measure.pts.pop(); drawMeasure(); toast(measure.pts.length ? `Back to ${measure.pts.length} point${measure.pts.length > 1 ? "s" : ""}` : "No points"); };
   $("mSave").onclick = () => {
-    setWalk(false);
     const pts = measure.pts, isArea = measure.kind === "area";
     if (pts.length < (isArea ? 3 : 2)) return toast(isArea ? "Add at least 3 corners" : "Add at least 2 points");
     const st = mStats(pts), first = OSGB.wgs84ToGrid(pts[0].lat, pts[0].lng);
@@ -3863,12 +3830,11 @@
     });
   };
   function endMeasure() {
-    setWalk(false);
     measure = null;
     for (const l of [mLine, mLive, mDots]) map.removeLayer(l);
     keepTarget(() => document.body.classList.remove("measuring", "area-mode"));
   }
-  // Cancel: leave without saving. A walked or tapped-out line takes effort, so it asks first
+  // Cancel: leave without saving. A tapped-out line takes effort, so it asks first
   $("mDone").onclick = () => {
     if (measure && measure.pts.length >= 2 && !confirm(`Leave without saving this ${measure.kind}?`)) return;
     endMeasure();
@@ -4335,7 +4301,7 @@
   // browser fetch a fresh page instead of reusing its cached copy.
   // Only one reload per update, whichever notices first (two at once could freeze an iPhone app)
   let reloading = false, waiting = null;
-  // Never mid-job: an update waits while you're measuring or walking a line, making a map,
+  // Never mid-job: an update waits while you're measuring a line, making a map,
   // navigating, moving a point, or have a popup or the notebook open, and lands the next time
   // you're back on the plain map (a reload would throw that work away)
   const busy = () => !!(measure || maker || nav || moving || document.querySelector(".modal:not([hidden])") || $("drawer").classList.contains("open"));
