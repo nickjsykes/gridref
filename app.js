@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "201"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "202"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -134,16 +134,24 @@
   // ditches, drains), part of the offline pack so it works with no signal. Elsewhere it's
   // the Environment Agency's online shading. One switch: whichever fits where you're looking.
   const reliefLayer = L.tileLayer("maps/relief/{z}/{x}/{y}.webp", { minZoom: 14, maxNativeZoom: 17, maxZoom: 19, errorTileUrl: BLANK, pane: "shade", attribution: "LiDAR © Environment Agency" });
+  // Trees and hedges: the Environment Agency's first-return surface, the top of whatever the
+  // laser hit first (canopy, hedges, scrub, walls, buildings). Shows woodland edges, single
+  // trees, gaps in a hedge, scrub creeping onto a moss. Online only (it isn't in the pack)
+  const lidarSurface = L.tileLayer.wms("https://environment.data.gov.uk/spatialdata/lidar-composite-digital-surface-model-first-return-dsm-1m/wms", {
+    layers: "Lidar_Composite_Hillshade_FZ_DSM_1m", format: "image/png", transparent: true, opacity: 0.55, crossOrigin: true, maxNativeZoom: 19, maxZoom: 19, pane: "shade", className: "lidar", attribution: "LiDAR © Environment Agency" });
+  let shadeKind = store.get("lidarKind", "ground"); // "ground" (bare earth) or "surface" (trees and hedges)
   let shadeOn = false; // off at every launch
   function nearReserve() {
     const c = map.getCenter();
     return nnr.some((f) => { const [w, s, e, n] = f.bbox; return c.lng > w - 0.008 && c.lng < e + 0.008 && c.lat > s - 0.005 && c.lat < n + 0.005; });
   }
+  // The shading layer for here: trees and hedges, or the ground (our sharper relief round the
+  // reserves, else the Environment Agency's)
+  const shadeLayerHere = () => (shadeKind === "surface" ? lidarSurface : map.getZoom() >= 14 && nearReserve() ? reliefLayer : lidarShade);
   function drawShade() {
-    if (!shadeOn) { map.removeLayer(reliefLayer); map.removeLayer(lidarShade); return; }
-    const ours = map.getZoom() >= 14 && nearReserve();
-    if (ours) { if (!map.hasLayer(reliefLayer)) reliefLayer.addTo(map); map.removeLayer(lidarShade); }
-    else { if (!map.hasLayer(lidarShade)) lidarShade.addTo(map); map.removeLayer(reliefLayer); }
+    const want = shadeOn ? shadeLayerHere() : null;
+    for (const l of [reliefLayer, lidarShade, lidarSurface]) if (l !== want) map.removeLayer(l);
+    if (want && !map.hasLayer(want)) want.addTo(map);
   }
   function setShade(on) {
     shadeOn = on;
@@ -198,6 +206,18 @@
     sl.onpointerup = sl.onpointercancel = () => sl.onchange();
     row.append(sh, sl, pct);
     layersEl.appendChild(row);
+    // Which LiDAR: the ground, or the trees and hedges on it
+    const kinds = document.createElement("div");
+    kinds.className = "lidarkind";
+    for (const [k, label] of [["ground", "Ground"], ["surface", "Trees & hedges"]]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.className = k === shadeKind ? "on" : "";
+      b.onclick = () => { shadeKind = k; store.set("lidarKind", k); setShade(true); drawLayerMenu(); placeLayerMenu(); };
+      kinds.appendChild(b);
+    }
+    layersEl.appendChild(kinds);
     if (pack.state === "failed") {
       const off = document.createElement("button");
       off.textContent = "Offline maps paused: tap to retry";
@@ -448,6 +468,7 @@
     $("results").style.display = "none";
     if (nav) return;
     if (maker) return mkTap(e);
+    if (mapPick) return; // picking on the map: only taps on marks count
     // A tap just beside a point opens it, rather than nudging the map: the drawn point is
     // small, a fingertip isn't
     if (map.getZoom() >= CLOSE) {
@@ -467,12 +488,13 @@
 
   // ---------- GPS ----------
   let watchId = null, following = false, meDot = null, meRing = null, gpsBlocked = false;
+  const GPS_ZOOM = 17.5; // your location: in close, where the detail is
   function startGps(follow = true) {
     if (!navigator.geolocation) { toast("Location isn't available on this device"); return; }
     if (follow) {
       following = true;
       $("locBtn").classList.add("on");
-      if (here) { panTo(L.latLng(here.lat, here.lon), Math.max(map.getZoom(), 15)); update(); }
+      if (here) { panTo(L.latLng(here.lat, here.lon), Math.max(map.getZoom(), GPS_ZOOM)); update(); }
     }
     if (watchId != null) return;
     toast("Finding you…");
@@ -495,7 +517,7 @@
       badge.hidden = false;
       badge.textContent = `±${a} m`;
       badge.className = "acc" + (a > 25 ? " poor" : a > 10 ? " mid" : "");
-      if (following && !nav) panTo(ll, first ? Math.max(map.getZoom(), 15) : undefined);
+      if (following && !nav) panTo(ll, first ? Math.max(map.getZoom(), GPS_ZOOM) : undefined);
       first = false;
       update();
       if (nav) drawNav();
@@ -599,7 +621,7 @@
         store.set("shareOpts", [...shareOn]);
         b.classList.toggle("on", shareOn.has(k));
         $("shPrev").textContent = shareTextFor(shareItem);
-        if (k === "pic") { if (shareOn.has("pic")) makePic(); else $("shPic").hidden = true; }
+        if (k === "pic") { if (shareOn.has("pic")) makePic(); else $("shPicBox").hidden = true; }
       };
       $("shOpts").appendChild(b);
     }
@@ -611,8 +633,9 @@
   // of yours goes in it: no saved points, no blue dot. Chats show it as the big preview.
   async function mapPicture(x) {
     const box = map.getContainer().getBoundingClientRect();
-    const { x: cx, y: cy } = crossPt();
-    const half = Math.min(cx, cy), S = 1080, k = S / (2 * half), FOOT = 190;
+    // The square: the one framed with Move or zoom, else the biggest round the crosshair
+    const { x: cx0, y: cy0 } = crossPt(), sq = picSq || { x: cx0 - Math.min(cx0, cy0), y: cy0 - Math.min(cx0, cy0), s: 2 * Math.min(cx0, cy0) };
+    const half = sq.s / 2, cx = sq.x + half, cy = sq.y + half, S = 1080, k = S / (2 * half), FOOT = 190;
     const c = document.createElement("canvas");
     c.width = S;
     c.height = S + FOOT;
@@ -697,15 +720,42 @@
     sharePic = null;
     // its photos are read in now, so they're ready when Share is pressed (same iPhone rule)
     sharePhotos = item.photos && item.photos.length ? photoFiles(item.label, item.photos) : null;
-    $("shPic").hidden = true;
+    $("shPicBox").hidden = true;
+    picSq = null;
     if (item.canPic && shareOn.has("pic")) makePic();
     drawShare();
     $("shareModal").hidden = false;
   }
+  // Move or zoom: the share card steps aside, the map is free to move inside a square, and
+  // Done makes the picture again from that square (Cancel puts the map back as it was)
+  let picSq = null, picWas = null, picPin = null;
+  $("shAdjust").onclick = () => {
+    picWas = { c: map.getCenter(), z: map.getZoom() };
+    // the place being shared stays marked, so you can frame round it
+    picPin = L.circleMarker([shareItem.lat, shareItem.lon], { radius: 9, color: "#fff", weight: 3, fillColor: "#c2255c", fillOpacity: 1, interactive: false }).addTo(map);
+    $("shareModal").hidden = true;
+    document.body.classList.add("framing");
+    $("picFrame").hidden = false;
+    const top = document.querySelector("#picFrame .mktop").getBoundingClientRect().bottom + 16;
+    const size = Math.min(window.innerWidth - 24, window.innerHeight - top - 24);
+    Object.assign($("pfBox").style, { left: (window.innerWidth - size) / 2 + "px", top: top + (window.innerHeight - top - 24 - size) / 2 + "px", width: size + "px", height: size + "px" });
+  };
+  function endFraming() { if (picPin) map.removeLayer(picPin); picPin = null; document.body.classList.remove("framing"); $("picFrame").hidden = true; $("shareModal").hidden = false; }
+  $("pfCancel").onclick = () => { map.setView(picWas.c, picWas.z, { animate: false }); endFraming(); };
+  $("pfDone").onclick = async () => {
+    const f = $("pfBox").getBoundingClientRect(), box = map.getContainer().getBoundingClientRect();
+    picSq = { x: f.left - box.left, y: f.top - box.top, s: f.width };
+    $("pfDone").textContent = "…";
+    // the picture is built from the tiles on screen: wait (a little) for the new ones to arrive
+    for (let i = 0; i < 20 && Object.values(LAYERS).some((l) => map.hasLayer(l.layer) && l.layer.isLoading && l.layer.isLoading()); i++) await new Promise((r) => setTimeout(r, 150));
+    $("pfDone").textContent = "Done";
+    endFraming();
+    makePic();
+  };
   function makePic() {
     const it = shareItem;
     sharePic = mapPicture(it).catch(() => null);
-    sharePic.then((f) => { if (shareItem === it && f && shareOn.has("pic")) { $("shPic").src = URL.createObjectURL(f); $("shPic").hidden = false; } });
+    sharePic.then((f) => { if (shareItem === it && f && shareOn.has("pic")) { $("shPic").src = URL.createObjectURL(f); $("shPicBox").hidden = false; } });
   }
   $("shCancel").onclick = () => { $("shareModal").hidden = true; };
   $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) $("shareModal").hidden = true; };
@@ -799,6 +849,7 @@
   // Ask the browser not to clear our storage when space runs low
   const persist = () => { try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {} };
   let maker = null; // Make a map, while it's open (see "make a map")
+  let mapPick = null; // the marks picked on the map for export, while picking (see "pick on the map")
   const pinLayer = L.layerGroup().addTo(map);
   // Point markers: a colour and a shape, so different jobs can be told apart on the map
   // Your marks: one family, tuned to sit on topo and aerial. Magenta first and the default:
@@ -846,7 +897,8 @@
     for (const pt of points) try {
       // Making a map: only the picked entries, and the ones tapped off drawn faint
       if (maker && !maker.keys.has(keyOf(pt))) continue;
-      const off = maker && maker.off.has(keyOf(pt)) ? "mkoff" : "";
+      // (picking for export: the ones not picked yet are faint too)
+      const off = (maker && maker.off.has(keyOf(pt))) || (mapPick && !mapPick.has(keyOf(pt))) ? "mkoff" : "";
       if (!many) nameLabel(pt.kind === "area" ? L.latLngBounds(pt.pts).getCenter() : [pt.lat, pt.lon], pt.name, 8).addTo(pinLayer);
       if (pt.kind === "line" || pt.kind === "area") {
         // A white casing under a thinner coloured line: reads on topo and aerial alike, and
@@ -907,12 +959,19 @@
       toast(hide ? `${pt.name}: left off this map. Undo brings it back` : `${pt.name}: back on the map`);
       return drawPins();
     }
+    if (mapPick) {
+      const k = keyOf(pt);
+      mapPick.has(k) ? mapPick.delete(k) : mapPick.add(k);
+      haptic();
+      drawMapPick();
+      return drawPins();
+    }
     if (measure || nav || moving) return;
     const shape = pt.kind === "line" || pt.kind === "area";
     const c = centreOf(pt), to = pt.kind === "line" ? midOf(pt) : L.latLng(c.lat, c.lon);
     following = false;
     $("locBtn").classList.remove("on");
-    let z = 17;
+    let z = 17.5; // close enough for the fences, gates and paths round it
     if (shape) {
       const room = L.point(map.getSize().x - 60, (sheet.getBoundingClientRect().top - 120) - 40);
       z = Math.min(18, map.getBoundsZoom(L.latLngBounds(pt.pts), false, map.getSize().subtract(room)) - 0.3); // a little slack: it centres on the line, not its box
@@ -923,16 +982,14 @@
     panTo(to, z);
   }
   // Tapping a point on the map opens the same menu as the notebook: name, grid ref, size,
-  // notes, then View photos, Navigate, Share, Edit, Delete (one menu, so nothing's missing
-  // from one of them)
+  // notes, then Navigate, Share, View & edit, Delete for points, lines and areas alike. Photos
+  // are in View & edit (a tap opens them full size) and ride along in Share
   function openItemMenu(pt, fromMap) {
-    const c = centreOf(pt), kind = pt.kind || "point", phs = photosOf(pt);
+    const c = centreOf(pt), kind = pt.kind || "point";
     const size = kind === "area" ? fmtArea(shapeStats(pt).area) : kind === "line" ? fmtDist(shapeStats(pt).length) : "";
     menuPt = pt;
     $("imName").textContent = pt.name;
     $("imRef").textContent = OSGB.gridRef(c.e, c.n, digits) + (kind === "area" ? " (centre)" : kind === "line" ? " (start)" : "") + (size ? " · " + size : "");
-    $("imView").hidden = !phs.length;
-    $("imView").textContent = phs.length > 1 ? `View photos (${phs.length})` : "View photo";
     $("imShow").hidden = !!fromMap; // already on it
     $("imNotes").textContent = pt.notes || "";
     $("itemMenu").hidden = false;
@@ -964,11 +1021,11 @@
     draft = null;
     $("saveModal").hidden = true; saving = null; editing = null; pick = { colour: store.get("ptColour", "magenta"), shape: store.get("ptShape", "circle") }; $("ptName").blur(); $("ptNotes").blur();
   };
-  $("ptCancel").onclick = () => { const was = editing; closeSave(); if (was) showOnMap(was); };
-  $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) closeSave(); };
+  $("ptCancel").onclick = () => { const was = editing; closeSave(); if (!goBack() && was) showOnMap(was); };
+  $("saveModal").onclick = (e) => { if (e.target === $("saveModal")) { closeSave(); goBack(); } };
   let editing = null;
   function editSaved(pt) {
-    closeDrawer();
+    leaveDrawer();
     openSave(pt, pt);
   }
   function drawDraft() {
@@ -998,7 +1055,7 @@
   if ($("ptPick")) $("ptPick").onclick = () => { photoFor = "draft"; $("photoPick").click(); };
   function openSave(geom, edit) {
     fresh();
-    $("keepBar").hidden = true;
+    $("keepBtn").hidden = true;
     saving = geom;
     editing = edit || null;
     const isShape = !!geom.kind && geom.kind !== "point"; // points saved before types existed have no kind
@@ -1026,6 +1083,7 @@
   // Move / Reshape from Edit: keep any name/notes changes, then pick it up
   function editThenMove(mode) {
     const pt = editing;
+    backTo = null; // moving it is a job on the map: it ends there
     $("saveForm").requestSubmit();
     fresh();
     const now = points.find((q) => q.at === pt.at) || pt;
@@ -1053,7 +1111,7 @@
       if (i >= 0) points[i] = { ...points[i], name, notes: $("ptNotes").value.trim(), colour: pick.colour, ...(isShape ? {} : { shape: pick.shape }), photos };
       closeSave(true);
       if (savePoints()) toast("✓ Updated " + name);
-      if (i >= 0) showOnMap(points[i]); // finish on the thing you just edited (Edit can start from the notebook)
+      if (!goBack() && i >= 0) showOnMap(points[i]); // from the notebook: back to it; else finish on the thing you edited
       return;
     }
     points.unshift({ name, notes: $("ptNotes").value.trim(), colour: pick.colour, shape: pick.shape, ...saving, photos, at: new Date().toISOString() });
@@ -1143,15 +1201,13 @@
   $("dTabs").onclick = (e) => { const b = e.target.closest("button[data-tab]"); if (b && b.dataset.tab !== dTab) { dTab = b.dataset.tab; openDrawer(); } };
   function openDrawer() {
     fresh();
-    $("keepBar").hidden = true;
+    $("keepBtn").hidden = true;
     const mapsTab = dTab === "maps" && !folder && !selecting, nMaps = savedMaps().length;
     $("dTabs").hidden = !!(folder || selecting);
     for (const b of $("dTabs").children) b.classList.toggle("on", b.dataset.tab === (mapsTab ? "maps" : "notes"));
     $("dTabs").lastChild.textContent = nMaps ? `Maps (${nMaps})` : "Maps";
     $("drawer").classList.toggle("maps-tab", mapsTab);
     if (mapsTab) {
-      $("dTitle").textContent = "Notebook";
-      $("dSub").textContent = "(on this phone only)";
       $("folderBack").hidden = $("folderActs").hidden = true;
       renderMaps();
       $("drawer").classList.add("open");
@@ -1168,8 +1224,10 @@
     $("resFilter").hidden = !inRes.length;
     const match = (p) => !resF || resOf.get(p) === resF;
     // Header: the notebook, or the folder you're in
-    $("dTitle").textContent = folder || "Notebook";
-    $("dSub").textContent = folder ? `(${summary(scope)})` : "(on this phone only)";
+    // Banner: the folder, else the reserve you're on, else the notebook; and what's in it
+    const shownHere = scope.filter(match);
+    $("dTitle").textContent = folder || resF || "Notebook";
+    $("dSub").textContent = folder ? summary(scope) : `${summary(shownHere) || "Nothing yet"} · on this phone only`;
     $("folderBack").hidden = !folder;
     $("folderActs").hidden = !folder;
     const list = $("list");
@@ -1202,7 +1260,7 @@
         h.textContent = dayLabel(r.at);
         list.appendChild(h);
       }
-      list.appendChild(r.folder ? folderRow(r) : itemRow(r.pt, resOf.get(r.pt), !folder));
+      list.appendChild(r.folder ? folderRow(r) : itemRow(r.pt, resF ? "" : resOf.get(r.pt), !folder)); // on a reserve, its tag says nothing new
     }
     $("backup").textContent = `Last export: ${ago(store.get("exported", ""))}`;
     if (selecting) drawSelBar();
@@ -1225,7 +1283,7 @@
     const col = COLOURS[pt.colour] || COLOURS.orange;
     const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
-    const what = !isShape ? OSGB.gridRef(pt.e, pt.n, digits) : kind === "area" ? fmtArea(st.area) : fmtDist(st.length);
+    const what = !isShape ? "" : kind === "area" ? fmtArea(st.area) : fmtDist(st.length); // sizes, not grid refs: the card is for finding it
     row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="pthumbs"></div><div class="meta"></div></div>`;
     row.querySelector(".name").textContent = pt.name;
     row.querySelector(".gr").textContent = what;
@@ -1274,6 +1332,22 @@
     openDrawer();
   };
   const closeMenu = () => { $("itemMenu").hidden = true; };
+  // Back where you came from: a job started from the notebook (edit, make a map, pick) hands
+  // back to the same tab, filter and scroll when it's cancelled or done, not the main map
+  let backTo = null;
+  function leaveDrawer() {
+    backTo = $("drawer").classList.contains("open") ? { tab: dTab, scroll: (dTab === "maps" ? $("mapList") : $("list")).scrollTop } : null;
+    closeDrawer();
+  }
+  function goBack() {
+    if (!backTo) return false;
+    const b = backTo;
+    backTo = null;
+    dTab = b.tab;
+    openDrawer();
+    requestAnimationFrame(() => { (b.tab === "maps" ? $("mapList") : $("list")).scrollTop = b.scroll; });
+    return true;
+  }
   $("imCancel").onclick = closeMenu;
   $("itemMenu").onclick = (e) => { if (e.target === $("itemMenu")) closeMenu(); };
   $("imShow").onclick = () => { closeMenu(); showOnMap(menuPt); };
@@ -1294,7 +1368,6 @@
   }
   $("imShare").onclick = () => { closeMenu(); shareSaved(menuPt); };
   $("imEdit").onclick = () => { closeMenu(); editSaved(menuPt); };
-  $("imView").onclick = () => { closeMenu(); viewPhotos(menuPt); };
   // Delete at once, with Undo for a few seconds (kinder than "are you sure?" with cold
   // thumbs). A photo's picture is only really removed once the Undo has gone.
   let undoTimer = null, undoItems = null;
@@ -1314,7 +1387,7 @@
     savePoints();
     undoItems = gone;
     $("undoText").textContent = label || `Deleted ${gone[0].name}`;
-    $("keepBar").hidden = true;
+    $("keepBtn").hidden = true;
     $("undoBar").hidden = false;
     undoTimer = setTimeout(finishDelete, 7000);
     return true;
@@ -1423,12 +1496,34 @@
     fresh();
     exportPhotos = $("exPhotos").checked;
     if (scope === "all") return exportList(points, exportFmt, exportPhotos);
+    if (scope === "map") return startMapPick();
     // Pick: tap entries to tick them, then Export
     selecting = true;
     picked.clear();
     $("drawer").classList.add("selecting");
     openDrawer();
     toast("Tap entries to pick them");
+  };
+  // Pick on the map: everything in the notebook shows faint; a tap on a mark picks it (it
+  // darkens), another tap drops it. Export takes the picked ones; Cancel goes back
+  function startMapPick() {
+    leaveDrawer();
+    mapPick = new Set();
+    document.body.classList.add("mappick");
+    $("pickBar").hidden = false;
+    drawMapPick();
+    drawPins();
+    toast("Tap the marks to export", 2600);
+  }
+  function drawMapPick() { $("mpGo").textContent = `Export ${mapPick.size}`; $("mpGo").disabled = !mapPick.size; }
+  function endMapPick() { mapPick = null; document.body.classList.remove("mappick"); $("pickBar").hidden = true; drawPins(); }
+  $("mpCancel").onclick = () => { endMapPick(); goBack(); };
+  $("mpGo").onclick = () => {
+    fresh();
+    const list = points.filter((p) => mapPick.has(keyOf(p)));
+    endMapPick();
+    backTo = null; // exported: the job's done
+    exportList(list, exportFmt, exportPhotos);
   };
   function endSelect() {
     selecting = false;
@@ -1727,18 +1822,17 @@
     panTo(L.latLng(it.lat, it.lon), it.zoom || 15, false);
     if (it.tag !== "Notebook") offerKeep(it); // it's already in the notebook
   }
-  // "Add to notebook" for a few seconds after a search lands; gone once you move the map
+  // An Add button beside Share and Navigate for a few seconds after a search lands; gone once you move the map
   let keepTimer = null, keepIt = null;
   function offerKeep(it) {
     clearTimeout(keepTimer);
     keepIt = it;
-    $("keepText").textContent = it.title || "This place";
-    $("keepBar").hidden = !$("undoBar").hidden;
-    keepTimer = setTimeout(() => ($("keepBar").hidden = true), 9000);
-    setTimeout(() => map.once("movestart", () => ($("keepBar").hidden = true)), 0);
+    $("keepBtn").hidden = false;
+    keepTimer = setTimeout(() => ($("keepBtn").hidden = true), 9000);
+    setTimeout(() => map.once("movestart", () => ($("keepBtn").hidden = true)), 0);
   }
   $("keepBtn").onclick = () => {
-    $("keepBar").hidden = true;
+    $("keepBtn").hidden = true;
     if (!keepIt) return;
     const g = OSGB.wgs84ToGrid(keepIt.lat, keepIt.lon);
     fresh();
@@ -1822,7 +1916,7 @@
       if (out.length >= 8) break;
       if (!(hit(p.name) || hit(p.notes) || hit(p.folder))) continue;
       const c = centreOf(p);
-      out.push({ title: p.name, sub: [KIND_WORD[p.kind || "point"].replace(/s$/, ""), p.folder, dayLabel(p.at)].filter(Boolean).join(" · "), tag: "Notebook", lat: c.lat, lon: c.lon, zoom: 17 });
+      out.push({ title: p.name, sub: [KIND_WORD[p.kind || "point"].replace(/s$/, ""), p.folder, dayLabel(p.at)].filter(Boolean).join(" · "), tag: "Notebook", lat: c.lat, lon: c.lon, zoom: 17.5 });
     }
     return out;
   }
@@ -1895,8 +1989,8 @@
   $("grab").onclick = () => setCompact(!$("sheet").classList.contains("compact"));
   let swipe = null;
   $("sheet").addEventListener("touchstart", (e) => {
-    // Leave the format list free to scroll
-    if (e.target.closest(".rows") || document.body.classList.contains("navigating")) return (swipe = null);
+    // Leave the format list free to scroll (in large text it doesn't scroll: the whole tray swipes)
+    if ((e.target.closest(".rows") && !document.body.classList.contains("large")) || document.body.classList.contains("navigating")) return (swipe = null);
     swipe = { y: e.touches[0].clientY, moved: false };
   }, { passive: true });
   $("sheet").addEventListener("touchmove", (e) => {
@@ -2249,10 +2343,31 @@
     const head = r ? `${r}${what ? " " + what : ""}` : what ? what[0].toUpperCase() + what.slice(1) : "Point";
     return `${head} ${timeOf(when.toISOString())}`;
   }
-  // The team's short name for the reserve at a spot ("Roudsea"), or ""
+  // The team's short name for the reserve at a spot ("Roudsea"), or "". Within 500 m of a team
+  // reserve counts as that reserve: the car park, the gate, the fence just outside belong with
+  // it in the notebook. (The photo stamp uses reserveAt: there "Roudsea" means inside it.)
+  const NEAR_M = 500;
   function reserveShort(ll) {
-    const f = reserveFeatureAt(ll);
+    const f = reserveFeatureAt(ll) || teamReserveNear(ll);
     return f ? TEAM.get(f.properties.REF_CODE) || f.properties.LABEL : "";
+  }
+  function teamReserveNear(ll) {
+    const kx = 111320 * Math.cos((ll.lat * Math.PI) / 180), ky = 110540, pad = NEAR_M / ky;
+    let best = null, bestD = NEAR_M;
+    for (const f of nnr) {
+      if (!isTeam(f)) continue;
+      const [w, s, e, n] = f.bbox;
+      if (ll.lng < w - pad * 2 || ll.lng > e + pad * 2 || ll.lat < s - pad || ll.lat > n + pad) continue;
+      const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+      for (const poly of polys) for (const ring of poly) for (let i = 1; i < ring.length; i++) {
+        // distance to each edge, in metres on a flat patch round the spot
+        const ax = (ring[i - 1][0] - ll.lng) * kx, ay = (ring[i - 1][1] - ll.lat) * ky, bx = (ring[i][0] - ll.lng) * kx, by = (ring[i][1] - ll.lat) * ky;
+        const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, -(ax * dx + ay * dy) / (dx * dx + dy * dy || 1)));
+        const d = Math.hypot(ax + t * dx, ay + t * dy);
+        if (d < bestD) { bestD = d; best = f; }
+      }
+    }
+    return best;
   }
   function reserveAt(ll) { const f = reserveFeatureAt(ll); return f ? f.properties.LABEL : ""; }
   function reserveFeatureAt(ll) {
@@ -2418,20 +2533,21 @@
   }
   // A reserve's own places: after opening the reserve they show as small chips for a few
   // seconds; one tap goes there. The grid ref is the middle of the view wanted, with its zoom
+  // (17.5 or closer: in close, OS shows every fence, gate and path)
   const PLACES = {
     "1006058": [ // Gait Barrows
       { name: "Barn", ref: "SD 4831 7746", zoom: 17.5 },
       { name: "Car park", ref: "SD 4789 7754", zoom: 17.5 },
-      { name: "Moss Lane", ref: "SD 4776 7639", zoom: 16 },
+      { name: "Moss Lane", ref: "SD 4776 7639", zoom: 17.5 },
     ],
     "1006126": [ // Roudsea
       { name: "Barn", ref: "SD 3306 8272", zoom: 17.5 },
       { name: "Tarn", ref: "SD 3318 8241", zoom: 18 },
-      { name: "Stony Ride", ref: "SD 3487 8048", zoom: 15.2 },
+      { name: "Stony Ride", ref: "SD 3487 8048", zoom: 17.5 },
     ],
     "1006954": [ // Duddon
       { name: "Parking (Foxfield)", ref: "SD 2144 8511", zoom: 17.6 },
-      { name: "Heathwaite", ref: "SD 2411 8749", zoom: 15 },
+      { name: "Heathwaite", ref: "SD 2411 8749", zoom: 17.5 },
     ],
     "1006114": [ // Walney
       { name: "Lockup", ref: "SD 1709 6990", zoom: 19 },
@@ -2875,22 +2991,21 @@
   };
   const FINDABLE = new Set(["parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
-  const MK = { portrait: [1200, 1600], landscape: [1600, 1200], head: 128, foot: 96 };
+  const MK = { W: 1200, H: 1600, head: 128, foot: 96 }; // always upright: it reads on a phone and prints on A4
   const mkDrawLayer = L.layerGroup();
   // Starts on the map as it is. Everything in the notebook is there, faint: a tap puts it on
   // this map (or takes it off). Anything in list starts on, and the frame fits round it
   function startMaker(list) {
-    closeDrawer();
-    $("keepBar").hidden = true;
+    leaveDrawer(); // started from the notebook's Maps: Cancel, Save and Send hand back to it
+    $("keepBtn").hidden = true;
     const on = new Set(list.map(keyOf)), all = points.map(keyOf);
-    maker = { keys: new Set(all), off: new Set(all.filter((k) => !on.has(k))), orient: "portrait", tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
+    maker = { keys: new Set(all), off: new Set(all.filter((k) => !on.has(k))), tool: "move", colour: "#e03131", drawn: [], history: [], me: false, prevLayer: current, sym: "parking" };
     $("maker").hidden = false;
     document.body.classList.add("mapmaker");
     mkDrawLayer.clearLayers().addTo(map);
     setTool("move");
     $("mkMe").textContent = "Me: off";
     $("mkMe").classList.remove("on");
-    $("mkOrient").textContent = "Landscape";
     placeFrame();
     mkSet = [];
     mkSendLabel();
@@ -2917,12 +3032,13 @@
     drawPins();
     layout();
     fitRef();
+    goBack();
   }
   // The frame: the picture's map area at the picture's shape, as big as fits between the top
   // bar and the tool bar
   function frameRect() { return $("mkFrame").getBoundingClientRect(); }
   function placeFrame() {
-    const [W, H] = MK[maker.orient], aspect = W / (H - MK.head - MK.foot);
+    const aspect = MK.W / (MK.H - MK.head - MK.foot);
     // (on a wide screen the tools are a column on the left: the frame goes beside them)
     const bar = $("maker").querySelector(".mkbar").getBoundingClientRect(), side = bar.right < window.innerWidth / 2;
     const top = $("maker").querySelector(".mktop").getBoundingClientRect().bottom + 12;
@@ -2940,11 +3056,6 @@
     const unsaved = mkSet.filter((m) => !m.saved).length;
     if (unsaved && !confirm(`Close without saving? ${unsaved} map${unsaved > 1 ? "s" : ""} not saved or sent will be lost.`)) return;
     endMaker();
-  };
-  $("mkOrient").onclick = () => {
-    maker.orient = maker.orient === "portrait" ? "landscape" : "portrait";
-    $("mkOrient").textContent = maker.orient === "portrait" ? "Landscape" : "Portrait";
-    placeFrame();
   };
   $("mkMe").onclick = () => {
     maker.me = !maker.me;
@@ -3141,7 +3252,7 @@
     const f = frameRect(), box = map.getContainer().getBoundingClientRect();
     const nw = map.containerPointToLatLng([f.left - box.left, f.top - box.top]), se = map.containerPointToLatLng([f.right - box.left, f.bottom - box.top]);
     return {
-      id: maker.editId || "map" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString(), title, note, orient: maker.orient,
+      id: maker.editId || "map" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: new Date().toISOString(), title, note,
       nw: [nw.lat, nw.lng], se: [se.lat, se.lng], layer: current, shade: shadeOn, me: maker.me,
       keys: [...maker.keys].filter((k) => !maker.off.has(k)), off: [], drawn: maker.drawn.map(({ type, colour, pts, text, sym }) => ({ type, colour, pts: pts.map((q) => [q.lat, q.lng]), text, sym })),
     };
@@ -3172,16 +3283,12 @@
   }
   // Sent or saved, the job's done: back to the main map
   function mkFinish(msg) { $("mkSendModal").hidden = true; endMaker(); toast(msg, 2600); }
+  // Send: saved first (so a sent map can always be found again), then the share card, where
+  // a message with the map's grid refs can go with it
   $("mkShareSet").onclick = async () => {
-    const files = theSet().map(mapFile), n = files.length;
-    // Saved as well, so a sent map can always be found again. Not waited for: the share
-    // sheet has to open straight from the tap or the iPhone refuses it
-    const saved = saveSet();
-    if (navigator.canShare && navigator.canShare({ files })) {
-      try { await navigator.share({ files }); } catch { return; } // backed out of the share sheet: stay
-    } else for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
-    await saved;
-    mkFinish(n > 1 ? `${n} maps sent, and saved in Maps` : "Map sent, and saved in Maps");
+    await saveSet();
+    const set = theSet();
+    shareMaps(set.map((m) => m.def), set.map((m) => m.blob), (n) => mkFinish(n > 1 ? `${n} maps sent, and saved in Maps` : "Map sent, and saved in Maps"));
   };
   $("mkSaveSet").onclick = async () => {
     const n = theSet().length;
@@ -3216,9 +3323,6 @@
     if (def.layer !== current && LAYERS[def.layer]) setBase(def.layer);
     startMaker(list);
     maker.editId = asCopy ? null : def.id;
-    maker.orient = def.orient;
-    $("mkOrient").textContent = def.orient === "portrait" ? "Landscape" : "Portrait";
-    placeFrame();
     maker.me = def.me;
     $("mkMe").textContent = def.me ? "Me: on" : "Me: off";
     $("mkMe").classList.toggle("on", !!def.me);
@@ -3239,73 +3343,140 @@
     if (!fe) return toast("That reserve's boundary hasn't loaded yet");
     const b = L.geoJSON(fe).getBounds();
     startMaker([]);
-    const wide = b.getNorthEast().distanceTo(L.latLng(b.getNorth(), b.getWest())) > b.getNorthEast().distanceTo(L.latLng(b.getSouth(), b.getEast()));
-    maker.orient = wide ? "landscape" : "portrait";
-    $("mkOrient").textContent = wide ? "Portrait" : "Landscape";
-    placeFrame();
     const f = frameRect(), box = map.getContainer().getBoundingClientRect(), m = 16;
     map.fitBounds(b, { paddingTopLeft: [f.left - box.left + m, f.top - box.top + m], paddingBottomRight: [box.right - f.right + m, box.bottom - f.bottom + m], animate: false });
   }
-  // One map as a file another phone can Import: what made it, and its picture. Notebook marks
-  // on it travel in the picture only (they're the sender's)
-  async function mapZip(def) {
-    const pic = await photoDB.get("map:" + def.id).catch(() => null);
-    if (!pic) return null;
-    const name = (def.title || "map").replace(/[^\w\- ]+/g, "").replace(/\s+/g, "-").slice(0, 40);
-    return new File([await Zip.make([{ name: "maps/maps.json", data: JSON.stringify([{ ...def, keys: [], off: [] }]) }, { name: `maps/${def.id}.jpg`, data: pic }])], `${name}-map.zip`, { type: "application/zip" });
-  }
+  // ---------- the Maps tab ----------
+  // Maps sit with the reserve they show (within 500 m counts), like the notebook: a chip per
+  // reserve, and on one a "New map" card to start there. Big thumbnails: tap one to see it
+  // full screen. Select picks several to share or delete at once.
+  let mapResF = "", mapSel = null;
+  const mapReserve = (def) => reserveShort(L.latLng((def.nw[0] + def.se[0]) / 2, (def.nw[1] + def.se[1]) / 2));
   function renderMaps() {
     const maps = savedMaps(), list = $("mapList");
-    list.innerHTML = `<div class="mkstart"><small>Start a map at</small><div class="chiprow">${[...TEAM.values()].map((n) => `<button type="button" class="chip" data-r="${esc(n)}">${esc(n)}</button>`).join("")}</div></div>`
-      + (maps.length ? "" : empty("No saved maps yet.<br>Tap a reserve above, or <b>Make a map</b> for what's on screen. Frame it, add symbols and send it to anyone."));
-    list.querySelector(".mkstart").onclick = (e) => { const b = e.target.closest("button[data-r]"); if (b) startAtReserve(b.dataset.r); };
-    for (const def of maps) {
-      const row = document.createElement("div");
-      row.className = "mapitem";
-      row.innerHTML = `<img alt=""><div><b></b><small></small><div class="mapacts"><button type="button" data-a="share">Share</button><button type="button" data-a="team">Share to edit</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="edit">Edit</button><button type="button" data-a="del" class="danger">Delete</button></div></div>`;
-      row.querySelector("b").textContent = def.title || "Map";
-      row.querySelector("small").textContent = `${dayLabel(def.at)} · ${def.orient}${def.note ? " · " + def.note : ""}`;
-      photoDB.get("map:" + def.id).then((b) => { if (b) row.querySelector("img").src = URL.createObjectURL(b); }).catch(() => {});
-      // Share to edit sends the map itself, for another Field Notes phone to Import and change.
-      // The file is packed as the finger goes down, so it's ready inside the tap (an iPhone
-      // refuses a share sheet that opens too long after it)
-      let teamFile = null;
-      row.querySelector('[data-a="team"]').addEventListener("pointerdown", () => { teamFile = teamFile || mapZip(def); });
-      row.onclick = async (e) => {
-        const a = e.target.closest("button[data-a]");
-        if (!a) return;
-        if (a.dataset.a === "edit") return editMap(def);
-        if (a.dataset.a === "copy") return editMap(def, true);
-        if (a.dataset.a === "team") {
-          const file = await (teamFile = teamFile || mapZip(def));
-          if (!file) return toast("The picture's missing. Edit it to make it again");
-          if (!(navigator.canShare && navigator.canShare({ files: [file] }))) {
-            const dl = document.createElement("a");
-            dl.href = URL.createObjectURL(file); dl.download = file.name; dl.click();
-            return;
-          }
-          try { await navigator.share({ files: [file], text: "A Field Notes map: open Field Notes, Notebook, Import, and pick this file" }); } catch { return; }
-          closeDrawer();
-          return toast("Sent. They Import it in Field Notes to change it", 3000);
-        }
-        if (a.dataset.a === "del") {
-          if (!confirm(`Delete the map "${def.title || "Map"}"?`)) return;
-          store.set("maps", savedMaps().filter((m) => m.id !== def.id));
-          photoDB.del("map:" + def.id).catch(() => {});
-          return openDrawer();
-        }
-        const blob = await photoDB.get("map:" + def.id).catch(() => null);
-        if (!blob) return toast("The picture's missing. Edit it to make it again");
-        const files = [mapFile({ blob, def }, 0)];
-        if (!(navigator.canShare && navigator.canShare({ files }))) return toast("Sharing isn't available here");
-        try { await navigator.share({ files }); } catch { return; } // backed out: stay in the list
-        // Sent: the job's done, back to the main map
-        closeDrawer();
-        toast("Map sent", 2400);
-      };
-      list.appendChild(row);
+    const resOf = new Map(maps.map((d) => [d, mapReserve(d)]));
+    const shown = maps.filter((d) => !mapResF || resOf.get(d) === mapResF);
+    $("dTitle").textContent = mapResF || "Maps";
+    $("dSub").textContent = `${shown.length || "No"} saved map${shown.length === 1 ? "" : "s"} · on this phone only`;
+    list.innerHTML = `<div class="chiprow res mapres">${[["", "Everything"], ...[...TEAM.values()].map((r) => [r, r])].map(([v, l]) => `<button type="button" data-r="${esc(v)}" class="${v === mapResF ? "on" : ""}">${esc(l)}</button>`).join("")}</div>`;
+    list.querySelector(".mapres").onclick = (e) => { const b = e.target.closest("button[data-r]"); if (b) { mapResF = b.dataset.r === mapResF ? "" : b.dataset.r; renderMaps(); } };
+    if (mapResF && !mapSel) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "mapnew";
+      add.innerHTML = `<b>+</b><span>New map of ${esc(mapResF)}</span>`;
+      add.onclick = () => startAtReserve(mapResF);
+      list.appendChild(add);
     }
+    if (!maps.length) list.insertAdjacentHTML("beforeend", empty("No saved maps yet.<br>Pick a reserve above to start one there, or <b>Make a map</b> for what's on screen."));
+    else if (!shown.length) list.insertAdjacentHTML("beforeend", empty(`No maps of ${esc(mapResF)} yet.`));
+    // Everything: grouped under each reserve, the team's order, then the rest
+    const groups = mapResF ? [[mapResF, shown]] : [...[...TEAM.values()].map((r) => [r, shown.filter((d) => resOf.get(d) === r)]), ["Elsewhere", shown.filter((d) => !resOf.get(d))]];
+    for (const [name, defs] of groups) {
+      if (!defs.length) continue;
+      if (!mapResF) { const h = document.createElement("div"); h.className = "day"; h.textContent = name; list.appendChild(h); }
+      for (const def of defs) list.appendChild(mapRow(def));
+    }
+    drawMapSel();
   }
+  function mapRow(def) {
+    const row = document.createElement("div");
+    row.className = "mapitem" + (mapSel && mapSel.has(def.id) ? " picked" : "");
+    row.innerHTML = `<div class="mapthumb"><img alt="Map"><span class="chk">✓</span></div><div class="mapside"><b></b><small></small><p class="mapnote"></p><div class="mapacts"><button type="button" data-a="share">Share</button><button type="button" data-a="edit">Edit</button><button type="button" data-a="del" class="danger">Delete</button></div></div>`;
+    row.querySelector("b").textContent = def.title || "Map";
+    row.querySelector("small").textContent = dayLabel(def.at);
+    if (def.note) row.querySelector(".mapnote").textContent = def.note; else row.querySelector(".mapnote").remove();
+    const img = row.querySelector("img");
+    photoDB.get("map:" + def.id).then((b) => { if (b) img.src = URL.createObjectURL(b); }).catch(() => {});
+    row.onclick = (e) => {
+      if (mapSel) {
+        mapSel.has(def.id) ? mapSel.delete(def.id) : mapSel.add(def.id);
+        row.classList.toggle("picked", mapSel.has(def.id));
+        return drawMapSel();
+      }
+      if (e.target.closest(".mapthumb")) return img.src && viewMap(img.src);
+      const a = e.target.closest("button[data-a]");
+      if (!a) return;
+      if (a.dataset.a === "edit") return editMap(def);
+      if (a.dataset.a === "del") return deleteMaps([def]);
+      shareMaps([def]);
+    };
+    return row;
+  }
+  // Full screen: a tap anywhere puts you back in the list where you were
+  function viewMap(src) { $("mapViewImg").src = src; $("mapView").hidden = false; }
+  $("mapView").onclick = () => { $("mapView").hidden = true; };
+  function deleteMaps(defs) {
+    if (!confirm(defs.length > 1 ? `Delete these ${defs.length} maps?` : `Delete the map "${defs[0].title || "Map"}"?`)) return;
+    const ids = new Set(defs.map((d) => d.id));
+    store.set("maps", savedMaps().filter((m) => !ids.has(m.id)));
+    for (const id of ids) photoDB.del("map:" + id).catch(() => {});
+    mapSel = null;
+    const keep = $("mapList").scrollTop;
+    openDrawer();
+    $("mapList").scrollTop = keep;
+  }
+  // Select: the footer becomes Delete / Share for the picked maps
+  $("mapSelBtn").onclick = () => { mapSel = new Set(); renderMaps(); };
+  $("mselCancel").onclick = () => { mapSel = null; renderMaps(); };
+  function drawMapSel() {
+    $("drawer").classList.toggle("mselecting", !!mapSel);
+    $("mapSelBtn").hidden = !savedMaps().length;
+    if (!mapSel) return;
+    $("dSub").textContent = mapSel.size ? `${mapSel.size} picked` : "Tap maps to pick them";
+    $("mselShare").textContent = `Share ${mapSel.size}`;
+    $("mselShare").disabled = $("mselDel").disabled = !mapSel.size;
+  }
+  $("mselDel").onclick = () => deleteMaps(savedMaps().filter((d) => mapSel.has(d.id)));
+  $("mselShare").onclick = () => shareMaps(savedMaps().filter((d) => mapSel.has(d.id)));
+
+  // ---------- sharing maps: the pictures, with a message you can change ----------
+  // The message starts with each map's title and note and the grid refs on it (the places to
+  // find, and your notebook marks), so a contractor can copy them into a satnav. Change it as
+  // you like. The pictures are read in as the card opens: an iPhone only shares from a tap
+  function mapRefs(def) {
+    const out = [];
+    for (const d of def.drawn || []) if (d.type === "sym" && FINDABLE.has(d.sym)) {
+      const g = OSGB.wgs84ToGrid(d.pts[0][0], d.pts[0][1]), ref = g && OSGB.gridRef(g.e, g.n, 8);
+      const line = `${SYMBOLS[d.sym].name}: ${ref}`;
+      if (ref && !out.includes(line)) out.push(line);
+    }
+    const on = new Set((def.keys || []).filter((k) => !(def.off || []).includes(k)));
+    for (const p of points) if (on.has(keyOf(p))) {
+      const c = centreOf(p), ref = OSGB.gridRef(c.e, c.n, 8);
+      if (ref) out.push(`${p.name}: ${ref}${p.kind === "area" ? " (centre)" : p.kind === "line" ? " (middle)" : ""}`);
+    }
+    return out;
+  }
+  let msFiles = null, msAfter = null;
+  function shareMaps(defs, blobs, after) {
+    $("msText").value = defs.map((d) => [d.title, d.note, ...mapRefs(d)].filter(Boolean).join("\n")).join("\n\n");
+    $("msPics").innerHTML = defs.map(() => '<img alt="Map">').join("");
+    msAfter = after || null;
+    msFiles = Promise.all(defs.map(async (d, i) => {
+      const b = (blobs && blobs[i]) || (await photoDB.get("map:" + d.id).catch(() => null));
+      if (b) $("msPics").children[i].src = URL.createObjectURL(b);
+      return b ? mapFile({ blob: b, def: d }, i) : null;
+    })).then((fs) => fs.filter(Boolean));
+    $("mapShareModal").hidden = false;
+  }
+  $("msCancel").onclick = () => { $("mapShareModal").hidden = true; };
+  $("msGo").onclick = async () => {
+    const files = await msFiles, text = $("msText").value.trim();
+    if (!files.length) return toast("The picture's missing. Edit the map to make it again");
+    $("mapShareModal").hidden = true;
+    if (navigator.canShare && navigator.canShare({ files })) {
+      try { await navigator.share(text ? { files, text } : { files }); } catch { return; } // backed out: stay where you were
+    } else {
+      for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
+      if (text) copy(text, null, true);
+    }
+    // Sent: the job's done
+    if (msAfter) return msAfter(files.length);
+    mapSel = null;
+    closeDrawer();
+    toast(files.length > 1 ? `${files.length} maps sent` : "Map sent", 2400);
+  };
   const loadImg = (src) => new Promise((ok) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
   // Tiles for a layer at zoom z: our own fetch (not the screen's), so the picture is sharp at
   // its full size whatever the phone's screen
@@ -3332,7 +3503,7 @@
   // Grid spacing: the finest of 100 m … 10 km that gives no more than 8 lines across
   const gridStep = (metres) => [100, 200, 500, 1000, 2000, 5000, 10000].find((s) => metres / s <= 8) || 10000;
   async function renderMap(title, note) {
-    const [W, H] = MK[maker.orient], area = { x: 0, y: MK.head, w: W, h: H - MK.head - MK.foot };
+    const { W, H } = MK, area = { x: 0, y: MK.head, w: W, h: H - MK.head - MK.foot };
     const f = frameRect(), box = map.getContainer().getBoundingClientRect();
     const nw = map.containerPointToLatLng([f.left - box.left, f.top - box.top]);
     const zE = map.getZoom() + Math.log2(area.w / f.width), origin = map.project(nw, zE);
@@ -3350,8 +3521,8 @@
     if (current === "os" && LAYERS.outdoor) await drawTiles(ctx, LAYERS.outdoor.layer, zE, origin, area);
     await drawTiles(ctx, LAYERS[current].layer, zE, origin, area);
     if (shadeOn) {
-      const near = map.getZoom() >= 14 && nearReserve();
-      await drawTiles(ctx, near ? reliefLayer : lidarShade, zE, origin, area, { blend: "hard-light", alpha: shadePct / 100, filter: near ? "" : "brightness(.72) contrast(1.35)" });
+      const sl = shadeLayerHere();
+      await drawTiles(ctx, sl, zE, origin, area, { blend: "hard-light", alpha: shadePct / 100, filter: sl === reliefLayer ? "" : "brightness(.72) contrast(1.35)" });
     }
     const line = (pts, colour, width, dash) => { ctx.beginPath(); pts.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.strokeStyle = colour; ctx.lineWidth = width; ctx.lineCap = ctx.lineJoin = "round"; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]); };
     const halo = (text, x, y, font, colour, align = "left") => { ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(255,255,255,.95)"; ctx.lineWidth = 6; ctx.strokeText(text, x, y); ctx.fillStyle = colour; ctx.fillText(text, x, y); };
@@ -3845,32 +4016,26 @@
     const mine = stampOn.has("line") && j.line;
     if (mine) lines.push({ t: mine, f: `700 ${u}px -apple-system, sans-serif` });
     if (lines.length) {
-      // The team's stamp: a "FIELD NOTES" mark over the details and a spruce bar down the
-      // side, so a stamped photo is recognisable wherever it's been sent
-      const mark = { t: "FIELD NOTES", f: `800 ${Math.round(u * 0.72)}px -apple-system, sans-serif`, c: "#8cc2b8", sp: Math.round(u * 0.18) };
-      lines.unshift(mark);
-      const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), bar = Math.round(u * 0.32), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
-      const wide = (l) => { ctx.font = l.f; return ctx.measureText(l.t).width + (l.sp ? l.sp * l.t.length : 0); };
-      const w = Math.max(...lines.map(wide)) + pad * 2 + bar;
+      // Just the details on a light see-through tile, so the photo shows through behind them
+      const pad = Math.round(u * 0.6), m = Math.round(u * 0.8), lh = (l) => parseInt(l.f.match(/(\d+)px/)[1]) * 1.28;
+      const wide = (l) => { ctx.font = l.f; return ctx.measureText(l.t).width; };
+      const w = Math.max(...lines.map(wide)) + pad * 2;
       const h = lines.reduce((s, l) => s + lh(l), 0) + pad * 2 - u * 0.2, top = c.height - m - h;
-      ctx.fillStyle = "rgba(0,0,0,.58)";
+      ctx.fillStyle = "rgba(0,0,0,.36)";
       ctx.beginPath();
       ctx.roundRect ? ctx.roundRect(m, top, w, h, u * 0.5) : ctx.rect(m, top, w, h);
       ctx.fill();
-      ctx.save();
-      ctx.clip();
-      ctx.fillStyle = "#2e6560";
-      ctx.fillRect(m, top, bar, h);
-      ctx.restore();
       ctx.textBaseline = "top";
+      ctx.shadowColor = "rgba(0,0,0,.55)"; // the tile is lighter now: a soft shadow keeps the words readable
+      ctx.shadowBlur = u * 0.25;
       let y = top + pad;
       for (const l of lines) {
         ctx.font = l.f;
-        ctx.fillStyle = l.c || "#fff";
-        if (l.sp && "letterSpacing" in ctx) { ctx.letterSpacing = l.sp + "px"; ctx.fillText(l.t, m + bar + pad, y); ctx.letterSpacing = "0px"; }
-        else ctx.fillText(l.t, m + bar + pad, y);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(l.t, m + pad, y);
         y += lh(l);
       }
+      ctx.shadowBlur = 0;
     }
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88));
     photoFile = new File([blob], j.name, { type: "image/jpeg" });

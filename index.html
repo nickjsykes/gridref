@@ -15,8 +15,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=201">
-<link rel="stylesheet" href="app.css?v=201">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=202">
+<link rel="stylesheet" href="app.css?v=202">
 </head>
 <body>
 <div id="map"></div>
@@ -78,6 +78,7 @@
   <div class="actions">
     <button id="shareBtn" aria-label="Share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>Share</button>
     <button id="navBtn" aria-label="Navigate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z" fill="currentColor"/></svg>Navigate</button>
+    <button id="keepBtn" aria-label="Add to notebook" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.3 7-12a7 7 0 0 0-14 0c0 5.7 7 12 7 12Z"/><path d="M12 7v6M9 10h6"/></svg>Add</button>
   <button class="aa" id="textBtn" aria-label="Text size"><svg viewBox="0 0 24 24" fill="currentColor"><text x="1" y="19" font-size="11" font-weight="700" font-family="-apple-system,sans-serif">A</text><text x="9" y="19" font-size="18" font-weight="700" font-family="-apple-system,sans-serif">A</text></svg></button>
   </div>
   <div class="measure" id="measure">
@@ -138,9 +139,11 @@
   <div class="list maplist" id="mapList"></div>
   <p class="backup" id="backup"></p>
   <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
+  <div class="selbar" id="mapSelBar"><button type="button" id="mselCancel">Cancel</button><button type="button" class="danger" id="mselDel">Delete</button><button type="button" class="primary" id="mselShare">Share 0</button></div>
   <footer>
     <button id="importBtn" class="nb">Import</button>
     <button id="exportBtn" class="nb">Export</button>
+    <button id="mapSelBtn" class="mp">Select</button>
     <button id="makeMapBtn" class="mp primary">Make a map</button>
     <input type="file" id="importFile" accept=".csv,.zip,text/csv,text/plain,application/zip" hidden>
   </footer>
@@ -178,11 +181,10 @@
   <div class="card">
     <div class="im-title"><b id="imName"></b><span id="imRef"></span></div>
     <p class="im-notes" id="imNotes"></p>
-    <button type="button" id="imView">View photos</button>
     <button type="button" id="imShow">Show on map</button>
     <button type="button" id="imNav">Navigate</button>
     <button type="button" id="imShare">Share</button>
-    <button type="button" id="imEdit">Edit</button>
+    <button type="button" id="imEdit">View &amp; edit</button>
     <button type="button" id="imDel" class="danger">Delete</button>
     <button type="button" id="imCancel" class="cancel">Cancel</button>
   </div>
@@ -196,10 +198,28 @@
   <div class="card">
     <div class="im-title"><b>Share</b></div>
     <div class="chiprow shchips" id="shOpts"></div>
-    <img class="shpic" id="shPic" alt="Map picture" hidden>
+    <div class="shpicbox" id="shPicBox" hidden><img class="shpic" id="shPic" alt="Map picture"><button type="button" class="shadjust" id="shAdjust"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>Move or zoom</button></div>
     <pre class="shprev" id="shPrev"></pre>
     <div class="btns"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></div>
   </div>
+</div>
+<!-- A saved map full screen: a tap anywhere closes it -->
+<div class="mapview" id="mapView" hidden><img id="mapViewImg" alt="Map"></div>
+<!-- Sharing saved maps: the pictures and a message (title, note, grid refs) to change -->
+<div class="modal sheetmenu" id="mapShareModal" hidden>
+  <div class="card">
+    <div class="im-title"><b>Share</b></div>
+    <div class="mkpreviews mspics" id="msPics"></div>
+    <label class="mstext">Message to go with it<textarea id="msText" rows="6" autocomplete="off"></textarea></label>
+    <div class="btns"><button type="button" id="msCancel">Cancel</button><button type="button" class="primary" id="msGo">Share</button></div>
+  </div>
+</div>
+<!-- Picking on the map for export -->
+<div class="picframe" id="pickBar" hidden><div class="mktop"><button type="button" id="mpCancel">Cancel</button><b>Tap marks to pick</b><button type="button" class="mkready" id="mpGo">Export 0</button></div></div>
+<!-- Framing the shared map picture: move and zoom the map inside a square, then Done -->
+<div class="picframe" id="picFrame" hidden>
+  <div class="mkframe" id="pfBox"></div>
+  <div class="mktop"><button type="button" id="pfCancel">Cancel</button><b>Move and zoom the map</b><button type="button" class="mkready" id="pfDone">Done</button></div>
 </div>
 <div class="modal sheetmenu" id="exportModal" hidden>
   <div class="card">
@@ -210,13 +230,13 @@
     </div>
     <div class="shopts">
       <label><input type="radio" name="exs" value="all"> <span id="exAll">Everything</span></label>
-      <label><input type="radio" name="exs" value="pick"> <span>Pick which ones</span></label>
+      <label><input type="radio" name="exs" value="pick"> <span>Pick from notebook</span></label>
+      <label><input type="radio" name="exs" value="map"> <span>Pick on map</span></label>
     </div>
     <div class="shopts"><label><input type="checkbox" id="exPhotos"> <span id="exPhotosLbl">Include photos</span></label></div>
     <div class="btns"><button type="button" id="exCancel">Cancel</button><button type="button" class="primary" id="exGo">Export</button></div>
   </div>
 </div>
-<div class="undo" id="keepBar" hidden><span id="keepText"></span><button type="button" id="keepBtn">Add to notebook</button></div>
 <div class="undo" id="undoBar" hidden><span id="undoText"></span><button type="button" id="undoBtn">Undo</button></div>
 <div class="toast" id="toast"></div>
 <!-- Tapping this switch's label gives a haptic tick on iPhone (iOS 18+); there's no vibrate API there -->
@@ -228,7 +248,6 @@
     <button type="button" id="mkCancel">Cancel</button>
     <b id="mkHead">Make a map</b>
     <button type="button" class="mkready" id="mkReady" hidden>1 ready ›</button>
-    <button type="button" id="mkOrient">Landscape</button>
   </div>
   <div class="mkbar">
     <div class="mktools" id="mkTools">
@@ -268,13 +287,13 @@
 </div>
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=201"></script>
-<script src="config.js?v=201"></script>
-<script src="osgb.js?v=201"></script>
-<script src="parse.js?v=201"></script>
-<script src="zip.js?v=201"></script>
-<script src="exif.js?v=201"></script>
-<script src="local.js?v=201"></script>
-<script src="app.js?v=201"></script>
+<script src="vendor/leaflet/leaflet.js?v=202"></script>
+<script src="config.js?v=202"></script>
+<script src="osgb.js?v=202"></script>
+<script src="parse.js?v=202"></script>
+<script src="zip.js?v=202"></script>
+<script src="exif.js?v=202"></script>
+<script src="local.js?v=202"></script>
+<script src="app.js?v=202"></script>
 </body>
 </html>

@@ -116,6 +116,10 @@ a.row { text-decoration: none; }
 .prec button.on { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.15); }
 /* Share and Navigate sit under the grid ref: they act on that place */
 .actions { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; margin: 8px 0 0; }
+/* After a search: Add joins Share and Navigate for a few seconds */
+.actions:has(#keepBtn:not([hidden])) { grid-template-columns: 1fr 1fr 1fr auto; }
+#keepBtn[hidden] { display: none; }
+#keepBtn { background: var(--green); color: var(--panel); }
 .actions button { display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 22px; padding: 10px 8px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 .actions svg { width: 20px; height: 20px; }
 /* Aa: the panel's own text size, so it lives in the panel's corner (same place in both sizes) */
@@ -171,7 +175,7 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .photopin svg { width: 14px; height: 14px; }
 .shopts { display: grid; gap: 4px; }
 .selbar { display: none; gap: 8px; padding: 12px 16px max(10px, calc(var(--safe-b) - 20px)); border-top: 1px solid var(--line); }
-.drawer.selecting .selbar { display: flex; }
+.drawer.selecting #selBar { display: flex; }
 .drawer.selecting footer, .drawer.selecting .item .go, .drawer.selecting #backup { display: none; }
 .selbar button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font: 600 15px var(--sans); background: var(--green-soft); color: var(--green); }
 .selbar .primary { background: var(--green); color: var(--panel); }
@@ -207,7 +211,6 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 body.large .actions button { padding: 14px 8px; font-size: 18px; }
 body.large .actions svg { width: 24px; height: 24px; }
 body.large .aa { width: 62px; }
-body.large .sheet.compact .more { display: flex; }
 body.large .meta { display: none !important; }
 body.large .refline { flex-direction: column; gap: 8px; margin-top: 6px; }
 body.large .refline .big { justify-content: center; width: 100%; }
@@ -660,17 +663,9 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .card .btns.three { grid-template-columns: 1.15fr .85fr 1fr; }
 .card .btns.one { grid-template-columns: 1fr; }
 .maplist { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px; }
-.mapitem { display: flex; gap: 10px; align-items: flex-start; }
-.mapitem img { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); flex: none; }
-.mapitem > div { flex: 1; min-width: 0; }
-.mapitem b { display: block; font: 700 15px var(--sans); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mapitem small { display: block; font: 12.5px var(--sans); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 2px 0 6px; }
-.mapacts { display: flex; flex-wrap: wrap; gap: 6px; }
-.mapacts button { flex: 1 1 30%; border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
+.mapacts button { border: 0; border-radius: 9px; padding: 7px 4px; font: 600 13.5px var(--sans); background: var(--green-soft); color: var(--green); }
 .mapacts button.danger { color: var(--danger); }
-/* Start a map at a reserve: the team's reserves as chips above the saved maps, wrapping */
-.mkstart small { display: block; font: 600 12.5px var(--sans); color: var(--muted); }
-.mkstart .chiprow { flex-wrap: wrap; padding: 6px 0 2px; overflow: visible; }
+
 body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's bar */
 .mkback[hidden] { display: none; }
 .mkback { align-self: flex-start; border: 0; background: none; padding: 2px 0; font: 600 15px var(--sans); color: var(--green); }
@@ -711,3 +706,59 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 .sheet.placeview .placenote { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; position: absolute; inset: 0; text-align: center; pointer-events: none; }
 .placenote b { font: 700 26px var(--sans); color: var(--ink); }
 .placenote small { font: 13px var(--sans); color: var(--muted); }
+
+/* Share's map picture: a corner button to frame it again; framing hides everything but the map */
+.shpicbox { position: relative; }
+.shpicbox[hidden] { display: none; }
+.shadjust { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 7px 12px; font: 600 13.5px var(--sans); background: rgba(255,255,255,.92); color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+.shadjust svg { width: 16px; height: 16px; }
+.picframe[hidden] { display: none; }
+body.framing .top, body.framing .chips, body.framing .subchips, body.framing .fabs, body.framing .sheet, body.framing .cross, body.framing .leaflet-control-attribution { display: none !important; }
+
+/* Maps tab: a card per map, the picture half the width (tap for full screen), its details and
+   buttons beside it. Reserve chips wrap above; a reserve has a New map card first */
+.maplist { padding: 0 0 12px; gap: 0; }
+.mapres { flex-wrap: wrap; padding: 10px 12px 4px; overflow: visible; }
+.mapnew { display: flex; align-items: center; gap: 12px; margin: 8px 10px; padding: 14px; border: 2px dashed var(--line); border-radius: 12px; background: none; color: var(--green); font: 600 16px var(--sans); text-align: left; }
+.mapnew b { width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: var(--panel); display: grid; place-items: center; font: 600 24px var(--sans); flex: none; }
+.mapitem { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 10px 10px; padding: 10px; border-radius: 12px; background: var(--card); align-items: start; }
+.mapthumb { position: relative; }
+.mapthumb img { display: block; width: 100%; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); }
+.mapthumb .chk { display: none; position: absolute; top: 8px; left: 8px; width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; background: rgba(0,0,0,.25); place-items: center; color: #fff; font: 700 16px var(--sans); }
+.drawer.mselecting .mapthumb .chk { display: grid; }
+.mapitem.picked .mapthumb .chk { background: var(--green); }
+.mapitem.picked { box-shadow: inset 0 0 0 2px var(--green); }
+.mapside { min-width: 0; display: flex; flex-direction: column; gap: 3px; height: 100%; }
+.mapside b { font: 700 16px var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+.mapside small { font: 13px var(--sans); color: var(--muted); }
+.mapnote { margin: 2px 0 0; font: 13.5px var(--sans); color: var(--ink); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.mapacts { display: flex; flex-direction: column; gap: 6px; margin-top: auto; padding-top: 8px; }
+.drawer.mselecting .mapacts { display: none; }
+.drawer.mselecting #mapSelBar { display: flex; }
+.drawer.mselecting footer, .drawer.mselecting .mapnew { display: none; }
+#mapSelBar .danger { color: var(--danger); }
+.selbar button:disabled { opacity: .5; }
+.mapview { position: fixed; inset: 0; z-index: 1500; background: rgba(10, 12, 10, .92); display: grid; place-items: center; padding: calc(var(--safe-t) + 12px) 12px 12px; }
+.mapview[hidden] { display: none; }
+.mapview img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.mspics img { width: 46%; flex: none; scroll-snap-align: start; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); }
+.mstext { display: flex; flex-direction: column; gap: 6px; font: 600 13px var(--sans); color: var(--muted); }
+.mstext textarea { font: 15px var(--sans); color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px; resize: vertical; }
+
+/* The notebook's banner: a spruce band with the contour texture, the place you're looking at
+   in big type and a one-line count under it. The tabs sit on its bottom edge */
+.drawer header { position: relative; overflow: hidden; align-items: flex-start; min-height: 118px; padding: 12px 16px 30px; background: var(--green); border-bottom: 0; }
+.drawer header::before { content: ""; position: absolute; inset: 0; background: var(--panel); opacity: .13; pointer-events: none;
+  -webkit-mask: url(art/contours.svg) center / 420px auto repeat; mask: url(art/contours.svg) center / 420px auto repeat; }
+.drawer header > * { position: relative; }
+.drawer header button, .drawer header .back { color: var(--panel); }
+.drawer h2.dtitle { align-self: flex-end; color: var(--panel); font-size: clamp(28px, 9vw, 34px); line-height: 1.05; white-space: normal; }
+.dtitle small { display: block; margin-top: 5px; color: var(--panel); opacity: .82; font: 500 14px var(--sans); }
+.dtabs { position: relative; z-index: 2; margin: -20px 16px 4px; background: var(--panel); box-shadow: 0 3px 12px rgba(0,0,0,.14); }
+.drawer .list { border-top: 0; }
+body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross, body.mappick .subchips { display: none !important; }
+.mktop button:disabled { opacity: .5; }
+/* LiDAR: ground or trees and hedges, two halves under the slider */
+.lidarkind { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 10px 10px; padding: 3px; border-radius: 10px; background: var(--green-soft); }
+.layers .lidarkind button { border: 0; border-radius: 8px; padding: 7px 6px; font: 600 13.5px var(--sans); background: none; color: var(--muted); text-align: center; width: auto; }
+.layers .lidarkind button.on { background: var(--panel); color: var(--green); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
