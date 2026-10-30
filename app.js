@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "202"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "203"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -1173,7 +1173,25 @@
   let resF = "", folder = null, menuPt = null;
   const KIND_WORD = { point: "Points", line: "Lines", area: "Areas", photo: "Photos" };
   // Tap a reserve to see only its entries; tap it again to see everything
-  $("resFilter").onclick = (e) => { const b = e.target.closest("button"); if (b) { resF = resF === b.dataset.r ? "" : b.dataset.r; openDrawer(); } };
+  // Which reserve: a small pill under the banner's title ("All reserves ▾"); a tap opens the
+  // list. Notes offer the reserves they have entries in; Maps offer every team reserve
+  function drawResPick(opts) {
+    const sub = $("dSub"), cur = dTab === "maps" ? mapResF : resF;
+    if (!opts || !opts.length) return (sub.textContent = "");
+    sub.innerHTML = `<button type="button" class="respick">${esc(cur || "All reserves")}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
+    sub.firstChild.onclick = () => {
+      $("resList").innerHTML = [["", "All reserves"], ...opts.map((r) => [r, r])].map(([v, l]) => `<button type="button" data-r="${esc(v)}" class="${v === cur ? "on" : ""}">${esc(l)}</button>`).join("");
+      $("resMenu").hidden = false;
+    };
+  }
+  $("resList").onclick = (e) => {
+    const b = e.target.closest("button[data-r]");
+    if (!b) return;
+    $("resMenu").hidden = true;
+    if (dTab === "maps") mapResF = b.dataset.r; else resF = b.dataset.r;
+    openDrawer();
+  };
+  $("resMenu").onclick = (e) => { if (e.target === $("resMenu") || e.target.id === "resCancel") $("resMenu").hidden = true; };
   function showOnMap(pt) {
     closeDrawer();
     following = false;
@@ -1202,10 +1220,10 @@
   function openDrawer() {
     fresh();
     $("keepBtn").hidden = true;
-    const mapsTab = dTab === "maps" && !folder && !selecting, nMaps = savedMaps().length;
+    const mapsTab = dTab === "maps" && !folder && !selecting;
     $("dTabs").hidden = !!(folder || selecting);
     for (const b of $("dTabs").children) b.classList.toggle("on", b.dataset.tab === (mapsTab ? "maps" : "notes"));
-    $("dTabs").lastChild.textContent = nMaps ? `Maps (${nMaps})` : "Maps";
+
     $("drawer").classList.toggle("maps-tab", mapsTab);
     if (mapsTab) {
       $("folderBack").hidden = $("folderActs").hidden = true;
@@ -1220,14 +1238,12 @@
     const inRes = [...TEAM.values()].filter((r) => [...resOf.values()].includes(r));
     if (resF && !inRes.includes(resF)) resF = "";
     // Reserve filter (only offered when something is in a reserve)
-    $("resFilter").innerHTML = [["", "Everything"], ...inRes.map((r) => [r, r])].map(([v, l]) => `<button data-r="${esc(v)}" class="${v === resF ? "on" : ""}">${esc(l)}</button>`).join("");
-    $("resFilter").hidden = !inRes.length;
+
     const match = (p) => !resF || resOf.get(p) === resF;
     // Header: the notebook, or the folder you're in
     // Banner: the folder, else the reserve you're on, else the notebook; and what's in it
-    const shownHere = scope.filter(match);
-    $("dTitle").textContent = folder || resF || "Notebook";
-    $("dSub").textContent = folder ? summary(scope) : `${summary(shownHere) || "Nothing yet"} · on this phone only`;
+    $("dTitle").textContent = folder || "Notebook";
+    drawResPick(folder ? null : inRes);
     $("folderBack").hidden = !folder;
     $("folderActs").hidden = !folder;
     const list = $("list");
@@ -1283,7 +1299,8 @@
     const col = COLOURS[pt.colour] || COLOURS.orange;
     const mk = !isShape ? shapeSvg(pt.shape, pt.colour, 18)
       : `<svg width="18" height="18" viewBox="0 0 24 24" fill="${kind === "area" ? col + "44" : "none"}" stroke="${col}" stroke-width="3" stroke-linejoin="round">${kind === "area" ? '<path d="M4 7 12 3l8 6-3 11H6Z"/>' : '<path d="M3 18 9 9l5 6 7-10"/>'}</svg>`;
-    const what = !isShape ? "" : kind === "area" ? fmtArea(st.area) : fmtDist(st.length); // sizes, not grid refs: the card is for finding it
+    // sizes, not grid refs: the card is for finding it. Areas in hectares only
+    const what = !isShape ? "" : kind === "area" ? `${(st.area / 10000).toFixed(st.area < 1000 ? 3 : 2)} ha` : fmtDist(st.length);
     row.innerHTML = `<span class="chk">✓</span><span class="mk">${mk}</span><div class="main"><div class="line1"><span class="name"></span><span class="gr"></span></div><div class="note"></div><div class="pthumbs"></div><div class="meta"></div></div>`;
     row.querySelector(".name").textContent = pt.name;
     row.querySelector(".gr").textContent = what;
@@ -2543,7 +2560,7 @@
     "1006126": [ // Roudsea
       { name: "Barn", ref: "SD 3306 8272", zoom: 17.5 },
       { name: "Tarn", ref: "SD 3318 8241", zoom: 18 },
-      { name: "Stony Ride", ref: "SD 3487 8048", zoom: 17.5 },
+      { name: "Stony Ride", ref: "SD 3520 8040", zoom: 17.5 },
     ],
     "1006954": [ // Duddon
       { name: "Parking (Foxfield)", ref: "SD 2144 8511", zoom: 17.6 },
@@ -3356,10 +3373,9 @@
     const maps = savedMaps(), list = $("mapList");
     const resOf = new Map(maps.map((d) => [d, mapReserve(d)]));
     const shown = maps.filter((d) => !mapResF || resOf.get(d) === mapResF);
-    $("dTitle").textContent = mapResF || "Maps";
-    $("dSub").textContent = `${shown.length || "No"} saved map${shown.length === 1 ? "" : "s"} · on this phone only`;
-    list.innerHTML = `<div class="chiprow res mapres">${[["", "Everything"], ...[...TEAM.values()].map((r) => [r, r])].map(([v, l]) => `<button type="button" data-r="${esc(v)}" class="${v === mapResF ? "on" : ""}">${esc(l)}</button>`).join("")}</div>`;
-    list.querySelector(".mapres").onclick = (e) => { const b = e.target.closest("button[data-r]"); if (b) { mapResF = b.dataset.r === mapResF ? "" : b.dataset.r; renderMaps(); } };
+    $("dTitle").textContent = "Notebook";
+    drawResPick([...TEAM.values()]);
+    list.innerHTML = "";
     if (mapResF && !mapSel) {
       const add = document.createElement("button");
       add.type = "button";

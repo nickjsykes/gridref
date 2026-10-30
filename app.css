@@ -143,8 +143,6 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .chiprow { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; scrollbar-width: none; flex: none; }
 .chiprow::-webkit-scrollbar { display: none; }
 .chiprow:last-of-type, .chiprow + .chiprow { padding-bottom: 8px; }
-#resFilter { flex-wrap: wrap; gap: 6px 5px; padding-bottom: 10px; } /* every reserve in view, no sideways scrolling */
-#resFilter button { padding: 6px 10px; font-size: 13px; }
 .chiprow[hidden] { display: none; }
 .chiprow button { flex: none; border: 0; border-radius: 16px; padding: 7px 13px; font: 600 13.5px var(--sans); white-space: nowrap; background: var(--green-soft); color: var(--muted); }
 .chiprow button small { font-weight: 500; opacity: .75; margin-left: 2px; }
@@ -595,7 +593,7 @@ body.large .toast { font-size: 22px; padding: 16px 22px; border-radius: 18px; }
   --glass-menu: color-mix(in srgb, var(--panel) 80%, transparent);
   --glass-edge: 0 1px 8px rgba(0,0,0,.16), inset 0 0 0 .5px rgba(255,255,255,.35);
 }
-.pill, .addmenu .fab, .chips button:not(.on), .search, .leaflet-bottom.leaflet-left .leaflet-control-attribution {
+.pill, .addmenu .fab, .chips button:not(.on), .leaflet-bottom.leaflet-left .leaflet-control-attribution {
   background: var(--glass-btn); -webkit-backdrop-filter: blur(12px) saturate(1.4); backdrop-filter: blur(12px) saturate(1.4); box-shadow: var(--glass-edge); }
 .layers, .results {
   background: var(--glass-menu); -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); box-shadow: 0 4px 16px rgba(0,0,0,.18), inset 0 0 0 .5px rgba(255,255,255,.35); }
@@ -684,7 +682,7 @@ body.mapmaker .layers { z-index: 1100; } /* the map menu opens over the maker's 
 .dtabs[hidden] { display: none; }
 .dtabs button { border: 0; border-radius: 9px; padding: 9px; font: 600 15px var(--sans); background: none; color: var(--muted); }
 .dtabs button.on { background: var(--panel); color: var(--green); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
-.drawer.maps-tab #list, .drawer.maps-tab #resFilter, .drawer.maps-tab #backup, .drawer.maps-tab footer .nb { display: none; }
+.drawer.maps-tab #list, .drawer.maps-tab #backup, .drawer.maps-tab footer .nb { display: none; }
 .drawer:not(.maps-tab) #mapList, .drawer:not(.maps-tab) footer .mp { display: none; }
 .drawer footer button.primary { background: var(--green); color: var(--panel); }
 /* A reserve's own places (Barn, Car park…): a short list straight down from that reserve's
@@ -718,7 +716,6 @@ body.framing .top, body.framing .chips, body.framing .subchips, body.framing .fa
 /* Maps tab: a card per map, the picture half the width (tap for full screen), its details and
    buttons beside it. Reserve chips wrap above; a reserve has a New map card first */
 .maplist { padding: 0 0 12px; gap: 0; }
-.mapres { flex-wrap: wrap; padding: 10px 12px 4px; overflow: visible; }
 .mapnew { display: flex; align-items: center; gap: 12px; margin: 8px 10px; padding: 14px; border: 2px dashed var(--line); border-radius: 12px; background: none; color: var(--green); font: 600 16px var(--sans); text-align: left; }
 .mapnew b { width: 34px; height: 34px; border-radius: 50%; background: var(--green); color: var(--panel); display: grid; place-items: center; font: 600 24px var(--sans); flex: none; }
 .mapitem { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0 10px 10px; padding: 10px; border-radius: 12px; background: var(--card); align-items: start; }
@@ -762,3 +759,13 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .lidarkind { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0 10px 10px; padding: 3px; border-radius: 10px; background: var(--green-soft); }
 .layers .lidarkind button { border: 0; border-radius: 8px; padding: 7px 6px; font: 600 13.5px var(--sans); background: none; color: var(--muted); text-align: center; width: auto; }
 .layers .lidarkind button.on { background: var(--panel); color: var(--green); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+/* The reserve pill under the notebook's title, and its list */
+.drawer header .respick { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; border: 0; border-radius: 14px; padding: 5px 8px 5px 12px; font: 600 14px var(--sans); background: color-mix(in srgb, var(--panel) 22%, transparent); color: var(--panel); }
+.respick svg { width: 16px; height: 16px; }
+.dtitle small:empty { display: none; }
+.reslist { display: flex; flex-direction: column; }
+.reslist button { border: 0; border-top: 1px solid var(--line); background: none; padding: 14px 6px; text-align: left; font: 500 17px var(--sans); color: var(--ink); }
+.reslist button:first-child { border-top: 0; }
+.reslist button.on { color: var(--green); font-weight: 700; }
+.reslist button.on::after { content: "  ✓"; }
+.drawer header { min-height: 104px; }
