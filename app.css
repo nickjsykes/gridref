@@ -494,8 +494,6 @@ body.large .more-hint { display: none !important; }
 body.large .row .v.dim { font-size: 17px !important; }
 .sheetmenu .shchips button { padding: 8px 4px; font-size: 13.5px; border-radius: 12px; background: var(--green-soft); color: var(--muted); white-space: nowrap; }
 .sheetmenu .shchips button.on { background: var(--green); color: var(--panel); }
-.shpic { display: block; width: 100%; height: 30vh; object-fit: contain; border-radius: 10px; background: var(--green-soft); } /* the whole picture, square or a tall map */
-.shpic[hidden] { display: none; }
 
 /* Big text (John mode): also high contrast and a big "Copied" */
 body.large { --ink: #000; --muted: #2b2b28; --panel: #fff; --line: #bdb8a8; }
@@ -644,7 +642,9 @@ body.mapmaker .top, body.mapmaker .chips, body.mapmaker .fabs, body.mapmaker .sh
 .mkpreviews[hidden] { display: none; }
 .mkpreviews img { flex: 0 0 100%; width: 100%; max-height: 46vh; object-fit: contain; scroll-snap-align: center; border-radius: 8px; border: 1px solid var(--line); background: var(--green-soft); box-sizing: border-box; }
 .mklabel { font: 700 15px var(--sans); white-space: nowrap; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; transform: translate(-50%, -50%); display: inline-block; }
-.pin.mkoff, .leaflet-overlay-pane .mkoff { opacity: .28; }
+.pin.mkoff { opacity: .28; }
+/* a line or area left off the map: dashed as well as faint, so on and off can't be confused */
+.leaflet-overlay-pane .mkoff { opacity: .5; stroke-dasharray: 2 9; }
 .mksyms { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-height: 148px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 2px; } /* 27 symbols: two and a half rows show, the rest scroll */
 .mksyms[hidden] { display: none; }
 /* A laptop: the tools sit in a column on the left, so the frame keeps the screen's full height */
@@ -707,8 +707,6 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 /* Share's map picture: a corner button to edit it in the map maker */
 .shpicbox { position: relative; }
 .shpicbox[hidden] { display: none; }
-.shadjust { position: absolute; right: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 7px 12px; font: 600 13.5px var(--sans); background: rgba(255,255,255,.92); color: var(--green); box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-.shadjust svg { width: 16px; height: 16px; }
 .picframe[hidden] { display: none; }
 
 /* Maps tab: a card per map, the picture half the width (tap for full screen), its details and
@@ -745,7 +743,7 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 .drawer header { position: relative; overflow: hidden; align-items: flex-start; min-height: 118px; padding: 12px 16px 30px; background: var(--green); border-bottom: 0; }
 .drawer header::before { content: ""; position: absolute; inset: 0; background: var(--panel); opacity: .13; pointer-events: none;
   -webkit-mask: url(art/contours.svg) center / 420px auto repeat; mask: url(art/contours.svg) center / 420px auto repeat; }
-.drawer header > * { position: relative; }
+.drawer header > * { position: relative; z-index: 1; } /* above the banner art */
 .drawer header button, .drawer header .back { color: var(--panel); }
 .drawer h2.dtitle { align-self: flex-end; color: var(--panel); font-size: clamp(28px, 9vw, 34px); line-height: 1.05; white-space: normal; }
 .dtitle small { display: block; margin-top: 5px; color: var(--panel); opacity: .82; font: 500 14px var(--sans); }
@@ -772,3 +770,19 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .msedit { align-self: flex-start; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 16px; padding: 8px 14px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
 .msedit[hidden] { display: none; }
 .msedit svg { width: 16px; height: 16px; }
+/* On a reserve: its own ground and boundary, the whole reserve fitted to the banner's height on
+   the right (clear of the title), over a fainter wash of the general texture */
+.drawer header.art::before { opacity: .07; }
+.drawer header.art::after { content: ""; position: absolute; top: 4px; bottom: 4px; right: 6px; width: 70%; background: var(--panel); opacity: .45; pointer-events: none;
+  /* the drawing, faded in from the left so the edge of the LiDAR doesn't show as a box */
+  -webkit-mask: var(--art) right center / contain no-repeat, linear-gradient(to right, transparent 25%, #000 60%);
+  -webkit-mask-composite: source-in;
+  mask: var(--art) right center / contain no-repeat, linear-gradient(to right, transparent 25%, #000 60%); mask-composite: intersect; }
+/* Share's maps: one big picture, or a row of them once there's more than one (tap to edit, × to drop) */
+.shpics { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.shpics .shp { position: relative; flex: 1 0 100%; }
+.shpics.many .shp { flex: 0 0 42%; }
+.shpics img { display: block; width: 100%; height: 30vh; object-fit: contain; border-radius: 10px; background: var(--green-soft); }
+.shpics .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font: 600 18px/1 var(--sans); }
+.shpicacts { display: flex; gap: 8px; margin-top: 8px; }
+.shpicacts b { font-weight: 700; font-size: 17px; }

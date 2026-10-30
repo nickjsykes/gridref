@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "204"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "205"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -724,34 +724,70 @@
     drawShare();
     $("shareModal").hidden = false;
   }
-  // Edit map: the picture goes through the map maker, framed on the place with a Location
-  // symbol on it, to add parking, a meeting point, arrows… Make hands it back to this card
-  $("shEdit").onclick = () => {
-    const it = shareItem;
+  // The share's maps: at first the plain picture round the crosshair. Edit map takes one
+  // through the map maker (framed on the place, a Location symbol on it) to add parking, a
+  // meeting point, arrows…; + Add map makes another, so a share can carry, say, the roads in
+  // and then the paths on the reserve. Each remembers what was drawn, so opening it again
+  // carries on from there. A tap on a picture opens it; × drops it (when there's more than one)
+  function shareMaps_(it) {
+    return it.maps || [{ file: null, def: null }]; // (the plain picture until something's edited or added)
+  }
+  function openMakerFor(it, i) {
+    const list = (it.maps = shareMaps_(it).slice()), ent = list[i];
     $("shareModal").hidden = true;
-    map.setView([it.lat, it.lon], map.getZoom(), { animate: false });
-    startMaker([]);
-    const d = { type: "sym", sym: "spot", pts: [L.latLng(it.lat, it.lon)] };
-    showDrawn(d);
-    maker.drawn.push(d);
-    $("mkTitle").value = it.label || it.ref;
+    if (ent && ent.def) editMap(ent.def);
+    else {
+      map.setView([it.lat, it.lon], map.getZoom(), { animate: false });
+      startMaker([]);
+      const d = { type: "sym", sym: "spot", pts: [L.latLng(it.lat, it.lon)] };
+      showDrawn(d);
+      maker.drawn.push(d);
+      $("mkTitle").value = it.label || it.ref;
+    }
     maker.handoff = {
-      made: (blob) => { it.edited = new File([blob], `${it.ref.replace(/\s+/g, "")}.jpg`, { type: "image/jpeg" }); shareOn.add("pic"); drawShare(); makePic(); $("shareModal").hidden = false; },
-      cancel: () => { $("shareModal").hidden = false; },
+      made: (blob, def) => {
+        list[i] = { file: new File([blob], `${it.ref.replace(/\s+/g, "")}-${i + 1}.jpg`, { type: "image/jpeg" }), def };
+        shareOn.add("pic");
+        drawShare();
+        makePic();
+        $("shareModal").hidden = false;
+      },
+      cancel: () => { if (!list[i]) list.splice(i, 1); $("shareModal").hidden = false; },
     };
+  }
+  $("shEdit").onclick = () => openMakerFor(shareItem, 0);
+  $("shAddMap").onclick = async () => {
+    const it = shareItem;
+    // the plain picture stays as the first map: keep the one already made
+    if (!it.maps) it.maps = [{ file: ((await sharePic) || [])[0] || null, def: null }];
+    openMakerFor(it, it.maps.length);
+  };
+  $("shPics").onclick = (e) => {
+    const it = shareItem, x = e.target.closest("[data-x]"), im = e.target.closest("img[data-i]");
+    if (x) { it.maps.splice(+x.dataset.x, 1); return makePic(); }
+    if (im) openMakerFor(it, +im.dataset.i);
   };
   function makePic() {
-    const it = shareItem;
-    sharePic = it.edited ? Promise.resolve(it.edited) : mapPicture(it).catch(() => null); // edited in the maker: that one
-    sharePic.then((f) => { if (shareItem === it && f && shareOn.has("pic")) { $("shPic").src = URL.createObjectURL(f); $("shPicBox").hidden = false; } });
+    const it = shareItem, list = shareMaps_(it);
+    // each picture: the one made in the maker, else the plain one round the crosshair
+    const plain = list.some((m) => !m.file) ? mapPicture(it).catch(() => null) : null;
+    sharePic = Promise.all(list.map((m) => m.file || plain)).then((fs) => fs.filter(Boolean));
+    sharePic.then((fs) => {
+      if (shareItem !== it || !shareOn.has("pic")) return;
+      const box = $("shPics");
+      box.innerHTML = fs.map((f, i) => `<span class="shp"><img data-i="${i}" alt="Map ${i + 1}">${fs.length > 1 ? `<button type="button" class="x" data-x="${i}" aria-label="Remove this map">×</button>` : ""}</span>`).join("");
+      fs.forEach((f, i) => { box.querySelectorAll("img")[i].src = URL.createObjectURL(f); });
+      box.classList.toggle("many", fs.length > 1);
+      $("shPicBox").hidden = !fs.length;
+    });
   }
   $("shCancel").onclick = () => { $("shareModal").hidden = true; };
   $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) $("shareModal").hidden = true; };
   $("shGo").onclick = async () => {
     const text = shareTextFor(shareItem);
-    const pic = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : null;
+    const pics = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : [];
     const phs = shareOn.has("photos") && sharePhotos ? await sharePhotos : [];
-    const files = [pic, ...phs].filter(Boolean);
+    const files = [...pics, ...phs].filter(Boolean);
     if (!text && !files.length) return toast("Tick at least one thing to share");
     $("shareModal").hidden = true;
     if (files.length && navigator.canShare && navigator.canShare({ files })) { try { await navigator.share({ files, text }); } catch {} return; }
@@ -1163,6 +1199,13 @@
   // Tap a reserve to see only its entries; tap it again to see everything
   // Which reserve: a small pill under the banner's title ("All reserves ▾"); a tap opens the
   // list. Notes offer the reserves they have entries in; Maps offer every team reserve
+  // The banner behind the title: the reserve's own ground as contour lines (art/banner, drawn
+  // by build/draw_banners.py from its LiDAR), or the general texture for all of them
+  function drawBanner(name) {
+    const code = name && [...TEAM].find(([, n]) => n === name)?.[0], head = $("drawer").querySelector("header");
+    head.classList.toggle("art", !!code);
+    if (code) head.style.setProperty("--art", `url(art/banner/${code}.svg)`);
+  }
   function drawResPick(opts) {
     const sub = $("dSub"), cur = dTab === "maps" ? mapResF : resF;
     if (!opts || !opts.length) return (sub.textContent = "");
@@ -1232,6 +1275,7 @@
     // Banner: the folder, else the reserve you're on, else the notebook; and what's in it
     $("dTitle").textContent = folder || "Notebook";
     drawResPick(folder ? null : inRes);
+    drawBanner(folder ? "" : resF);
     $("folderBack").hidden = !folder;
     $("folderActs").hidden = !folder;
     const list = $("list");
@@ -3369,6 +3413,7 @@
     const shown = maps.filter((d) => !mapResF || resOf.get(d) === mapResF);
     $("dTitle").textContent = "Notebook";
     drawResPick([...TEAM.values()]);
+    drawBanner(mapResF);
     list.innerHTML = "";
     if (mapResF && !mapSel) {
       const add = document.createElement("button");
