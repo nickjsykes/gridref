@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "207"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "208"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -582,19 +582,17 @@
       copy(last[what], el);
     };
   }
-  // Share: tick what goes in. Remembered for next time; grid ref, Apple Maps, name and notes to
-  // start with. The message reads location first, then the name and notes, then the map links
-  // at the bottom, each part after a blank line, so it's easy to read and copy from.
-  // Name and notes only appear for saved things (the crosshair has neither).
+  // Share is a page of its own: Where (the grid ref and which ways of saying where go in the
+  // message), Maps, Photos, and the Message itself, shown as it will be sent and changeable.
+  // The ticks are remembered for next time. The message reads location first, then the name
+  // and notes, then the map links, each part after a blank line, so it's easy to read and copy.
   const SHARE_OPTS = [
-    ["ref", "Grid ref", (x) => `Grid ref: ${x.ref}`],
+    ["ref", "Grid ref", (x) => `${x.extraRefs && x.extraRefs.length ? "Location" : "Grid ref"}: ${x.ref}`],
     ["ll", "Lat/long", (x) => `Lat/long: ${x.lat.toFixed(5)}, ${x.lon.toFixed(5)}`],
     ["en", "E/N", (x) => `E/N: ${Math.round(x.e)}, ${Math.round(x.n)}`],
     // Links kept short (5 decimal places is about a metre) and named, so they don't swamp the message
     ["apple", "Apple Maps", (x) => `Apple Maps: https://maps.apple.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
     ["google", "Google Maps", (x) => `Google Maps: https://maps.google.com/?q=${x.lat.toFixed(5)},${x.lon.toFixed(5)}`],
-    ["pic", "Make a map", () => ""],
-    ["photos", "Photos", () => ""],
     ["name", "Name", (x) => x.head],
     ["notes", "Notes", (x) => x.notes],
   ];
@@ -602,24 +600,27 @@
   // 27 Oct: start everyone on just the grid ref and Apple Maps (name and notes ride along on saved things)
   if (!store.get("shareReset3", false)) { shareOn = new Set(["ref", "apple", "name", "notes"]); store.set("shareOpts", [...shareOn]); store.set("shareReset3", true); }
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
-  // 28 Oct: photos ride along by default (only offered for things that have them)
-  if (!store.get("sharePhotos", false)) { shareOn.add("photos"); store.set("shareOpts", [...shareOn]); store.set("sharePhotos", true); }
+  // The places drawn on the share's maps (parking, a truck…) go in the message by name, each
+  // with its own grid ref, under the location: the same lines as the map's key
   function shareTextFor(x) {
+    x.extraRefs = [...new Set((x.maps || []).filter((m) => m.def).flatMap((m) => mapRefs(m.def)).filter((l) => !l.startsWith("Location:")))];
     const part = (keys) => SHARE_OPTS.filter(([k]) => keys.includes(k) && shareOn.has(k)).map(([, , f]) => f(x)).filter(Boolean).join("\n");
-    return [part(["ref", "ll", "en"]), part(["name", "notes"]), part(["apple", "google"])].filter(Boolean).join("\n\n");
+    const where = [part(["ref", "ll", "en"]), ...x.extraRefs].filter(Boolean).join("\n");
+    return [where, part(["name", "notes"]), part(["apple", "google"])].filter(Boolean).join("\n\n");
   }
-  // Two rows of ticks: where it is (grid ref, lat/long, E/N and the two map links, as logos so
-  // they fit on one line), then what goes with it (a map, photos, name, notes)
   const LOGOS = {
     apple: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8C7 7.4 5.6 8.3 4.8 9.7c-1.6 2.8-.4 6.9 1.2 9.1.8 1.1 1.7 2.3 2.8 2.3 1.1 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.7-2.2c.9-1.3 1.2-2.5 1.2-2.6 0 0-2.4-.9-2.3-3.7ZM14.1 5.8c.6-.8 1-1.8.9-2.8-.9 0-2 .6-2.6 1.4-.6.7-1.1 1.7-.9 2.7 1 .1 2-.5 2.6-1.3Z"/></svg>',
     google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1a73e8" d="M12 2a7 7 0 0 0-7 7c0 1.3.4 2.5 1 3.6L12 9Z"/><path fill="#ea4335" d="M12 2v7l5.9-3.3A7 7 0 0 0 12 2Z"/><path fill="#fbbc04" d="M17.9 5.7 12 9l-6 3.6c1.5 2.6 3.7 5 6 9.4 2.4-4.6 4.6-7 6-9.6.6-1 1-2.2 1-3.4 0-1.2-.4-2.3-1.1-3.3Z"/><path fill="#34a853" d="M12 9 6 12.6C7.5 15.2 9.7 17.6 12 22c1.1-2.2 2.2-3.9 3.2-5.3Z"/><circle cx="12" cy="9" r="2.6" fill="#fff"/></svg>',
   };
-  const ROW1 = ["ref", "ll", "en", "apple", "google"];
+  const WHERE = ["ref", "ll", "en", "apple", "google"];
   function drawShare() {
+    const it = shareItem;
+    $("shRef").textContent = it.ref;
+    $("shSub").textContent = it.head || reserveShort(L.latLng(it.lat, it.lon)) || "";
     $("shOpts").innerHTML = "";
     $("shOpts2").innerHTML = "";
     for (const [k, label] of SHARE_OPTS) {
-      if ((k === "name" && !shareItem.head) || (k === "notes" && !shareItem.notes) || (k === "pic" && !shareItem.canPic) || (k === "photos" && !(shareItem.photos || []).length)) continue;
+      if ((k === "name" && !it.head) || (k === "notes" && !it.notes)) continue;
       const b = document.createElement("button");
       b.type = "button";
       if (LOGOS[k]) { b.innerHTML = LOGOS[k]; b.setAttribute("aria-label", label); b.className = "logo"; } else b.textContent = label;
@@ -628,22 +629,31 @@
         shareOn.has(k) ? shareOn.delete(k) : shareOn.add(k);
         store.set("shareOpts", [...shareOn]);
         b.classList.toggle("on", shareOn.has(k));
-        $("shPrev").textContent = shareTextFor(shareItem);
-        if (k === "pic") { if (shareOn.has("pic")) makePic(); else $("shPicBox").hidden = true; }
-        if (k === "photos") drawSharePhotos();
+        drawMessage();
       };
-      $(ROW1.includes(k) ? "shOpts" : "shOpts2").appendChild(b);
+      $(WHERE.includes(k) ? "shOpts" : "shOpts2").appendChild(b);
     }
-    $("shPrev").textContent = shareTextFor(shareItem);
-    $("shAddMap").hidden = !shareItem.canPic;
     drawSharePhotos();
+    drawMessage();
   }
-  // Its photos, small, under the maps (tap × to leave one out of this share)
+  // The message as it will arrive: a bubble you can type in. Ticks rewrite it until you change
+  // it yourself; then "Back to the automatic message" undoes your changes
+  function drawMessage() {
+    const it = shareItem;
+    if (!it.custom) $("shMsg").value = shareTextFor(it);
+    $("shReset").hidden = !it.custom;
+    const nM = (it.maps || []).length, nP = (it.photos || []).length;
+    $("shAtt").textContent = nM + nP ? `With ${[nM ? `${nM} map${nM > 1 ? "s" : ""}` : "", nP ? `${nP} photo${nP > 1 ? "s" : ""}` : ""].filter(Boolean).join(" and ")}` : "No pictures attached";
+    $("shMsg").style.height = "auto";
+    $("shMsg").style.height = $("shMsg").scrollHeight + 2 + "px";
+  }
+  $("shMsg").addEventListener("input", () => { shareItem.custom = true; $("shReset").hidden = false; $("shMsg").style.height = "auto"; $("shMsg").style.height = $("shMsg").scrollHeight + 2 + "px"; });
+  $("shReset").onclick = () => { shareItem.custom = false; drawMessage(); };
+  // Photos: each with Remove (leaves it out of this share)
   function drawSharePhotos() {
-    const box = $("shPhotos"), phs = shareOn.has("photos") ? shareItem.photos || [] : [];
-    box.innerHTML = phs.map((ph, i) => `<span class="shp"><img alt="Photo"><button type="button" class="x" data-px="${i}" aria-label="Leave this photo out">×</button></span>`).join("");
+    const box = $("shPhotos"), phs = shareItem.photos || [];
+    box.innerHTML = phs.map((ph, i) => `<div class="shph"><img alt="Photo ${i + 1}"><button type="button" data-px="${i}">Remove</button></div>`).join("") || '<p class="shnone">No photos</p>';
     phs.forEach((ph, i) => photoDB.get(ph.id).then((b) => { if (b) box.querySelectorAll("img")[i].src = URL.createObjectURL(b); }).catch(() => {}));
-    box.hidden = !phs.length;
   }
   $("shPhotos").onclick = (e) => {
     const x = e.target.closest("[data-px]");
@@ -652,7 +662,7 @@
     sharePhotos = shareItem.photos.length ? photoFiles(shareItem.label, shareItem.photos) : null;
     drawShare();
   };
-  // + Add photo: the camera or the phone's photos, stamped as usual, then back to this card
+  // + Add photo: the camera or the phone's photos, stamped as usual, then back to this page
   $("shAddPhoto").onclick = () => {
     photoFor = "share";
     $("shareModal").hidden = true;
@@ -740,31 +750,28 @@
     const blob = await new Promise((r) => c.toBlob(r, "image/jpeg", 0.88)); // fails (null) if a map server didn't allow it
     return blob ? new File([blob], `${x.ref.replace(/\s+/g, "")}.jpg`, { type: "image/jpeg" }) : null;
   }
-  // The picture is made as the share sheet opens: an iPhone only shares straight from a tap,
-  // so it has to be ready when Share is pressed
+  // The pictures are made as the page opens: an iPhone only shares straight from a tap, so
+  // everything has to be ready when Share is pressed
   let sharePic = null, sharePhotos = null;
   function openShare(item) {
     shareItem = item;
-    // only when the map is showing the place being shared (not from a notebook entry elsewhere)
+    // a plain map round the place to start with, when the map is showing it (not from a
+    // notebook entry elsewhere); more can be made, and any can be edited or removed
     item.canPic = map.getContainer().clientWidth > 0 && target().distanceTo([item.lat, item.lon]) < 30;
-    sharePic = null;
-    // its photos are read in now, so they're ready when Share is pressed (same iPhone rule)
-    sharePhotos = item.photos && item.photos.length ? photoFiles(item.label, item.photos) : null;
-    $("shPicBox").hidden = true;
-    if (item.canPic && shareOn.has("pic")) makePic();
+    item.maps = item.canPic ? [{ file: null, def: null }] : [];
+    item.photos = (item.photos || []).slice();
+    sharePhotos = item.photos.length ? photoFiles(item.label, item.photos) : null;
+    makePic();
     drawShare();
     $("shareModal").hidden = false;
+    $("shareModal").querySelector(".shbody").scrollTop = 0;
+    drawMessage(); // (again, now it's showing: the bubble sizes itself to the words)
   }
-  // The share's maps: at first the plain picture round the crosshair. Edit map takes one
-  // through the map maker (framed on the place, a Location symbol on it) to add parking, a
-  // meeting point, arrows…; + Add map makes another, so a share can carry, say, the roads in
-  // and then the paths on the reserve. Each remembers what was drawn, so opening it again
-  // carries on from there. A tap on a picture opens it; × drops it (when there's more than one)
-  function shareMaps_(it) {
-    return it.maps || [{ file: null, def: null }]; // (the plain picture until something's edited or added)
-  }
+  // Maps: a card each, with Edit (through the map maker: framed on the place, a Location
+  // symbol on it, to add parking, a truck, arrows…; it carries on from what was drawn) and
+  // Remove. + Add map makes another: the roads in, then the paths on the reserve, say
   function openMakerFor(it, i) {
-    const list = (it.maps = shareMaps_(it).slice()), ent = list[i];
+    const list = it.maps, ent = list[i];
     $("shareModal").hidden = true;
     if (ent && ent.def) editMap(ent.def);
     else {
@@ -778,39 +785,31 @@
     maker.handoff = {
       made: (blob, def) => {
         list[i] = { file: new File([blob], `${it.ref.replace(/\s+/g, "")}-${i + 1}.jpg`, { type: "image/jpeg" }), def };
-        shareOn.add("pic");
-        drawShare();
         makePic();
+        drawMessage();
         $("shareModal").hidden = false;
       },
-      cancel: () => { if (!list[i]) list.splice(i, 1); $("shareModal").hidden = false; },
+      cancel: () => { $("shareModal").hidden = false; },
     };
   }
-  $("shAddMap").onclick = async () => {
-    const it = shareItem;
-    if (!shareOn.has("pic")) { shareOn.add("pic"); drawShare(); makePic(); }
-    // the plain picture stays as the first map: keep the one already made
-    if (!it.maps) it.maps = [{ file: ((await sharePic) || [])[0] || null, def: null }];
-    openMakerFor(it, it.maps.length);
-  };
+  $("shAddMap").onclick = () => openMakerFor(shareItem, shareItem.maps.length);
   $("shPics").onclick = (e) => {
-    const it = shareItem, x = e.target.closest("[data-x]"), im = e.target.closest("img[data-i]");
-    if (x) { it.maps.splice(+x.dataset.x, 1); return makePic(); }
-    if (im) openMakerFor(it, +im.dataset.i);
+    const it = shareItem, b = e.target.closest("button[data-a]");
+    if (!b) return;
+    const i = +b.dataset.i;
+    if (b.dataset.a === "edit") return openMakerFor(it, i);
+    it.maps.splice(i, 1);
+    makePic();
+    drawMessage();
   };
   function makePic() {
-    const it = shareItem, list = shareMaps_(it);
+    const it = shareItem, list = it.maps;
     // each picture: the one made in the maker, else the plain one round the crosshair
     const plain = list.some((m) => !m.file) ? mapPicture(it).catch(() => null) : null;
-    sharePic = Promise.all(list.map((m) => m.file || plain)).then((fs) => fs.filter(Boolean));
-    sharePic.then((fs) => {
-      if (shareItem !== it || !shareOn.has("pic")) return;
-      const box = $("shPics");
-      box.innerHTML = fs.map((f, i) => `<span class="shp"><img data-i="${i}" alt="Map ${i + 1}">${fs.length > 1 ? `<button type="button" class="x" data-x="${i}" aria-label="Remove this map">×</button>` : ""}</span>`).join("");
-      fs.forEach((f, i) => { box.querySelectorAll("img")[i].src = URL.createObjectURL(f); });
-      box.classList.toggle("many", fs.length > 1);
-      $("shPicBox").hidden = !fs.length;
-    });
+    sharePic = Promise.all(list.map((m) => m.file || plain));
+    const box = $("shPics");
+    box.innerHTML = list.map((m, i) => `<div class="shmap"><img alt="Map ${i + 1}"><div class="shmapside"><b>${m.def ? esc(m.def.title || "Map") : "Plain map"}</b><small>${m.def ? "Made in the map maker" : "The map round the spot, as it is"}</small><button type="button" data-a="edit" data-i="${i}">${m.def ? "Edit" : "Add things to it"}</button><button type="button" class="danger" data-a="del" data-i="${i}">Remove</button></div></div>`).join("") || '<p class="shnone">No map</p>';
+    sharePic.then((fs) => { if (shareItem !== it) return; fs.forEach((f, i) => { const im = box.querySelectorAll("img")[i]; if (f && im) im.src = URL.createObjectURL(f); }); });
   }
   // Cancel: photos taken for this share go too (nothing was shared or saved)
   function closeShare() {
@@ -818,19 +817,18 @@
     for (const id of (shareItem && shareItem.added) || []) photoDB.del(id).catch(() => {});
   }
   $("shCancel").onclick = closeShare;
-  $("shareModal").onclick = (e) => { if (e.target === $("shareModal")) closeShare(); };
   $("shGo").onclick = async () => {
-    const text = shareTextFor(shareItem);
-    const pics = shareItem.canPic && shareOn.has("pic") && sharePic ? await sharePic : [];
-    const phs = shareOn.has("photos") && sharePhotos ? await sharePhotos : [];
+    const text = $("shMsg").value.trim();
+    const pics = sharePic ? (await sharePic).filter(Boolean) : [];
+    const phs = sharePhotos ? await sharePhotos : [];
     const files = [...pics, ...phs].filter(Boolean);
-    if (!text && !files.length) return toast("Tick at least one thing to share");
+    if (!text && !files.length) return toast("Nothing to share yet");
     $("shareModal").hidden = true;
     try {
       if (files.length && navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, text });
       else if (navigator.share) await navigator.share({ text });
       else await copy(text);
-    } catch { $("shareModal").hidden = false; return; } // backed out of the share sheet: the card's still here
+    } catch { $("shareModal").hidden = false; return; } // backed out of the share sheet: the page is still here
     keepShared(shareItem);
   };
   // Shared: the place is kept. From the crosshair it becomes a point in the notebook (with the
@@ -3098,10 +3096,10 @@
     accessible: { name: "Accessible route", short: "Access", svg: '<rect x="1" y="1" width="22" height="22" rx="4" fill="#1c5fb4"/><circle cx="11" cy="5.4" r="1.7" fill="#fff"/><path d="M11 8.2v5h4.5l1.6 4.2" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.2 10.6a4.4 4.4 0 1 0 5.5 5.6" stroke="#fff" stroke-width="1.8" fill="none"/>' },
   };
   // Trucks: where a delivery or a contractor's vehicle goes
-  SYMBOLS.truck = { name: "Truck", svg: SYM_BG + '<path d="M3.5 7.5h10v8.5h-10Z" fill="#1b1a15"/><path d="M13.5 10h3.6l2.9 3v3h-6.5Z" fill="#1b1a15"/><path d="M15 11.2h1.7l1.5 1.6H15Z" fill="#fff"/><circle cx="7" cy="17" r="2" fill="#1b1a15" stroke="#fff" stroke-width="1.2"/><circle cx="16.5" cy="17" r="2" fill="#1b1a15" stroke="#fff" stroke-width="1.2"/>' };
+  SYMBOLS.truck = { name: "Truck", svg: SYM_BG + '<path d="M3.5 7.5h10v8.5h-10Z" fill="#6b6b66"/><path d="M13.5 10h3.6l2.9 3v3h-6.5Z" fill="#6b6b66"/><path d="M15 11.2h1.7l1.5 1.6H15Z" fill="#fff"/><rect x="6.2" y="9.6" width="4.6" height="4.2" rx=".6" fill="#2f9e44"/><circle cx="7" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/><circle cx="16.5" cy="17" r="2" fill="#4a4a46" stroke="#fff" stroke-width="1.2"/>' };
   // The ones offered when making a map (the others stay, so older maps still draw)
   const PALETTE = ["spot", "barn", "parking", "toilets", "assembly", "firstaid", "defib", "hazard", "keepout", "gate", "tools", "workarea", "fire", "truck"];
-  const FINDABLE = new Set(["spot", "parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
+  const FINDABLE = new Set(["spot", "truck", "parking", "dropoff", "meet", "assembly", "firstaid", "defib"]);
   const symSvg = (k, size) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24">${(SYMBOLS[k] || SYMBOLS.meet).svg}</svg>`;
   const MK = { W: 1200, H: 1600, head: 128, foot: 96 }; // always upright: it reads on a phone and prints on A4
   const mkDrawLayer = L.layerGroup();
@@ -4217,7 +4215,6 @@
       it.photos = [...(it.photos || []), rec];
       (it.added = it.added || []).push(id);
       sharePhotos = photoFiles(it.label || it.ref, it.photos);
-      shareOn.add("photos");
       drawShare();
       $("shareModal").hidden = false;
       return;
@@ -4493,7 +4490,7 @@
   // Never mid-job: an update waits while you're measuring a line, making a map,
   // navigating, moving a point, or have a popup or the notebook open, and lands the next time
   // you're back on the plain map (a reload would throw that work away)
-  const busy = () => !!(measure || maker || nav || moving || document.querySelector(".modal:not([hidden])") || $("drawer").classList.contains("open"));
+  const busy = () => !!(measure || maker || nav || moving || document.querySelector(".modal:not([hidden]), .sharepage:not([hidden])") || $("drawer").classList.contains("open"));
   function applyUpdate(v) {
     if (reloading) return;
     if (busy()) { waiting = v; return; }

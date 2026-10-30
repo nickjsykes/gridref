@@ -183,7 +183,6 @@ body.adding #listBtn { display: none; } /* the + menu needs the room; the notebo
 .item.picked { background: var(--green-soft); }
 .card .shopts label { display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 8px 6px; font: 400 16px var(--sans); color: var(--ink); border-bottom: 1px solid var(--line); }
 .shopts input { width: 22px; height: 22px; accent-color: var(--green); flex: none; }
-.shprev { margin: 4px 0 0; padding: 8px 10px; background: var(--green-soft); border-radius: 10px; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-all; max-height: 120px; overflow: auto; color: var(--ink); }
 .group { padding: 10px 14px 4px; font: 700 12px var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; background: var(--panel); position: sticky; top: 0; }
 .item { margin: 0 10px 8px; padding: 10px 12px; border-radius: 12px; background: var(--card); display: flex; gap: 12px; align-items: center; cursor: pointer; }
 .item .main { flex: 1; min-width: 0; }
@@ -486,14 +485,13 @@ body.adding .chips { visibility: hidden; } /* the menu may need their room on a 
 body.large .more-hint { display: none !important; }
 /* share: options as chips, and room to read the whole message */
 .shchips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 4px 0 2px; }
-.shprev { max-height: 38vh !important; font-size: 13px !important; }
 /* photo preview leaves room for the stamp options */
 #photoOut { max-height: 46vh; object-fit: contain; background: #000; }
 #photoModal .card { max-height: calc(100vh - var(--safe-t) - 28px); overflow-y: auto; }
 .stampopts button { padding: 6px 11px; font-size: 13px; }
 body.large .row .v.dim { font-size: 17px !important; }
-.sheetmenu .shchips button { padding: 8px 4px; font-size: 13.5px; border-radius: 12px; background: var(--green-soft); color: var(--muted); white-space: nowrap; }
-.sheetmenu .shchips button.on { background: var(--green); color: var(--panel); }
+.shchips button { padding: 8px 4px; font-size: 13.5px; border-radius: 12px; background: var(--green-soft); color: var(--muted); white-space: nowrap; }
+.shchips button.on { background: var(--green); color: var(--panel); }
 
 /* Big text (John mode): also high contrast and a big "Copied" */
 body.large { --ink: #000; --muted: #2b2b28; --panel: #fff; --line: #bdb8a8; }
@@ -707,9 +705,6 @@ body.measuring .subchips, body.navigating .subchips, body.moving .subchips, body
 .placenote b { font: 700 26px var(--sans); color: var(--ink); }
 .placenote small { font: 13px var(--sans); color: var(--muted); }
 
-/* Share's map picture: a corner button to edit it in the map maker */
-.shpicbox { position: relative; }
-.shpicbox[hidden] { display: none; }
 .picframe[hidden] { display: none; }
 
 /* Maps tab: a card per map, the picture half the width (tap for full screen), its details and
@@ -780,26 +775,14 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
   -webkit-mask-image: linear-gradient(to right, transparent 20%, #000 55%); mask-image: linear-gradient(to right, transparent 20%, #000 55%); }
 @media (prefers-color-scheme: dark) { .drawer header .bannerart { filter: invert(1); } }
 .drawer header::before { opacity: .06; } /* the general texture, now just a wash under the drawing */
-/* Share's maps: one big picture, or a row of them once there's more than one (tap to edit, × to drop) */
-.shpics { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-.shpics .shp { position: relative; flex: 1 0 100%; }
-.shpics.many .shp { flex: 0 0 42%; }
-.shpics img { display: block; width: 100%; height: 30vh; object-fit: contain; border-radius: 10px; background: var(--green-soft); }
-.shpics .x { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border: 0; border-radius: 50%; background: rgba(0,0,0,.55); color: #fff; font: 600 18px/1 var(--sans); }
-.shpicacts { display: flex; gap: 8px; margin-top: 8px; }
-.shpicacts b { font-weight: 700; font-size: 17px; }
+.msedit b { font-weight: 700; font-size: 17px; }
 /* Share: the first row fits grid ref, lat/long, E/N and the two map links (logos) on one line */
 .shchips.row1 { grid-template-columns: 1.2fr 1.15fr .8fr 42px 42px; }
-.sheetmenu .shchips.row1 button { font-size: 12.5px; padding: 8px 2px; }
-.sheetmenu .shchips button.logo { display: grid; place-items: center; padding: 6px 0; }
+.shchips.row1 button { font-size: 12.5px; padding: 8px 2px; }
+.shchips button.logo { display: grid; place-items: center; padding: 6px 0; }
 .shchips button.logo svg { width: 20px; height: 20px; }
-.sheetmenu .shchips button.logo:not(.on) svg { opacity: .45; filter: grayscale(1); }
+.shchips button.logo:not(.on) svg { opacity: .45; filter: grayscale(1); }
 .shchips:empty { display: none; }
-.shphotos[hidden] { display: none; }
-.shphotos .shp { flex: 0 0 26%; }
-.shphotos img { height: 72px; object-fit: cover; }
-.shpics img[data-i] { cursor: pointer; }
-.shpics .shp:has(img[data-i])::after { content: "✎ edit"; position: absolute; left: 6px; bottom: 6px; padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,.92); color: var(--green); font: 600 12px var(--sans); pointer-events: none; }
 /* The map maker's bar keeps one height whatever the tool: the symbols, the hint and the label
    box take turns in one fixed slot, so the frame never jumps. Symbols are one row that scrolls */
 .mkslot { height: 64px; display: flex; flex-direction: column; justify-content: center; }
@@ -815,3 +798,38 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .mklbtns .danger { color: var(--danger); }
 .mklbtns button[hidden] { display: none; }
 @media (min-width: 900px) { .mkslot { height: auto; min-height: 64px; } .mkslot .mksyms { flex-wrap: wrap; } }
+/* Share: a page like the notebook. Spruce header with what's being shared; sections below */
+.sharepage { position: fixed; inset: 0; z-index: 1150; background: var(--panel); display: flex; flex-direction: column; padding-top: var(--safe-t); }
+.sharepage[hidden] { display: none; }
+.shhead { display: flex; align-items: center; gap: 12px; padding: 12px 16px 14px; background: var(--green); color: var(--panel); }
+.shhead button { border: 0; background: none; color: var(--panel); font: 600 16px var(--sans); padding: 6px 0; }
+.shhead > div { flex: 1; min-width: 0; text-align: right; }
+.shhead .shref { display: block; font: 700 clamp(20px, 6.5vw, 26px) var(--mono); }
+.shhead small { display: block; font: 500 13px var(--sans); opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shbody { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 16px 16px; }
+.shbody section { padding: 14px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.shbody section:last-child { border-bottom: 0; }
+.shbody h3 { margin: 0; font: 700 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.shhint { margin: -4px 0 0; font: 13px var(--sans); color: var(--muted); }
+.shnone { margin: 0; font: 14px var(--sans); color: var(--muted); }
+.shbody .msedit { align-self: flex-start; }
+.shmaps { display: flex; flex-direction: column; gap: 10px; }
+.shmap { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 10px; border-radius: 12px; background: var(--card); }
+.shmap img { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; border-radius: 8px; background: var(--green-soft); }
+.shmapside { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.shmapside b { font: 700 15px var(--sans); color: var(--ink); overflow-wrap: anywhere; }
+.shmapside small { font: 13px var(--sans); color: var(--muted); }
+.shmapside button { margin-top: auto; border: 0; border-radius: 10px; padding: 10px 6px; font: 600 14px var(--sans); background: var(--green-soft); color: var(--green); }
+.shmapside button + button { margin-top: 0; }
+.shmapside .danger { color: var(--danger); }
+.shphotos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.shphotos:has(.shnone) { display: block; }
+.shph { display: flex; flex-direction: column; gap: 4px; }
+.shph img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; background: var(--green-soft); }
+.shph button { border: 0; border-radius: 8px; padding: 6px; font: 600 13px var(--sans); background: var(--green-soft); color: var(--danger); }
+.bubble { align-self: stretch; padding: 10px 12px 8px; border-radius: 18px 18px 4px 18px; background: #dcf2e4; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+@media (prefers-color-scheme: dark) { .bubble { background: #20412f; } }
+.bubble textarea { min-height: 4.2em; display: block; width: 100%; border: 0; background: none; resize: none; padding: 0; font: 15px/1.4 var(--sans); color: var(--ink); overflow: hidden; outline: none; }
+.bubble small { display: block; margin-top: 6px; font: 600 12px var(--sans); color: var(--muted); text-align: right; }
+.shfoot { padding: 10px 16px max(12px, calc(var(--safe-b) - 16px)); border-top: 1px solid var(--line); }
+.shfoot button { width: 100%; border: 0; border-radius: 14px; padding: 15px; font: 700 17px var(--sans); background: var(--green); color: var(--panel); }
