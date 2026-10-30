@@ -15,8 +15,8 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png?v=2">
 <link rel="icon" href="icon-192.png?v=2">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=209">
-<link rel="stylesheet" href="app.css?v=209">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=210">
+<link rel="stylesheet" href="app.css?v=210">
 </head>
 <body>
 <div id="map"></div>
@@ -102,7 +102,6 @@
   <div class="nav" id="nav">
     <div class="nav-head">
       <div><small>Going to</small><b id="navRef"></b></div>
-      <button id="navEnd">Done</button>
     </div>
     <div class="nav-body">
       <svg class="dial" viewBox="-100 -100 200 200" aria-hidden="true">
@@ -122,15 +121,14 @@
       </div>
     </div>
     <div class="nav-hint" id="navHint"></div>
+    <div class="btns one navfoot"><button type="button" id="navEnd">Stop</button></div>
   </div>
 </section>
 
 <div class="drawer" id="drawer">
   <header>
     <img class="bannerart" id="bannerArt" alt="" src="art/banner/all.svg">
-    <button class="back" id="folderBack" hidden aria-label="Back to the notebook">‹ Back</button>
     <h2 class="dtitle"><span id="dTitle">Notebook</span> <small id="dSub">(on this phone only)</small></h2>
-    <button id="closeDrawer">Done</button>
   </header>
   <div class="dtabs" id="dTabs" role="tablist"><button type="button" role="tab" data-tab="notes" class="on">Notes</button><button type="button" role="tab" data-tab="maps">Maps</button></div>
   <div class="folderacts" id="folderActs" hidden><button type="button" id="folderMap">Show on map</button><button type="button" class="danger" id="folderDel">Delete folder</button></div>
@@ -140,6 +138,8 @@
   <div class="selbar" id="selBar"><button type="button" id="selCancel">Cancel</button><button type="button" class="primary" id="selGo">Export 0</button></div>
   <div class="selbar" id="mapSelBar"><button type="button" id="mselCancel">Cancel</button><button type="button" class="danger" id="mselDel">Delete</button><button type="button" class="primary" id="mselShare">Share 0</button></div>
   <footer>
+    <button id="closeDrawer">Close</button>
+    <button id="folderBack" hidden>‹ Back</button>
     <button id="importBtn" class="nb">Import</button>
     <button id="exportBtn" class="nb">Export</button>
     <button id="mapSelBtn" class="mp">Select</button>
@@ -197,7 +197,6 @@
      and the message as it will arrive; Share at the bottom -->
 <div class="sharepage" id="shareModal" hidden>
   <header class="shhead">
-    <button type="button" id="shCancel">Cancel</button>
     <div><b class="shref" id="shRef"></b><small id="shSub"></small></div>
   </header>
   <div class="shbody">
@@ -208,7 +207,7 @@
       <div class="bubble"><textarea id="shMsg" rows="4" autocomplete="off"></textarea><small id="shAtt"></small></div>
       <button type="button" class="link" id="shReset" hidden>Back to the automatic message</button></section>
   </div>
-  <footer class="shfoot"><button type="button" class="primary" id="shGo">Share</button></footer>
+  <footer class="shfoot"><button type="button" id="shCancel">Cancel</button><button type="button" class="primary" id="shGo">Share</button></footer>
 </div>
 <!-- Which reserve the notebook shows: opened from the pill under its title -->
 <div class="modal sheetmenu" id="resMenu" hidden>
@@ -231,7 +230,7 @@
   </div>
 </div>
 <!-- Picking on the map for export -->
-<div class="picframe" id="pickBar" hidden><div class="mktop"><button type="button" id="mpCancel">Cancel</button><b>Tap marks to pick</b><button type="button" class="mkready" id="mpGo">Export 0</button></div></div>
+<div class="picframe" id="pickBar" hidden><div class="mktop"><b>Tap marks to pick them</b></div><div class="botbar"><button type="button" id="mpCancel">Cancel</button><button type="button" class="primary" id="mpGo">Export 0</button></div></div>
 <div class="modal sheetmenu" id="exportModal" hidden>
   <div class="card">
     <div class="im-title"><b>Export</b></div>
@@ -256,7 +255,6 @@
   <div class="mkframe" id="mkFrame"></div>
   <div class="mkdraw" id="mkDraw"></div>
   <div class="mktop">
-    <button type="button" id="mkCancel">Cancel</button>
     <b id="mkHead">Make a map</b>
     <button type="button" class="mkready" id="mkReady" hidden>1 ready ›</button>
   </div>
@@ -269,35 +267,35 @@
       <button type="button" data-t="sym" aria-label="Symbol"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9.5 17V7h3.2a3 3 0 0 1 0 6H9.5" stroke-linecap="round"/></svg>Symbol</button>
       <button type="button" id="mkUndo" aria-label="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Undo</button>
     </div>
-    <div class="mkslot"><div class="mksyms" id="mkSyms" hidden></div><p class="mkhint" id="mkHint">Pan and zoom to fill the frame.</p><div class="mklabelbox" id="mkLabelBox" hidden><textarea id="mkLabelIn" rows="2" maxlength="80" placeholder="Type the label" autocomplete="off"></textarea><div class="mklbtns"><button type="button" id="mkLabelCancel">Cancel</button><button type="button" class="danger" id="mkLabelDel">Delete</button><button type="button" class="primary" id="mkLabelDone">Done</button></div></div></div>
+    <div class="mkslot"><div class="mksyms" id="mkSyms" hidden></div><div class="mkcols" hidden id="mkCols"><button type="button" data-c="#e03131" class="on" aria-label="Red" style="background:#e03131"></button><button type="button" data-c="#fcc419" aria-label="Yellow" style="background:#fcc419"></button><button type="button" data-c="#1c7ed6" aria-label="Blue" style="background:#1c7ed6"></button></div><p class="mkhint" id="mkHint">Pan and zoom to fill the frame.</p><div class="mklabelbox" id="mkLabelBox" hidden><textarea id="mkLabelIn" rows="2" maxlength="80" placeholder="Type the label" autocomplete="off"></textarea><div class="mklbtns"><button type="button" id="mkLabelCancel">Cancel</button><button type="button" class="danger" id="mkLabelDel">Delete</button><button type="button" class="primary" id="mkLabelDone">Done</button></div></div></div>
     <div class="mkrow">
-      <div class="mkcols" id="mkCols"><button type="button" data-c="#e03131" class="on" aria-label="Red" style="background:#e03131"></button><button type="button" data-c="#fcc419" aria-label="Yellow" style="background:#fcc419"></button><button type="button" data-c="#1c7ed6" aria-label="Blue" style="background:#1c7ed6"></button></div>
+      <button type="button" id="mkCancel">Cancel</button>
       <button type="button" id="mkLayers">Map</button>
       <button type="button" id="mkMe">Me: off</button>
-      <button type="button" class="primary" id="mkSend">Make</button>
+      <button type="button" class="primary" id="mkSend">Next</button>
     </div>
   </div>
 </div>
 <div class="modal" id="mkSendModal" hidden>
   <form class="card" id="mkSendForm" autocomplete="off">
-    <button type="button" class="mkback" id="mkBackMap">‹ Back</button>
     <label>Title:<input id="mkTitle" maxlength="60" autocomplete="off"></label>
     <label>Note (optional):<textarea id="mkNote" rows="2" maxlength="160" autocomplete="off" placeholder="e.g. Park at the gate, keys in the box"></textarea></label>
     <div class="mkpreviews" id="mkPreviews" hidden></div>
     <p class="w3wnote" id="mkCount" hidden></p>
-    <div class="btns" id="mkBtnsMake"><button type="button" id="mkSendCancel">Cancel</button><button type="submit" class="primary" id="mkMake">Make map</button></div>
-    <div class="btns three" id="mkBtnsDone" hidden><button type="button" id="mkAnother">Add another</button><button type="button" id="mkSaveSet">Save</button><button type="button" class="primary" id="mkShareSet">Send (1)</button></div>
+    <div class="btns" id="mkBtnsMake"><button type="button" id="mkSendCancel">‹ Back</button><button type="submit" class="primary" id="mkMake">Make map</button></div>
+    <button type="button" class="msedit mkanother" id="mkAnother"><b>+</b>Add another map</button>
+    <div class="btns three" id="mkBtnsDone" hidden><button type="button" id="mkBackMap">‹ Back</button><button type="button" id="mkSaveSet">Save</button><button type="button" class="primary" id="mkShareSet">Send (1)</button></div>
   </form>
 </div>
 <input type="checkbox" switch id="hapticSw" tabindex="-1" aria-hidden="true" style="position:fixed;left:-99px;top:0;opacity:0">
 
-<script src="vendor/leaflet/leaflet.js?v=209"></script>
-<script src="config.js?v=209"></script>
-<script src="osgb.js?v=209"></script>
-<script src="parse.js?v=209"></script>
-<script src="zip.js?v=209"></script>
-<script src="exif.js?v=209"></script>
-<script src="local.js?v=209"></script>
-<script src="app.js?v=209"></script>
+<script src="vendor/leaflet/leaflet.js?v=210"></script>
+<script src="config.js?v=210"></script>
+<script src="osgb.js?v=210"></script>
+<script src="parse.js?v=210"></script>
+<script src="zip.js?v=210"></script>
+<script src="exif.js?v=210"></script>
+<script src="local.js?v=210"></script>
+<script src="app.js?v=210"></script>
 </body>
 </html>

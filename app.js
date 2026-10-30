@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "209"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "210"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -600,6 +600,8 @@
   // 27 Oct: start everyone on just the grid ref and Apple Maps (name and notes ride along on saved things)
   if (!store.get("shareReset3", false)) { shareOn = new Set(["ref", "apple", "name", "notes"]); store.set("shareOpts", [...shareOn]); store.set("shareReset3", true); }
   if (!store.get("shareNamed", false)) { shareOn.add("name").add("notes"); store.set("shareOpts", [...shareOn]); store.set("shareNamed", true); }
+  // 30 Oct: a share starts as just the grid ref; anything else is added on purpose
+  if (!store.get("shareReset4", false)) { shareOn = new Set(["ref"]); store.set("shareOpts", [...shareOn]); store.set("shareReset4", true); }
   // The places drawn on the share's maps (parking, a truck…) go in the message by name, each
   // with its own grid ref, under the location: the same lines as the map's key
   function shareTextFor(x) {
@@ -649,18 +651,21 @@
   }
   $("shMsg").addEventListener("input", () => { shareItem.custom = true; $("shReset").hidden = false; $("shMsg").style.height = "auto"; $("shMsg").style.height = $("shMsg").scrollHeight + 2 + "px"; });
   $("shReset").onclick = () => { shareItem.custom = false; drawMessage(); };
-  // Photos: each with Remove (leaves it out of this share)
+  // Photos: its own photos and any taken for this share, each a tile to tap in or out (ticked
+  // ones go). New ones start ticked
   function drawSharePhotos() {
-    const box = $("shPhotos"), phs = shareItem.photos || [];
-    box.innerHTML = phs.map((ph, i) => `<div class="shph"><img alt="Photo ${i + 1}"><button type="button" data-px="${i}">Remove</button></div>`).join("") || '<p class="shnone">No photos</p>';
-    phs.forEach((ph, i) => photoDB.get(ph.id).then((b) => { if (b) box.querySelectorAll("img")[i].src = URL.createObjectURL(b); }).catch(() => {}));
+    const it = shareItem, box = $("shPhotos"), all = it.allPhotos || [];
+    box.innerHTML = all.map((ph, i) => `<button type="button" class="shph${it.photos.includes(ph) ? " on" : ""}" data-px="${i}" aria-label="Photo ${i + 1}"><img alt=""><span>✓</span></button>`).join("") || '<p class="shnone">No photos</p>';
+    all.forEach((ph, i) => photoDB.get(ph.id).then((b) => { if (b) box.querySelectorAll("img")[i].src = URL.createObjectURL(b); }).catch(() => {}));
   }
   $("shPhotos").onclick = (e) => {
     const x = e.target.closest("[data-px]");
     if (!x) return;
-    shareItem.photos.splice(+x.dataset.px, 1);
-    sharePhotos = shareItem.photos.length ? photoFiles(shareItem.label, shareItem.photos) : null;
-    drawShare();
+    const it = shareItem, ph = it.allPhotos[+x.dataset.px];
+    it.photos = it.photos.includes(ph) ? it.photos.filter((q) => q !== ph) : it.allPhotos.filter((q) => q === ph || it.photos.includes(q));
+    sharePhotos = it.photos.length ? photoFiles(it.label || it.ref, it.photos) : null;
+    x.classList.toggle("on", it.photos.includes(ph));
+    drawMessage();
   };
   // + Add photo: the camera or the phone's photos, stamped as usual, then back to this page
   $("shAddPhoto").onclick = () => {
@@ -758,9 +763,10 @@
     // a plain map round the place to start with, when the map is showing it (not from a
     // notebook entry elsewhere); more can be made, and any can be edited or removed
     item.canPic = map.getContainer().clientWidth > 0 && target().distanceTo([item.lat, item.lon]) < 30;
-    item.maps = item.canPic ? [{ file: null, def: null }] : [];
-    item.photos = (item.photos || []).slice();
-    sharePhotos = item.photos.length ? photoFiles(item.label, item.photos) : null;
+    item.maps = []; // no map unless one's added
+    item.allPhotos = (item.photos || []).slice(); // its photos are offered; none go unless ticked
+    item.photos = [];
+    sharePhotos = null;
     makePic();
     drawShare();
     $("shareModal").hidden = false;
@@ -782,6 +788,7 @@
       maker.drawn.push(d);
       $("mkTitle").value = it.label || ""; // (blank: Make fills in the reserve and the day, not a grid ref that could be mistaken for one on the map)
     }
+    $("mkSend").textContent = "Add"; // it's only being added to this share
     maker.handoff = {
       made: (blob, def) => {
         list[i] = { file: new File([blob], `${it.ref.replace(/\s+/g, "")}-${i + 1}.jpg`, { type: "image/jpeg" }), def };
@@ -1314,6 +1321,7 @@
     $("drawer").classList.toggle("maps-tab", mapsTab);
     if (mapsTab) {
       $("folderBack").hidden = $("folderActs").hidden = true;
+      $("closeDrawer").hidden = false;
       renderMaps();
       $("drawer").classList.add("open");
       return;
@@ -1333,6 +1341,7 @@
     drawResPick(folder ? null : inRes);
     drawBanner(folder ? "" : resF);
     $("folderBack").hidden = !folder;
+    $("closeDrawer").hidden = !!folder; // in a folder, ‹ Back takes its place
     $("folderActs").hidden = !folder;
     const list = $("list");
     list.innerHTML = "";
@@ -3120,6 +3129,7 @@
     mkSet = [];
     mkSendLabel();
     $("mkTitle").value = $("mkNote").value = "";
+    $("mkSend").textContent = "Next"; // (a map for a share says Add: see openMakerFor)
     if (!list.length) {
       if (all.length) toast("Faint marks are from your notebook: tap one to put it on the map", 3600);
       return drawPins();
@@ -3195,7 +3205,8 @@
     for (const b of $("mkTools").querySelectorAll("button[data-t]")) b.classList.toggle("on", b.dataset.t === t);
     $("maker").classList.toggle("drawing", t !== "move");
     $("mkSyms").hidden = t !== "sym";
-    $("mkHint").hidden = t === "sym";
+    $("mkCols").hidden = t !== "pen" && t !== "arrow";
+    $("mkHint").hidden = t === "sym" || t === "pen" || t === "arrow";
     if (t !== "text") endLabel();
     if (t === "move" && maker.drawn.length) toast("Move: a tap puts a mark on or off, or deletes a drawing", 3200);
     $("mkHint").textContent = { move: "Pan and zoom to fill the frame. Drag a symbol or label to move it. Tap a notebook mark to put it on or off; tap a drawing to delete it.", pen: "Draw with your finger. Move to pan the map again.", arrow: "Drag from the tail to the point of the arrow.", text: "Tap where the label goes, then type. Drag it to move it after.", sym: "Pick a symbol, then tap where it goes. They're listed in a key on the map." }[t];
@@ -3326,7 +3337,7 @@
     if (!e) return;
     editingLabel = null;
     $("mkLabelBox").hidden = true;
-    $("mkHint").hidden = maker && maker.tool === "sym";
+    $("mkHint").hidden = !!maker && ["sym", "pen", "arrow"].includes(maker.tool);
     $("mkLabelIn").blur();
     const empty = !e.d.text.trim();
     if (!keep || empty) {
@@ -3371,7 +3382,7 @@
     $("mkBtnsDone").hidden = mode === "make";
     $("mkAnother").hidden = mode !== "made";
     $("mkBtnsDone").classList.toggle("three", mode === "made");
-    $("mkBackMap").hidden = mode === "make"; // there, the Back button does this
+    $("mkAnother").hidden = mode !== "made";
     const box = $("mkPreviews");
     box.hidden = !set.length;
     box.innerHTML = set.map(() => '<img alt="A map in this set">').join("");
@@ -3398,7 +3409,7 @@
     const res = viewedReserve(), d = new Date();
     if (!$("mkTitle").value) $("mkTitle").value = `${res || "Map"} · ${d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}`;
     mkCur = null;
-    $("mkMake").textContent = "Make map";
+    $("mkMake").textContent = maker.handoff ? "Add to share" : "Make map";
     mkMode("make");
     $("mkSendModal").hidden = false;
   };
@@ -3419,7 +3430,7 @@
     $("mkMake").textContent = "Making…";
     const title = $("mkTitle").value.trim(), note = $("mkNote").value.trim();
     try { mkCur = { blob: await renderMap(title, note), def: mapDef(title, note) }; }
-    catch (err) { console.warn("map", err); $("mkMake").textContent = "Make map"; return toast("Couldn't make the picture. Try again with signal"); }
+    catch (err) { console.warn("map", err); $("mkMake").textContent = maker.handoff ? "Add to share" : "Make map"; return toast("Couldn't make the picture. Try again with signal"); }
     // Editing a map on its way to be shared: straight back to the share card with it
     const h = maker.handoff;
     if (h) { const { blob, def } = mkCur; mkCur = null; $("mkSendModal").hidden = true; endMaker(); return h.made(blob, def); }
@@ -3634,6 +3645,7 @@
     $("msEdit").onclick = () => {
       $("mapShareModal").hidden = true;
       editMap(defs[0]);
+      $("mkSend").textContent = "Add";
       maker.handoff = {
         made: async (blob, def) => { try { await saveMap(def, blob); } catch {} shareMaps([def]); },
         cancel: () => { $("mapShareModal").hidden = false; },
@@ -4212,6 +4224,7 @@
     closePhoto();
     if (ph.mode === "share") {
       const it = shareItem;
+      it.allPhotos = [...(it.allPhotos || []), rec];
       it.photos = [...(it.photos || []), rec];
       (it.added = it.added || []).push(id);
       sharePhotos = photoFiles(it.label || it.ref, it.photos);
