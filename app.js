@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "210"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "211"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -976,7 +976,7 @@
   });
   function drawPins() {
     pinLayer.clearLayers();
-    const many = points.length > 300; // thousands of imported points: simple dots, drawn fast
+    const many = points.length > 1000; // thousands of imported points: simple dots, drawn fast (a few hundred, like Roudsea's 317 dormouse boxes, keep their names)
     map.getContainer().classList.toggle("close", map.getZoom() >= 16);
     lastZone = zone();
     const W = { far: [4, 1.6, 1.6], mid: [5.5, 2.2, 2.2], near: [7, 3, 2.5] }[lastZone]; // casing, line, area edge
