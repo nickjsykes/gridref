@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "214"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "215"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -3493,7 +3493,10 @@
   $("mkShareSet").onclick = async () => {
     await saveSet();
     const set = theSet();
-    shareMaps(set.map((m) => m.def), set.map((m) => m.blob), (n) => mkFinish(n > 1 ? `${n} maps sent, and saved in Maps` : "Map sent, and saved in Maps"));
+    // This card goes away while the share card is up: left open it sat on top of the share
+    // card and took every tap, so Send looked dead. Cancel there brings this one back
+    $("mkSendModal").hidden = true;
+    shareMaps(set.map((m) => m.def), set.map((m) => m.blob), (n) => mkFinish(n > 1 ? `${n} maps sent, and saved in Maps` : "Map sent, and saved in Maps"), () => { $("mkSendModal").hidden = false; });
   };
   $("mkSaveSet").onclick = async () => {
     const n = theSet().length;
@@ -3669,8 +3672,9 @@
     }
     return out;
   }
-  let msFiles = null, msAfter = null;
-  function shareMaps(defs, blobs, after) {
+  let msFiles = null, msAfter = null, msBack = null; // msBack: where Cancel (or backing out of the phone's share sheet) returns to
+  function shareMaps(defs, blobs, after, back) {
+    msBack = back || null;
     $("msText").value = defs.map((d) => [d.title, d.note, ...mapRefs(d)].filter(Boolean).join("\n")).join("\n\n");
     $("msPics").innerHTML = defs.map(() => '<img alt="Map">').join("");
     msAfter = after || null;
@@ -3692,13 +3696,13 @@
     })).then((fs) => fs.filter(Boolean));
     $("mapShareModal").hidden = false;
   }
-  $("msCancel").onclick = () => { $("mapShareModal").hidden = true; };
+  $("msCancel").onclick = () => { $("mapShareModal").hidden = true; if (msBack) msBack(); };
   $("msGo").onclick = async () => {
     const files = await msFiles, text = $("msText").value.trim();
     if (!files.length) return toast("The picture's missing. Edit the map to make it again");
     $("mapShareModal").hidden = true;
     if (navigator.canShare && navigator.canShare({ files })) {
-      try { await navigator.share(text ? { files, text } : { files }); } catch { return; } // backed out: stay where you were
+      try { await navigator.share(text ? { files, text } : { files }); } catch { if (msBack) msBack(); return; } // backed out: stay where you were
     } else {
       for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
       if (text) copy(text, null, true);
