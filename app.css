@@ -57,7 +57,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: var(--panel)
 .results .msg { padding: 13px 14px; color: var(--muted); font-size: 14px; }
 
 /* crosshair */
-.cross { position: fixed; z-index: 900; left: 50%; top: var(--cross-y, 40%); width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
+.cross { position: absolute; z-index: 900; left: 50%; top: var(--cross-y, 40%); width: 44px; height: 44px; margin: -22px 0 0 -22px; pointer-events: none; }
 .cross::before, .cross::after { content: ""; position: absolute; background: #c0392b; box-shadow: 0 0 0 1.5px rgba(255,255,255,.85); }
 .cross::before { left: 21px; top: 0; width: 2px; height: 44px; }
 .cross::after { top: 21px; left: 0; height: 2px; width: 44px; }

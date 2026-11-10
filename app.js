@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "212"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "213"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -250,13 +250,18 @@
   const sheet = $("sheet");
   // Measured from where the panel actually starts, never window.innerHeight: the iPhone
   // home-screen app can misreport innerHeight, which left points landing below the crosshair
-  function crossY() { return sheet.getBoundingClientRect().top / 2; }
-  // The crosshair in map-container pixels
-  function crossPt() { return L.point(map.getSize().x / 2, crossY() - map.getContainer().getBoundingClientRect().top); }
+  // The crosshair lives inside the map and is placed in the map's own pixels, the same
+  // number the pans use. It used to be pinned to the screen from a measured position, and
+  // when the iPhone measured the screen from a shifted origin (it can, until the app is
+  // reopened) the drawn crosshair and the spot the pans aimed at came apart by that shift
+  map.getContainer().appendChild(document.querySelector(".cross"));
+  // The crosshair in map-container pixels: halfway between the map's top and the panel's.
+  // Only the gap between two measurements, so a shifted origin cancels out
+  function crossPt() { return L.point(map.getSize().x / 2, (sheet.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top) / 2); }
   function layout() {
     const h = sheet.offsetHeight;
     document.documentElement.style.setProperty("--sheet-h", h + "px");
-    document.documentElement.style.setProperty("--cross-y", crossY() + "px");
+    document.documentElement.style.setProperty("--cross-y", crossPt().y + "px");
   }
   // The point under the crosshair, not the map's geometric centre
   function target() {
@@ -1842,6 +1847,7 @@
       `Opened as: ${navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "home-screen app" : "browser"}`,
       `Phone: ${navigator.userAgent}`,
       `Screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}, map ${Math.round(box.width)}×${Math.round(box.height)}, panel ${sheet.offsetHeight}`,
+      `Origin: map top ${Math.round(box.top)}, panel top ${Math.round(sheet.getBoundingClientRect().top)}, scroll ${Math.round(scrollY)}, view ${window.visualViewport ? `${Math.round(visualViewport.offsetTop)}/${Math.round(visualViewport.height)}` : "?"}`,
       `Map: ${current}, zoom ${map.getZoom()}${last && last.ref ? ", crosshair " + last.ref : ""}`,
       `Notebook: ${points.length} entries${here ? `, GPS ±${Math.round(here.acc)} m` : ""}`,
     ];
