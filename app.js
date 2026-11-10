@@ -108,7 +108,7 @@
   $("textBtn").classList.toggle("on", large);
   $("textBtn").onclick = () => { setLarge(!large); $("textBtn").classList.toggle("on", large); toast(large ? "Large text" : "Normal text"); };
 
-  const VERSION = "213"; // bump with each release so a phone can show which copy it's running
+  const VERSION = "214"; // bump with each release so a phone can show which copy it's running
   const APP_VERSION = "1.0"; // the version people see; VERSION is the build, bumped by build/release.py
   // On patchy signal a phone can pair an old saved page with this newer code, and the code then
   // trips over buttons the old page doesn't have (it killed the boundaries and pins once). If
@@ -257,7 +257,16 @@
   map.getContainer().appendChild(document.querySelector(".cross"));
   // The crosshair in map-container pixels: halfway between the map's top and the panel's.
   // Only the gap between two measurements, so a shifted origin cancels out
-  function crossPt() { return L.point(map.getSize().x / 2, (sheet.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top) / 2); }
+  // Leaflet remembers the map's size and only re-reads it when the window says it resized.
+  // An iPhone turned on its side and back (in a pocket, say) doesn't always say so, and the
+  // map then believed it was ~450 px wider than the screen: everything landed half that to
+  // the right of the crosshair, about 110 m on the ground at GPS zoom, until the app was
+  // reopened. So check the real size before every measurement, and correct the map if wrong
+  function trueSize() {
+    const c = map.getContainer(), s = map.getSize();
+    if (c.clientWidth && c.clientHeight && (c.clientWidth !== s.x || c.clientHeight !== s.y)) map.invalidateSize({ pan: false, animate: false });
+  }
+  function crossPt() { trueSize(); return L.point(map.getSize().x / 2, (sheet.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top) / 2); }
   function layout() {
     const h = sheet.offsetHeight;
     document.documentElement.style.setProperty("--sheet-h", h + "px");
@@ -1847,6 +1856,7 @@
       `Opened as: ${navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "home-screen app" : "browser"}`,
       `Phone: ${navigator.userAgent}`,
       `Screen ${screen.width}×${screen.height}, window ${innerWidth}×${innerHeight}, map ${Math.round(box.width)}×${Math.round(box.height)}, panel ${sheet.offsetHeight}`,
+      `Map believes ${map.getSize().x}×${map.getSize().y}, turned ${screen.orientation ? screen.orientation.angle : window.orientation}°`,
       `Origin: map top ${Math.round(box.top)}, panel top ${Math.round(sheet.getBoundingClientRect().top)}, scroll ${Math.round(scrollY)}, view ${window.visualViewport ? `${Math.round(visualViewport.offsetTop)}/${Math.round(visualViewport.height)}` : "?"}`,
       `Map: ${current}, zoom ${map.getZoom()}${last && last.ref ? ", crosshair " + last.ref : ""}`,
       `Notebook: ${points.length} entries${here ? `, GPS ±${Math.round(here.acc)} m` : ""}`,
