@@ -838,6 +838,16 @@
     for (const id of (shareItem && shareItem.added) || []) photoDB.del(id).catch(() => {});
   }
   $("shCancel").onclick = closeShare;
+  // Pictures and words in one share. iOS hands both to the app you pick, but some (WhatsApp)
+  // keep the picture and drop the words, so they go on the clipboard in the same tap as well:
+  // if they're missing, they're one paste away. Not awaited: the share must start while the
+  // tap still counts. Says whether the words were copied; throws if the share is backed out of.
+  const COPIED = "The words are copied too: paste them in if they didn't arrive";
+  async function shareFilesText(files, text) {
+    const clip = text && navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(() => true, () => false) : false;
+    await navigator.share(text ? { files, text } : { files });
+    return clip;
+  }
   $("shGo").onclick = async () => {
     const text = $("shMsg").value.trim();
     const pics = sharePic ? (await sharePic).filter(Boolean) : [];
@@ -845,16 +855,17 @@
     const files = [...pics, ...phs].filter(Boolean);
     if (!text && !files.length) return toast("Nothing to share yet");
     $("shareModal").hidden = true;
+    let copied = false;
     try {
-      if (files.length && navigator.canShare && navigator.canShare({ files })) await navigator.share({ files, text });
+      if (files.length && navigator.canShare && navigator.canShare({ files })) copied = await shareFilesText(files, text);
       else if (navigator.share) await navigator.share({ text });
       else await copy(text);
     } catch { $("shareModal").hidden = false; return; } // backed out of the share sheet: the page is still here
-    keepShared(shareItem);
+    keepShared(shareItem, copied);
   };
   // Shared: the place is kept. From the crosshair it becomes a point in the notebook (with the
   // photos taken for it); a saved thing gets any new photos. Maps made for it go into Maps
-  function keepShared(it) {
+  function keepShared(it, copied) {
     fresh();
     const added = new Set(it.added || []), newPhotos = (it.photos || []).filter((ph) => added.has(ph.id));
     let said;
@@ -869,7 +880,8 @@
       if (savePoints()) said = `Shared, and saved in your notebook as ${name}`;
     }
     for (const m of it.maps || []) if (m.def && m.file) saveMap(m.def, m.file).catch(() => {});
-    if (said) toast(said, 3000);
+    if (copied) said = `${said || "Shared"}. ${COPIED}`;
+    if (said) toast(said, copied ? 4500 : 3000);
   }
   $("shareBtn").onclick = () => {
     if (!last || !last.ref) return toast("Outside the GB grid: move the crosshair onto Britain");
@@ -4327,13 +4339,21 @@
   }
   $("photoShare").onclick = async () => {
     if (!photoFile) return;
+    // a saved thing's photo goes with where it is (the same ticks as the share page)
+    let text = "";
+    const c = viewing && (viewing.pt.kind === "area" || viewing.pt.lat != null) && centreOf(viewing.pt); // (not a thing still being drawn)
+    if (c && c.e != null) {
+      const pt = viewing.pt;
+      text = shareTextFor({ head: pt.name, notes: pt.notes || "", ref: OSGB.gridRef(c.e, c.n, digits), lat: c.lat, lon: c.lon, e: c.e, n: c.n });
+    }
     if (navigator.canShare && navigator.canShare({ files: [photoFile] })) {
-      try { await navigator.share({ files: [photoFile] }); } catch {}
+      try { if (await shareFilesText([photoFile], text)) toast(COPIED, 3500); } catch {}
     } else {
       const a = document.createElement("a");
       a.href = $("photoOut").src;
       a.download = photoFile.name;
       a.click();
+      if (text) copy(text, null, true);
     }
   };
   function closePhoto() { $("photoModal").hidden = true; URL.revokeObjectURL($("photoOut").src); photoFile = null; photoNew = null; viewing = null; }
