@@ -10,7 +10,7 @@ A pocket map and notebook for rangers, built by Nick for the South Cumbria NNR t
 - **Share**: grid ref, lat/long, E/N, Apple/Google Maps links, name and notes, and a picture of the current map. Photos are stamped with the location, date, reserve and your own line.
 - **Navigate** to anything with a compass arrow, distance and bearing; arriving turns the panel green with a buzz and a chime.
 - **OS Outdoor** comes through `proxy/` (Cloudflare Worker `fieldnotes-tiles.nickjsykes.workers.dev`, Premium key held as a secret): full OS MasterMap detail to zoom 20.
-- **Reserve chips** jump to each reserve (Gait Barrows has a hand-picked view). Official tides (ADMIRALTY) are still fetched daily by `.github/workflows/tides.yml` into `data/tides.json` and shown when you type "tide" in search (build 150).
+- **Reserve chips** jump to each reserve (Gait Barrows has a hand-picked view). Official tides (ADMIRALTY) are still fetched daily by `.github/workflows/tides.yml` into `data/tides.json` and shown when you type "tide" in search.
 - **Maps**: OS Outdoor (OS Maps API, OpenData), aerial, and an offline OS map for the seven reserves; the LiDAR tick adds a 1 m relief layer with a strength slider (offline near the reserves, EA shading elsewhere).
 - **Big text** (Aa): bigger, high contrast, nothing taken away.
 
@@ -25,7 +25,7 @@ Static files only, no build step: `index.html` (layout), `app.css` (styles, ligh
 ## Offline maps and reserve boundaries
 
 - **OS map pack** (`maps/`): tiles cut from OS OpenMap Local (Full Colour Raster, OGL) for the seven reserves in `PACK` in `build/build_tiles.py`, zoom 11-17, plus the LiDAR relief layer (`maps/relief`, from `build/build_relief.py`), about 31 MB. The app downloads the whole pack by itself when it has signal (progress in the layers menu), and when map tiles stop loading it lays the OS map over the screen with a "Switching to offline maps" message.
-  Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `C:/Dev/Terra/.venv/Scripts/python.exe build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
+  Rebuild: download `omlras_gtfc_sd.zip` / `omlras_gtfc_ny.zip` (OS Downloads API, OpenMapLocal, GeoTIFF Full Colour) into `build/src/`, then `python build/build_tiles.py` (needs rasterio + Pillow). Add a reserve by adding its NNR `REF_CODE` to `PACK`.
 - **NNR boundaries**: live from Natural England's National Nature Reserves (England) feature service every time the app has signal; `data/nnr.geojson` is the copy shipped for first use offline (refresh it with the query URL in `index.html`, `NNR_LIVE`).
 - **Other build scripts**: `build_ostn15.py` (OSTN15 table), `fetch_tides.py` (tides, run by the workflow), `draw_icon.py` (home-screen icon), `draw_art.py` (empty-notebook contour texture).
 
