@@ -842,7 +842,7 @@
   // keep the picture and drop the words, so they go on the clipboard in the same tap as well:
   // if they're missing, they're one paste away. Not awaited: the share must start while the
   // tap still counts. Says whether the words were copied; throws if the share is backed out of.
-  const COPIED = "The words are copied too: paste them in if they didn't arrive";
+  const COPIED = "Words copied. WhatsApp drops them: long-press the caption and Paste";
   async function shareFilesText(files, text) {
     const clip = text && navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(() => true, () => false) : false;
     await navigator.share(text ? { files, text } : { files });
