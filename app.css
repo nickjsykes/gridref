@@ -861,3 +861,6 @@ body.mappick .top, body.mappick .fabs, body.mappick .sheet, body.mappick .cross,
 .mkcols .mkkind svg { width: 22px; height: 22px; }
 .mkcols .mkkind.on { background: var(--green); color: var(--panel); box-shadow: none; }
 .mkcols .mksep { width: 1px; align-self: stretch; margin: 6px 4px; background: var(--line); }
+
+/* WhatsApp paste hint under the message: a nudge, not a heading */
+.wahint { margin: 8px 0 0; font-size: 12px; }

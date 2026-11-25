@@ -840,16 +840,29 @@
   $("shCancel").onclick = closeShare;
   // Pictures and words in one share. iOS hands both to the app you pick, but some (WhatsApp)
   // keep the picture and drop the words, so they go on the clipboard in the same tap as well:
-  // if they're missing, they're one paste away. Not awaited: the share must start while the
-  // tap still counts. Says whether the words were copied; throws if the share is backed out of.
+  // if they're missing, they're one paste away (what3words does the same).
+  // clipNow must run before the handler's first await: Safari only lets a page write the
+  // clipboard during the tap itself, and an await (even on a finished promise) ends that.
+  // Resolves to whether the words were copied.
   const COPIED = "Words copied. WhatsApp drops them: long-press the caption and Paste";
-  async function shareFilesText(files, text) {
-    const clip = text && navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(text).then(() => true, () => false) : false;
+  function clipNow(text) {
+    if (!text) return Promise.resolve(false);
+    if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(() => true, () => false);
+    const ta = document.createElement("textarea"); // older iOS
+    ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch {}
+    ta.remove();
+    return Promise.resolve(ok);
+  }
+  // Throws if the share is backed out of
+  async function shareFilesText(files, text, clip = clipNow(text)) {
     await navigator.share(text ? { files, text } : { files });
     return clip;
   }
   $("shGo").onclick = async () => {
     const text = $("shMsg").value.trim();
+    const clip = clipNow(text); // first, while the tap still counts
     const pics = sharePic ? (await sharePic).filter(Boolean) : [];
     const phs = sharePhotos ? await sharePhotos : [];
     const files = [...pics, ...phs].filter(Boolean);
@@ -857,7 +870,7 @@
     $("shareModal").hidden = true;
     let copied = false;
     try {
-      if (files.length && navigator.canShare && navigator.canShare({ files })) copied = await shareFilesText(files, text);
+      if (files.length && navigator.canShare && navigator.canShare({ files })) copied = await shareFilesText(files, text, clip);
       else if (navigator.share) await navigator.share({ text });
       else await copy(text);
     } catch { $("shareModal").hidden = false; return; } // backed out of the share sheet: the page is still here
@@ -3710,11 +3723,14 @@
   }
   $("msCancel").onclick = () => { $("mapShareModal").hidden = true; if (msBack) msBack(); };
   $("msGo").onclick = async () => {
-    const files = await msFiles, text = $("msText").value.trim();
+    const text = $("msText").value.trim();
+    const clip = clipNow(text); // before any await (see clipNow)
+    const files = await msFiles;
     if (!files.length) return toast("The picture's missing. Edit the map to make it again");
     $("mapShareModal").hidden = true;
+    let copied = false;
     if (navigator.canShare && navigator.canShare({ files })) {
-      try { await navigator.share(text ? { files, text } : { files }); } catch { if (msBack) msBack(); return; } // backed out: stay where you were
+      try { copied = await shareFilesText(files, text, clip); } catch { if (msBack) msBack(); return; } // backed out: stay where you were
     } else {
       for (const f of files) { const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); }
       if (text) copy(text, null, true);
@@ -3723,7 +3739,8 @@
     if (msAfter) return msAfter(files.length);
     mapSel = null;
     closeDrawer();
-    toast(files.length > 1 ? `${files.length} maps sent` : "Map sent", 2400);
+    const sent = files.length > 1 ? `${files.length} maps sent` : "Map sent";
+    toast(copied ? `${sent}. ${COPIED}` : sent, copied ? 4500 : 2400);
   };
   const loadImg = (src) => new Promise((ok) => { const i = new Image(); i.crossOrigin = "anonymous"; i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
   // Tiles for a layer at zoom z: our own fetch (not the screen's), so the picture is sharp at
